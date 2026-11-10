@@ -9,6 +9,7 @@ Makes the "Spot the mistake" reels and the swipe posts for @studycrestapp.
 4. `python3 pilot_audio.py wav puck <key>` (voice track and caption timings; it must print "all lines fit").
 5. `python3 pilot.py render <key> silent/<key>.mp4`, then `python3 pilot_audio.py mux out <key>`.
 6. Look at a few frames (`python3 pilot.py stills <key> 1 5 8 11 15`) before using it.
+7. Make its cover: `python3 covers.py <key> ../queue/covers/<same file name as the reel>.jpg`. Every reel is published with its cover (`cover_url`).
 
 Rules: StudyCrest name on screen from the first frame; the offer is "Try it free for 30 days. $0 for your first 30 days. Cancel before day 30 and you're never charged. Promo code in bio."; never invent statistics, testimonials or user numbers; subjects rotate through maths, physics, chemistry, nursing, engineering, law and business.
 
