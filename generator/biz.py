@@ -296,7 +296,28 @@ def s_cta(s, i, n):
     return im
 
 
-TYPES = {"cover": s_cover, "role": s_role, "concept": s_concept, "mistake": s_mistake, "working": s_working,
+def s_list(s, i, n, off=0):
+    """Title plus a card of rows: name, one line under it, optional figure on the right."""
+    im = Image.new("RGB", (W, H), PAPER); d = ImageDraw.Draw(im)
+    y = kicker(d, M, 96 + off, s["label"]) + 10
+    ft = font("SerifBold", s.get("size", 64))
+    y = rich(d, M, y, s["title"], ft, INK, W - 2 * M, int(ft.size * 1.13), hl=SKY) + 30
+    rows = s["rows"]; rh = s.get("row_h", 134); ch = 28 + len(rows) * rh
+    shadow_card(im, (M, y, W - M, y + ch)); d = ImageDraw.Draw(im)
+    for k, r in enumerate(rows):
+        ry = y + 14 + k * rh; right = r[2] if len(r) > 2 else ""
+        rw = d.textlength(right, font=font("SerifBold", 40)) if right else 0
+        d.text((M + 40, ry + 24), r[0], font=font("SemiBold", 36), fill=INK)
+        fd = font("Regular", 27); ln = wrap(d, r[1], fd, W - 2 * M - 80 - (rw + 30 if right else 0))
+        d.text((M + 40, ry + 74), ln[0] if ln else "", font=fd, fill=MUTE)
+        if right: d.text((W - M - 40, ry + rh / 2), right, font=font("SerifBold", 40), fill=BLUE, anchor="rm")
+        if k < len(rows) - 1: d.line((M + 40, ry + rh, W - M - 40, ry + rh), fill=(236, 233, 224), width=2)
+    y += ch + 30
+    footer(im, d, i, n, s.get("source"))
+    return im, y
+
+
+TYPES = {"list": s_list, "cover": s_cover, "role": s_role, "concept": s_concept, "mistake": s_mistake, "working": s_working,
          "statement": s_statement, "app": s_app, "cta": s_cta}
 
 

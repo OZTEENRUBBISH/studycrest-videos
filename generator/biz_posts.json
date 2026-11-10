@@ -403,5 +403,752 @@
    }
   ],
   "caption": "Do you know where you actually lose your marks? Reading your notes again won't tell you. Someone checking your working will.\n\nStudyCrest checks every line as you write, then writes a practice test built like your real one so you can see where the marks went.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#businessstudent #commercestudent #accountingstudent #financestudent #studytips #examprep #unilife #studycrest"
+ },
+ "07-thinking-of-a-business-degree-sectors": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "skyline-chicago",
+    "focus": 0.3,
+    "kicker": "Thinking of studying business?",
+    "title": "Are you thinking of doing a *business degree*?",
+    "sub": "It doesn't lead to one industry. Here are eight it opens up."
+   },
+   {
+    "type": "list",
+    "label": "Sectors 1 to 4",
+    "title": "Where business graduates *actually work*",
+    "rows": [
+     [
+      "Banking and finance",
+      "Analysts, advisers, lenders, risk and compliance"
+     ],
+     [
+      "Consulting",
+      "Advising organisations on strategy and operations"
+     ],
+     [
+      "Technology",
+      "Product, pricing, operations and sales roles"
+     ],
+     [
+      "Sport and entertainment",
+      "Clubs, venues, events, sponsorship and media"
+     ]
+    ]
+   },
+   {
+    "type": "list",
+    "label": "Sectors 5 to 8",
+    "title": "And the ones people *forget about*",
+    "rows": [
+     [
+      "Health",
+      "Hospitals and health services need managers and accountants"
+     ],
+     [
+      "Government and not-for-profit",
+      "Budgets, policy, tax, fundraising"
+     ],
+     [
+      "Retail and consumer goods",
+      "Buying, marketing, supply chain, store operations"
+     ],
+     [
+      "Property",
+      "Valuation, finance, development and management"
+     ]
+    ]
+   },
+   {
+    "type": "list",
+    "label": "The majors",
+    "title": "The major you pick *points you somewhere*",
+    "row_h": 116,
+    "rows": [
+     [
+      "Accounting",
+      "Reporting, audit and tax"
+     ],
+     [
+      "Finance",
+      "Investment, banking and risk"
+     ],
+     [
+      "Economics",
+      "Policy, forecasting and analysis"
+     ],
+     [
+      "Marketing",
+      "Brands, customers and campaigns"
+     ],
+     [
+      "Management and HR",
+      "People, operations and strategy"
+     ],
+     [
+      "Sports business",
+      "The commercial side of sport"
+     ]
+    ]
+   },
+   {
+    "type": "statement",
+    "label": "What they share",
+    "title": "Whatever you choose, first year runs through *accounting, economics and statistics*.",
+    "body": [
+     "Those are the subjects where one slip in line two costs the whole question. StudyCrest checks every line of your working while you write."
+    ]
+   },
+   {
+    "type": "cta"
+   }
+  ],
+  "caption": "Are you thinking of doing a business degree? It doesn't lead to one industry. Here are eight sectors it opens up, and where each major points. Which one are you heading for? 👇\n\nWhatever you choose, the first year runs through accounting, economics and statistics. StudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#businessdegree #businessstudent #commercestudent #futurestudent #universitylife #careeradvice #unilife #studycrest"
+ },
+ "08-thinking-of-an-accounting-degree": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "tax-forms",
+    "focus": 0.45,
+    "kicker": "Thinking of studying accounting?",
+    "title": "Are you thinking of doing an *accounting degree*?",
+    "sub": "Five careers it can lead to, and what they pay."
+   },
+   {
+    "type": "role",
+    "photo": "calculator-pen",
+    "focus": 0.7,
+    "label": "Career 01 of 05",
+    "title": "Accountant or Auditor",
+    "lines": [
+     "Prepares and examines financial records",
+     "Makes sure the numbers are accurate and tax is paid correctly"
+    ],
+    "stat": "$83,680",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "reports-desk",
+    "focus": 0.2,
+    "label": "Career 02 of 05",
+    "title": "Budget Analyst",
+    "lines": [
+     "Helps organisations plan their finances",
+     "Prepares budget reports and monitors spending"
+    ],
+    "stat": "$91,640",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "bank-columns",
+    "focus": 0.5,
+    "label": "Career 03 of 05",
+    "title": "Financial Examiner",
+    "lines": [
+     "Checks that banks and financial firms follow the law",
+     "Reviews balance sheets and assesses risk"
+    ],
+    "stat": "$94,160",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "tax-forms",
+    "focus": 0.4,
+    "label": "Career 04 of 05",
+    "title": "Tax Examiner or Revenue Agent",
+    "lines": [
+     "Works out how much tax is owed",
+     "Reviews returns and carries out audits for government"
+    ],
+    "stat": "$62,370",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "boardroom",
+    "focus": 0.5,
+    "label": "Career 05 of 05",
+    "title": "Financial Manager",
+    "lines": [
+     "Responsible for an organisation's financial health",
+     "A senior role, usually reached after years of experience"
+    ],
+    "stat": "$166,570",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "statement",
+    "label": "Getting there",
+    "title": "An accounting degree is *one long run* of worked problems.",
+    "body": [
+     "StudyCrest checks every line of your working while you write, and flags the one that went wrong before your marker does."
+    ]
+   },
+   {
+    "type": "cta"
+   }
+  ],
+  "caption": "Are you thinking of doing an accounting degree? Here are five careers it can lead to, with median pay from the U.S. Bureau of Labor Statistics (May 2025). Which one would you pick? 👇\n\nGetting there means getting through the numbers subjects. StudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#accountingdegree #accountingstudent #futureaccountant #businessdegree #businessstudent #careeradvice #unilife #studycrest"
+ },
+ "09-thinking-of-a-finance-degree": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "coins",
+    "focus": 0.5,
+    "kicker": "Thinking of studying finance?",
+    "title": "Are you thinking of doing a *finance degree*?",
+    "sub": "Five careers it can lead to, and what they pay."
+   },
+   {
+    "type": "role",
+    "photo": "chart-candles",
+    "focus": 0.5,
+    "label": "Career 01 of 05",
+    "title": "Financial Analyst",
+    "lines": [
+     "Guides businesses and individuals on where to invest",
+     "Reads statements, builds models, values companies"
+    ],
+    "stat": "$103,570",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "signing",
+    "focus": 0.5,
+    "label": "Career 02 of 05",
+    "title": "Personal Financial Advisor",
+    "lines": [
+     "Advises people on investments, tax and retirement",
+     "Builds long-term plans around a client's goals"
+    ],
+    "stat": "$105,070",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "keys",
+    "focus": 0.4,
+    "label": "Career 03 of 05",
+    "title": "Loan Officer",
+    "lines": [
+     "Evaluates loan applications from people and businesses",
+     "Recommends which ones to approve"
+    ],
+    "stat": "$76,690",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "desk-calculator",
+    "focus": 0.55,
+    "label": "Career 04 of 05",
+    "title": "Insurance Underwriter",
+    "lines": [
+     "Decides whether to provide insurance and on what terms",
+     "Uses data to price the risk"
+    ],
+    "stat": "$81,370",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "bank-columns",
+    "focus": 0.5,
+    "label": "Career 05 of 05",
+    "title": "Financial Examiner",
+    "lines": [
+     "Checks that banks and financial firms follow the law",
+     "Reviews balance sheets and assesses risk"
+    ],
+    "stat": "$94,160",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "statement",
+    "label": "Getting there",
+    "title": "In finance, one wrong line *changes the whole valuation*.",
+    "body": [
+     "StudyCrest checks every line of your working while you write, and flags the one that went wrong before your marker does."
+    ]
+   },
+   {
+    "type": "cta"
+   }
+  ],
+  "caption": "Are you thinking of doing a finance degree? Here are five careers it can lead to, with median pay from the U.S. Bureau of Labor Statistics (May 2025). Which one would you pick? 👇\n\nGetting there means getting through the numbers subjects. StudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#financedegree #financestudent #financecareers #businessdegree #businessstudent #careeradvice #unilife #studycrest"
+ },
+ "10-thinking-of-an-economics-degree": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "newspaper-markets",
+    "focus": 0.6,
+    "kicker": "Thinking of studying economics?",
+    "title": "Are you thinking of doing an *economics degree*?",
+    "sub": "Five careers it can lead to, and what they pay."
+   },
+   {
+    "type": "role",
+    "photo": "globe",
+    "focus": 0.75,
+    "label": "Career 01 of 05",
+    "title": "Economist",
+    "lines": [
+     "Studies how goods, services and resources are produced and used",
+     "Usually needs a master's degree"
+    ],
+    "stat": "$124,720",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "chart-candles",
+    "focus": 0.5,
+    "label": "Career 02 of 05",
+    "title": "Financial Analyst",
+    "lines": [
+     "Guides businesses and individuals on where to invest",
+     "Tracks economic and business trends"
+    ],
+    "stat": "$103,570",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "boardroom",
+    "focus": 0.5,
+    "label": "Career 03 of 05",
+    "title": "Management Analyst",
+    "lines": [
+     "Advises organisations on how to run more efficiently",
+     "Often called a management consultant"
+    ],
+    "stat": "$101,860",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "reports-desk",
+    "focus": 0.2,
+    "label": "Career 04 of 05",
+    "title": "Budget Analyst",
+    "lines": [
+     "Helps organisations plan their finances",
+     "Prepares budget reports and monitors spending"
+    ],
+    "stat": "$91,640",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "laptop-analytics",
+    "focus": 0.6,
+    "label": "Career 05 of 05",
+    "title": "Market Research Analyst",
+    "lines": [
+     "Studies customers and competitors",
+     "Forecasts what people will buy and at what price"
+    ],
+    "stat": "$78,760",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "statement",
+    "label": "Getting there",
+    "title": "Economics rewards the student who *gets the working right*.",
+    "body": [
+     "StudyCrest checks every line of your working while you write, and flags the one that went wrong before your marker does."
+    ]
+   },
+   {
+    "type": "cta"
+   }
+  ],
+  "caption": "Are you thinking of doing an economics degree? Here are five careers it can lead to, with median pay from the U.S. Bureau of Labor Statistics (May 2025). Which one would you pick? 👇\n\nGetting there means getting through the numbers subjects. StudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#economicsdegree #economicsstudent #econ #businessdegree #businessstudent #careeradvice #unilife #studycrest"
+ },
+ "11-thinking-of-a-marketing-degree": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "sticky-wall",
+    "focus": 0.8,
+    "kicker": "Thinking of studying marketing?",
+    "title": "Are you thinking of doing a *marketing degree*?",
+    "sub": "Five careers it can lead to, and what they pay."
+   },
+   {
+    "type": "role",
+    "photo": "laptop-analytics",
+    "focus": 0.6,
+    "label": "Career 01 of 05",
+    "title": "Market Research Analyst",
+    "lines": [
+     "Studies customers and competitors",
+     "Helps a business decide what to sell, to whom and at what price"
+    ],
+    "stat": "$78,760",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "lecture-hall",
+    "focus": 0.5,
+    "label": "Career 02 of 05",
+    "title": "Meeting, Convention or Event Planner",
+    "lines": [
+     "Arranges every detail of events and professional gatherings",
+     "Manages venues, budgets and suppliers"
+    ],
+    "stat": "$61,160",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025",
+    "size": 54
+   },
+   {
+    "type": "role",
+    "photo": "handshake-dark",
+    "focus": 0.5,
+    "label": "Career 03 of 05",
+    "title": "Fundraiser",
+    "lines": [
+     "Organises campaigns and events that raise money",
+     "Builds relationships with donors"
+    ],
+    "stat": "$72,550",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "microphones",
+    "focus": 0.45,
+    "label": "Career 04 of 05",
+    "title": "Public Relations or Fundraising Manager",
+    "lines": [
+     "Shapes how the public sees an organisation",
+     "A senior role, usually reached after years of experience"
+    ],
+    "stat": "$136,470",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025",
+    "size": 54
+   },
+   {
+    "type": "role",
+    "photo": "sticky-table",
+    "focus": 0.5,
+    "label": "Career 05 of 05",
+    "title": "Advertising, Promotions or Marketing Manager",
+    "lines": [
+     "Plans the campaigns that create interest in a product",
+     "A senior role, usually reached after years of experience"
+    ],
+    "stat": "$165,780",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025",
+    "size": 54
+   },
+   {
+    "type": "statement",
+    "label": "Getting there",
+    "title": "Marketing still runs on numbers: *budgets, margins and statistics*.",
+    "body": [
+     "StudyCrest checks every line of your working while you write, and flags the one that went wrong before your marker does."
+    ]
+   },
+   {
+    "type": "cta"
+   }
+  ],
+  "caption": "Are you thinking of doing a marketing degree? Here are five careers it can lead to, with median pay from the U.S. Bureau of Labor Statistics (May 2025). Which one would you pick? 👇\n\nGetting there means getting through the numbers subjects. StudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#marketingdegree #marketingstudent #marketingcareers #businessdegree #businessstudent #careeradvice #unilife #studycrest"
+ },
+ "12-thinking-of-a-sports-business-degree": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "stadium-seats",
+    "focus": 0.5,
+    "kicker": "Thinking of studying sports business?",
+    "title": "Are you thinking of doing a *sports business degree*?",
+    "sub": "Five roles behind the game, and what they pay across all industries."
+   },
+   {
+    "type": "role",
+    "photo": "stadium-seats",
+    "focus": 0.5,
+    "label": "Career 01 of 05",
+    "title": "Entertainment or Recreation Manager",
+    "lines": [
+     "Plans and directs what happens at venues, clubs and facilities",
+     "Runs staff, budgets and programs"
+    ],
+    "stat": "$79,520",
+    "stat_label": "median pay a year|US, all industries",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025",
+    "size": 54
+   },
+   {
+    "type": "role",
+    "photo": "pitch-aerial",
+    "focus": 0.5,
+    "label": "Career 02 of 05",
+    "title": "Meeting, Convention or Event Planner",
+    "lines": [
+     "Arranges every detail of an event, from venue to suppliers",
+     "Game days and tournaments need them too"
+    ],
+    "stat": "$61,160",
+    "stat_label": "median pay a year|US, all industries",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025",
+    "size": 54
+   },
+   {
+    "type": "role",
+    "photo": "laptop-analytics",
+    "focus": 0.6,
+    "label": "Career 03 of 05",
+    "title": "Market Research Analyst",
+    "lines": [
+     "Studies fans, customers and competitors",
+     "Helps decide pricing, sponsorship and membership offers"
+    ],
+    "stat": "$78,760",
+    "stat_label": "median pay a year|US, all industries",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "microphones",
+    "focus": 0.45,
+    "label": "Career 04 of 05",
+    "title": "Public Relations or Fundraising Manager",
+    "lines": [
+     "Shapes how the public sees an organisation",
+     "A senior role, usually reached after years of experience"
+    ],
+    "stat": "$136,470",
+    "stat_label": "median pay a year|US, all industries",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025",
+    "size": 54
+   },
+   {
+    "type": "role",
+    "photo": "sticky-table",
+    "focus": 0.5,
+    "label": "Career 05 of 05",
+    "title": "Advertising, Promotions or Marketing Manager",
+    "lines": [
+     "Plans the campaigns that fill seats and sell memberships",
+     "A senior role, usually reached after years of experience"
+    ],
+    "stat": "$165,780",
+    "stat_label": "median pay a year|US, all industries",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025",
+    "size": 54
+   },
+   {
+    "type": "statement",
+    "label": "Getting there",
+    "title": "Sport is a business, and the business side is *finance, stats and marketing*.",
+    "body": [
+     "StudyCrest checks every line of your working while you write, and flags the one that went wrong before your marker does."
+    ]
+   },
+   {
+    "type": "cta"
+   }
+  ],
+  "caption": "Are you thinking of doing a sports business degree? Here are five careers it can lead to, with median pay from the U.S. Bureau of Labor Statistics (May 2025). Which one would you pick? 👇\n\nGetting there means getting through the numbers subjects. StudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#sportsbusiness #sportsmanagement #sportsmarketing #businessdegree #businessstudent #careeradvice #unilife #studycrest"
+ },
+ "13-thinking-of-a-human-resources-degree": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "interview-handshake",
+    "focus": 0.45,
+    "kicker": "Thinking of studying human resources?",
+    "title": "Are you thinking of doing a *human resources degree*?",
+    "sub": "Five careers it can lead to, and what they pay."
+   },
+   {
+    "type": "role",
+    "photo": "interview-handshake",
+    "focus": 0.45,
+    "label": "Career 01 of 05",
+    "title": "Human Resources Specialist",
+    "lines": [
+     "Recruits, screens and interviews candidates",
+     "Handles pay, benefits and training questions"
+    ],
+    "stat": "$75,940",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "lecture-hall",
+    "focus": 0.5,
+    "label": "Career 02 of 05",
+    "title": "Training and Development Specialist",
+    "lines": [
+     "Plans and runs programs that build employees' skills",
+     "Measures whether the training worked"
+    ],
+    "stat": "$69,280",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025",
+    "size": 56
+   },
+   {
+    "type": "role",
+    "photo": "desk-calculator",
+    "focus": 0.55,
+    "label": "Career 03 of 05",
+    "title": "Compensation and Benefits Specialist",
+    "lines": [
+     "Designs and manages pay and benefits programs",
+     "Compares roles and salaries across the market"
+    ],
+    "stat": "$78,210",
+    "stat_label": "median pay a year|incl. job analysis specialists",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025",
+    "size": 56
+   },
+   {
+    "type": "role",
+    "photo": "signing",
+    "focus": 0.5,
+    "label": "Career 04 of 05",
+    "title": "Labor Relations Specialist",
+    "lines": [
+     "Interprets and administers employment contracts",
+     "Works on wages, conditions and disputes"
+    ],
+    "stat": "$95,420",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "boardroom",
+    "focus": 0.5,
+    "label": "Career 05 of 05",
+    "title": "Human Resources Manager",
+    "lines": [
+     "Plans and directs hiring, pay and staff policy",
+     "A senior role, usually reached after years of experience"
+    ],
+    "stat": "$149,280",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "statement",
+    "label": "Getting there",
+    "title": "HR degrees still include *accounting, statistics and economics*.",
+    "body": [
+     "StudyCrest checks every line of your working while you write, and flags the one that went wrong before your marker does."
+    ]
+   },
+   {
+    "type": "cta"
+   }
+  ],
+  "caption": "Are you thinking of doing a human resources degree? Here are five careers it can lead to, with median pay from the U.S. Bureau of Labor Statistics (May 2025). Which one would you pick? 👇\n\nGetting there means getting through the numbers subjects. StudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#hrdegree #humanresources #hrstudent #businessdegree #businessstudent #careeradvice #unilife #studycrest"
+ },
+ "14-thinking-of-a-commerce-degree": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "graduation-caps",
+    "kicker": "Thinking of studying commerce?",
+    "title": "Are you thinking of doing a *commerce degree*?",
+    "sub": "You choose a major. Here's a role each one can lead to, and what it pays."
+   },
+   {
+    "type": "list",
+    "label": "Major to career",
+    "title": "Six majors, six roles, *median pay*",
+    "row_h": 126,
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025",
+    "rows": [
+     [
+      "Accounting",
+      "Accountant or auditor",
+      "$83,680"
+     ],
+     [
+      "Finance",
+      "Financial analyst",
+      "$103,570"
+     ],
+     [
+      "Economics",
+      "Economist (usually needs a master's)",
+      "$124,720"
+     ],
+     [
+      "Marketing",
+      "Market research analyst",
+      "$78,760"
+     ],
+     [
+      "Management",
+      "Management analyst",
+      "$101,860"
+     ],
+     [
+      "Human resources",
+      "Human resources specialist",
+      "$75,940"
+     ]
+    ]
+   },
+   {
+    "type": "statement",
+    "dark": false,
+    "label": "Before you choose",
+    "title": "Pay is one input. The better question is which problems you *like solving*.",
+    "body": [
+     "Accounting is precision. Finance is valuation and risk. Economics is why markets move. Marketing is why people choose.",
+     "All of them share the same first-year core, and that core is where marks are won and lost."
+    ]
+   },
+   {
+    "type": "statement",
+    "label": "The core",
+    "title": "Accounting, economics and statistics come first, *whatever your major*.",
+    "body": [
+     "StudyCrest checks every line of your working while you write, and flags the one that went wrong before your marker does."
+    ]
+   },
+   {
+    "type": "cta"
+   }
+  ],
+  "caption": "Are you thinking of doing a commerce degree? You choose a major, and each one points somewhere different. Here's one role per major with median pay from the U.S. Bureau of Labor Statistics (May 2025). Which major are you leaning towards? 👇\n\nAll of them share the same first-year core. StudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#commercedegree #commercestudent #bcom #businessdegree #futurestudent #careeradvice #unilife #studycrest"
  }
 }
