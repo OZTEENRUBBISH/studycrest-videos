@@ -1,0 +1,8 @@
+kokoro/
+wav/
+timings/
+silent/
+out/
+posts2/
+__pycache__/
+*.jpg
