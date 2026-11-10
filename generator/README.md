@@ -18,3 +18,29 @@ Add a post to `POSTS` in `posts2.py` using `cover`, `point`, `salary`, `steps_sl
 
 ## Queue
 Finished items wait in `../queue/reels` and `../queue/posts`. `../queue/captions.json` holds each caption. `../posted.json` records what has gone out.
+
+## StudyCrest Business (@studycrestbusiness) swipe posts
+
+Separate queue, separate log, separate look (editorial: photo cover, serif headlines, navy and paper).
+
+- Posts are data: `generator/biz_posts.json` (slug -> slides + caption). Render with `python3 generator/biz.py [slug]`.
+  Output goes to `queue/business/posts/<slug>/slide-N.jpg`. Captions: `queue/business/captions.json`. Log: `posted_business.json`.
+- Slide types: `cover` (photo, kicker, title, sub), `role` (photo, title, 2 lines, stat, source), `concept`
+  (formula, worked example, what it tells you), `mistake` (the slip / the fix), `working` (numbered working,
+  optional reveal with `flag` and `fix`), `statement`, `app` (a real screen from `generator/app/`), `cta`.
+  Words wrapped in *asterisks* in a title get the blue underline. `|` splits lines inside cards.
+- Photos: only the files in `generator/biz_photos/` (free Unsplash-licence photos, listed in credits.json).
+  New photos cannot be downloaded in a scheduled run, so reuse the library; do not use a photo with a
+  recognisable face or a brand logo. Vary which photo goes on the cover.
+- To make a new post: add an entry to biz_posts.json with the next number as the slug prefix, render it,
+  LOOK at every slide (text must not overlap or run off the card), add the caption to
+  queue/business/captions.json, commit and push.
+- Content rules: business, finance, accounting, economics, marketing and management study topics only.
+  Kinds to rotate: careers and pay, formulas/ratios explained, common exam slips, spot-the-mistake working,
+  study method, a StudyCrest feature. Every number in a worked example must be checked by running the
+  arithmetic. Every pay figure or statistic must come from an official source found by web search (for
+  example the U.S. Bureau of Labor Statistics) with source and date on the slide. Never invent statistics,
+  testimonials or user numbers. Only claim what StudyCrest does: checks every line of working as you
+  write (tick, flag, hint), Test Predictor, Practice Questions. Every post ends with the `cta` slide and
+  every caption keeps the offer wording (free for 30 days, promo code in the bio at @studycrestapp, $0
+  for the first 30 days, never charged if cancelled before day 30). Do not copy another creator's post.

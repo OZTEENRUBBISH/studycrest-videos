@@ -1,0 +1,407 @@
+{
+ "01-five-careers-business-degree": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "graduation-sunset",
+    "kicker": "Careers",
+    "title": "Five careers a business degree can lead to, and *what they pay*",
+    "sub": "Median pay from official 2025 figures."
+   },
+   {
+    "type": "role",
+    "photo": "chart-candles",
+    "focus": 0.5,
+    "label": "Career 01 of 05",
+    "title": "Financial Analyst",
+    "lines": [
+     "Guides businesses and individuals on where to invest",
+     "Reads statements, builds models, values companies"
+    ],
+    "stat": "$103,570",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "sticky-wall",
+    "focus": 0.8,
+    "label": "Career 02 of 05",
+    "title": "Project Management Specialist",
+    "lines": [
+     "Coordinates the budget, schedule and people on a project",
+     "Works in almost every industry"
+    ],
+    "stat": "$102,320",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "boardroom",
+    "focus": 0.5,
+    "label": "Career 03 of 05",
+    "title": "Management Analyst",
+    "lines": [
+     "Advises organisations on how to run more efficiently",
+     "Often called a management consultant"
+    ],
+    "stat": "$101,860",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "calculator-pen",
+    "focus": 0.7,
+    "label": "Career 04 of 05",
+    "title": "Accountant or Auditor",
+    "lines": [
+     "Prepares and examines financial records",
+     "Makes sure the numbers are accurate and tax is paid correctly"
+    ],
+    "stat": "$83,680",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "laptop-analytics",
+    "focus": 0.6,
+    "label": "Career 05 of 05",
+    "title": "Market Research Analyst",
+    "lines": [
+     "Studies customers and competitors",
+     "Helps a business decide what to sell, to whom and at what price"
+    ],
+    "stat": "$78,760",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "statement",
+    "label": "The part nobody skips",
+    "title": "Every one of them runs through the *numbers subjects* first.",
+    "body": [
+     "Accounting, finance and statistics are where a small slip in line two costs you the whole question.",
+     "StudyCrest checks every line of your working while you write, so you find the slip before your marker does."
+    ]
+   },
+   {
+    "type": "cta"
+   }
+  ],
+  "caption": "Five careers a business degree can lead to, with median pay from the U.S. Bureau of Labor Statistics (May 2025). Which one are you aiming for? 👇\n\nGetting there runs through accounting, finance and stats. StudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#businessdegree #businessstudent #commercestudent #financecareers #accountingstudent #careeradvice #unilife #studycrest"
+ },
+ "02-five-ratios-to-read-at-a-glance": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "reports-desk",
+    "focus": 0.2,
+    "kicker": "Finance basics",
+    "title": "Five ratios every business student should *read at a glance*",
+    "sub": "The formula, a worked example and what each one tells you."
+   },
+   {
+    "type": "concept",
+    "label": "Ratio 01 of 05",
+    "title": "Gross margin",
+    "formula": "(Revenue − Cost of goods sold)|÷ Revenue",
+    "example": "Revenue $500,000, COGS $300,000|($500,000 − $300,000) ÷ $500,000|= 40%",
+    "tells": "How much of every sales dollar is left after paying for what was sold."
+   },
+   {
+    "type": "concept",
+    "label": "Ratio 02 of 05",
+    "title": "Current ratio",
+    "formula": "Current assets|÷ Current liabilities",
+    "example": "Current assets $240,000|Current liabilities $160,000|= 1.5",
+    "tells": "Whether the business can cover the bills due within a year."
+   },
+   {
+    "type": "concept",
+    "label": "Ratio 03 of 05",
+    "title": "Return on equity",
+    "formula": "Net income|÷ Shareholders' equity",
+    "example": "Net income $90,000|Equity $600,000|= 15%",
+    "tells": "How much profit the business earns on each dollar its owners have put in."
+   },
+   {
+    "type": "concept",
+    "label": "Ratio 04 of 05",
+    "title": "Break-even point",
+    "formula": "Fixed costs|÷ (Price − Variable cost per unit)",
+    "example": "Fixed costs $120,000|$120,000 ÷ ($50 − $30)|= 6,000 units",
+    "tells": "How many units must be sold before the business stops making a loss."
+   },
+   {
+    "type": "concept",
+    "label": "Ratio 05 of 05",
+    "title": "Debt to equity",
+    "formula": "Total liabilities|÷ Shareholders' equity",
+    "example": "Liabilities $450,000|Equity $300,000|= 1.5",
+    "tells": "How heavily the business leans on borrowing compared with owners' money."
+   },
+   {
+    "type": "cta",
+    "note": "Save this one for exam week."
+   }
+  ],
+  "caption": "Five ratios you should be able to read without reaching for your notes: gross margin, current ratio, return on equity, break-even and debt to equity. Save this for exam week. 📌\n\nKnowing the formula is half of it. The other half is not slipping on the arithmetic, and that's what StudyCrest is for: it checks every line of your working while you write.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#financestudent #accountingstudent #businessstudent #financialratios #commercestudent #examprep #studytips #studycrest"
+ },
+ "03-spot-the-mistake-break-even": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "desk-calculator",
+    "focus": 0.55,
+    "kicker": "Spot the mistake",
+    "title": "One line of this break-even answer is wrong. *Can you find it?*",
+    "sub": "Swipe for the working, then the answer."
+   },
+   {
+    "type": "working",
+    "label": "The working",
+    "title": "Which line would you flag?",
+    "question": "Fixed costs are $84,000. Each unit sells for $40 and costs $26 to make. How many units to break even?",
+    "lines": [
+     "Contribution per unit = $40 − $26 = $14",
+     "Break-even = $84,000 ÷ $40",
+     "Break-even = 2,100 units"
+    ],
+    "prompt": "Decide before you swipe."
+   },
+   {
+    "type": "working",
+    "label": "The answer",
+    "title": "Line 2 divides by the *wrong number*.",
+    "question": "Break-even divides fixed costs by the contribution per unit, not by the selling price.",
+    "lines": [
+     "Contribution per unit = $40 − $26 = $14",
+     "Break-even = $84,000 ÷ $40",
+     "Break-even = 2,100 units"
+    ],
+    "flag": 1,
+    "reveal": true,
+    "fix": "$84,000 ÷ $14|= 6,000 units"
+   },
+   {
+    "type": "statement",
+    "label": "Why it matters",
+    "title": "The method was right. One number was wrong, and the answer was out by *3,900 units*.",
+    "body": [
+     "StudyCrest checks every line of your working while you write and flags the line that went wrong, with a hint before the answer."
+    ]
+   },
+   {
+    "type": "cta"
+   }
+  ],
+  "caption": "One line of this break-even answer is wrong. Which one would you flag? Comment the line number before you swipe. 👇\n\nStudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#accountingstudent #managementaccounting #businessstudent #breakeven #commercestudent #spotthemistake #examprep #studycrest"
+ },
+ "04-management-roles-and-their-pay": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "skyline-london",
+    "focus": 0.62,
+    "kicker": "Careers",
+    "title": "Five management roles a business career can reach, and *their median pay*",
+    "sub": "Usually reached after several years of experience."
+   },
+   {
+    "type": "role",
+    "photo": "trading-screen",
+    "focus": 0.3,
+    "label": "Role 01 of 05",
+    "title": "Financial Manager",
+    "lines": [
+     "Responsible for the financial health of an organisation",
+     "Directs investments, reporting and long-term planning"
+    ],
+    "stat": "$166,570",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "sticky-table",
+    "focus": 0.5,
+    "label": "Role 02 of 05",
+    "title": "Advertising, Promotions or Marketing Manager",
+    "lines": [
+     "Plans the campaigns that create interest in a product",
+     "Works with sales, finance and creative teams"
+    ],
+    "stat": "$165,780",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025",
+    "size": 54
+   },
+   {
+    "type": "role",
+    "photo": "interview-handshake",
+    "focus": 0.45,
+    "label": "Role 03 of 05",
+    "title": "Human Resources Manager",
+    "lines": [
+     "Plans and directs hiring, pay and staff policy",
+     "The link between management and employees"
+    ],
+    "stat": "$149,280",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "handshake-dark",
+    "focus": 0.5,
+    "label": "Role 04 of 05",
+    "title": "Sales Manager",
+    "lines": [
+     "Directs a sales team and sets its goals",
+     "Analyses the data and builds the training"
+    ],
+    "stat": "$148,270",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025"
+   },
+   {
+    "type": "role",
+    "photo": "microphones",
+    "focus": 0.45,
+    "label": "Role 05 of 05",
+    "title": "Public Relations or Fundraising Manager",
+    "lines": [
+     "Shapes how the public sees an organisation",
+     "Or leads the campaigns that bring in donations"
+    ],
+    "stat": "$136,470",
+    "stat_label": "median pay a year|United States",
+    "source": "Source: U.S. Bureau of Labor Statistics, median annual pay, May 2025",
+    "size": 54
+   },
+   {
+    "type": "cta",
+    "note": "Start with the subjects in front of you."
+   }
+  ],
+  "caption": "Where a business career can go: five management roles and their median pay, from the U.S. Bureau of Labor Statistics (May 2025). These are roles people usually reach after several years of experience, not graduate jobs.\n\nThe first step is the subjects in front of you. StudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#businesscareers #businessstudent #financecareers #marketingstudent #hrstudent #careeradvice #commercestudent #studycrest"
+ },
+ "05-four-slips-that-cost-accounting-marks": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "student-topdown",
+    "focus": 0.45,
+    "kicker": "Exam technique",
+    "title": "Four small slips that cost marks in *accounting and finance*",
+    "sub": "None of them is about not knowing the content."
+   },
+   {
+    "type": "mistake",
+    "label": "Slip 01 of 04",
+    "title": "Mixing up margin and markup",
+    "body": "Margin divides profit by revenue. Markup divides profit by cost. Same profit, two very different answers.",
+    "wrong": "Profit $200,000 ÷ Cost $300,000|= 66.7% (that's markup)",
+    "right": "Profit $200,000 ÷ Revenue $500,000|= 40% gross margin"
+   },
+   {
+    "type": "mistake",
+    "label": "Slip 02 of 04",
+    "title": "Rounding too early",
+    "body": "Round a growth factor in the middle of a question and the error grows with every step after it.",
+    "wrong": "Round 1.045⁵ to 1.25, then|$10,000 × 1.25 = $12,500.00",
+    "right": "$10,000 × 1.045⁵ (keep 1.24618…)|= $12,461.82"
+   },
+   {
+    "type": "mistake",
+    "label": "Slip 03 of 04",
+    "title": "Losing the minus sign in NPV",
+    "body": "The money you invest at the start is a cash outflow, so it goes in as a negative.",
+    "wrong": "NPV = $100,000 + $118,000 of inflows|= $218,000",
+    "right": "NPV = −$100,000 + $118,000 of inflows|= $18,000"
+   },
+   {
+    "type": "mistake",
+    "label": "Slip 04 of 04",
+    "title": "Annual rate, monthly periods",
+    "body": "If interest compounds monthly, both the rate and the number of periods have to be monthly.",
+    "wrong": "12% a year for 3 years, monthly:|i = 12%, n = 3",
+    "right": "i = 12% ÷ 12 = 1% a month|n = 3 × 12 = 36 periods"
+   },
+   {
+    "type": "statement",
+    "label": "The pattern",
+    "title": "You knew the method every time. The slip was in *one line*.",
+    "body": [
+     "That is the kind of mistake StudyCrest is built for. It checks every line of your working while you write and flags the one that went wrong."
+    ]
+   },
+   {
+    "type": "cta"
+   }
+  ],
+  "caption": "Four small slips that cost marks in accounting and finance, and none of them is about not knowing the content: margin vs markup, rounding too early, a lost minus sign in NPV, and mismatched rates and periods. Which one gets you? 👇\n\nStudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#accountingstudent #financestudent #businessstudent #examtips #commercestudent #studytips #examprep #studycrest"
+ },
+ "06-do-you-know-where-you-lose-marks": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "lecture-hall",
+    "kicker": "A question",
+    "title": "Do you know *where* you actually lose your marks?",
+    "sub": "Try StudyCrest free for 30 days and find out."
+   },
+   {
+    "type": "statement",
+    "dark": false,
+    "label": "The problem",
+    "title": "Reading your notes again feels like study. It doesn't show you *what you'd get wrong*.",
+    "body": [
+     "You only see that when someone checks your working, or when you sit a test.",
+     "StudyCrest does both."
+    ]
+   },
+   {
+    "type": "app",
+    "label": "While you work",
+    "title": "It checks *every line* as you write",
+    "shot": "check.png",
+    "crop": [
+     60,
+     60,
+     700,
+     370
+    ],
+    "body": [
+     "A tick when the line is right",
+     "A flag and a hint when it isn't, before the answer"
+    ]
+   },
+   {
+    "type": "app",
+    "label": "Before the test",
+    "title": "Then it writes a practice test *built like your real one*",
+    "shot": "tp_sample.png",
+    "crop": [
+     0,
+     40,
+     1300,
+     560
+    ],
+    "max_h": 430,
+    "body": [
+     "Add your test notice and a past paper",
+     "Sit it timed, then see where the marks went"
+    ]
+   },
+   {
+    "type": "cta",
+    "note": "$0 today. Nothing to pay for the first 30 days."
+   }
+  ],
+  "caption": "Do you know where you actually lose your marks? Reading your notes again won't tell you. Someone checking your working will.\n\nStudyCrest checks every line as you write, then writes a practice test built like your real one so you can see where the marks went.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#businessstudent #commercestudent #accountingstudent #financestudent #studytips #examprep #unilife #studycrest"
+ }
+}
