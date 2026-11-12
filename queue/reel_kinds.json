@@ -1,0 +1,21 @@
+{
+ "note": "Kind of every reel in queue/reels: spot (spot the mistake), feature (a StudyCrest feature) or tips (tip list). Spot reels go out at most about twice a week; see generator/README.md.",
+ "kinds": {
+  "studycrest-01-nursing": "spot",
+  "studycrest-02-maths-product-rule": "spot",
+  "studycrest-03-engineering": "spot",
+  "studycrest-04-law": "spot",
+  "studycrest-05-maths-expanding": "spot",
+  "studycrest-06-physics": "spot",
+  "studycrest-07-chemistry": "spot",
+  "studycrest-08-business": "spot",
+  "studycrest-09-test-predictor": "feature",
+  "studycrest-10-practice-questions": "feature",
+  "studycrest-11-tips-stop-procrastinating": "tips",
+  "studycrest-12-tips-stop-losing-marks": "tips",
+  "studycrest-13-tips-week-before-exam": "tips",
+  "studycrest-14-tips-focus": "tips",
+  "studycrest-15-tips-past-papers": "tips",
+  "studycrest-16-tips-night-before": "tips"
+ }
+}
