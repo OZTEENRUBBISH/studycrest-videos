@@ -1,0 +1,170 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// What if the Earth stopped spinning for one second?  Street on the equator (x = east) + globe scene.
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, noise3, mat, box, shadowAll, person, palm, cloud, skyDome, stars, globe, arrow, overlay, capAt, proj, tower, lamp, makePost, skyEnv } from './common.js';
+const W = 1080, H = 1920, DUR = 52.4, VEQ = 465.1;   // m/s at the equator: 2*pi*6378.137 km / 86164.1 s
+const O = overlay();
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.1, 2400);
+const R = rng(20261115), V = (x, y, z) => new THREE.Vector3(x, y, z);
+
+// =====================================================  CITY STREET (x = east)
+const city = new THREE.Scene(); city.fog = new THREE.Fog(0xd3e6f3, 220, 1300);
+city.add(skyDome(0x2a78d8, 0xcfe7f8, 0xbfd6e6)); const ENV = skyEnv(renderer, 0x2a78d8, 0xcfe7f8, 0xb9b3a8);
+const hemi = new THREE.HemisphereLight(0xd9ebff, 0xcfc4b0, 1.25); city.add(hemi);
+const sun = new THREE.DirectionalLight(0xffe9c8, 3.0); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+Object.assign(sun.shadow.camera, { left: -150, right: 150, top: 150, bottom: -150, near: 1, far: 500 }); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.05; city.add(sun); city.add(sun.target);
+const world = new THREE.Group(); city.add(world);
+const X0 = -260, X1 = 900, CROSS = [-12, 138, 288, 438, 588, 738];
+{ const g = new THREE.Mesh(new THREE.PlaneGeometry(3200, 2400).rotateX(-Math.PI / 2), mat(0xc4bfb4)); g.receiveShadow = true; g.position.set(300, 0, 0); world.add(g); }
+const flat = (w, d, col, x, z, y = 0.03) => { const m = box(w, 0.06, d, col, x, y, z); m.castShadow = false; world.add(m); return m; };
+flat(X1 - X0, 14, 0x3b3f46, (X0 + X1) / 2, 0); for (const cx of CROSS) flat(12, 700, 0x3b3f46, cx, 0, 0.025);
+for (let x = X0; x < X1; x += 9) { if (CROSS.some(c => Math.abs(x + 2 - c) < 9) || Math.abs(x + 2) < 5) continue; flat(4, 0.22, 0xf2f2f2, x + 2, 0, 0.065); }
+for (let z = -6.2; z <= 6.3; z += 1.55) flat(3.6, 0.8, 0xf4f4f4, 0, z, 0.07);       // zebra crossing at x = 0
+{ let a = X0; for (const cx of [...CROSS, X1 + 6]) { const b = cx - 6; for (const s of [-1, 1]) { const m = box(b - a, 0.3, 5.6, 0xd9d4c9, (a + b) / 2, 0.15, s * 9.8); m.castShadow = false; world.add(m); } a = cx + 6; } }
+// towers: three rows each side, gaps at the cross streets
+const rowT = (zc, side, hmin, hmax, wmin, wmax, gap) => { for (let x = X0; x < X1;) { const w = wmin + R() * (wmax - wmin), d = wmin + R() * (wmax - wmin), c = CROSS.find(c => x < c + 9 && x + w > c - 9); if (c !== undefined) { x = c + 9; continue; }
+  const h = hmin + Math.pow(R(), 1.5) * (hmax - hmin), b = tower(R, w, h, d, { env: ENV }); b.position.set(x + w / 2, 0, side * (zc + d / 2)); world.add(b); x += w + gap + R() * gap; } };
+for (const s of [-1, 1]) { rowT(12.8, s, 14, 60, 15, 24, 1.2); rowT(44, s, 40, 130, 18, 28, 5); rowT(84, s, 60, 200, 22, 32, 9); rowT(128, s, 50, 150, 24, 34, 14); }
+// awnings, palms, lamps, traffic lights
+for (let x = X0 + 6; x < X1; x += 7 + R() * 9) { if (CROSS.some(c => Math.abs(x - c) < 10)) continue; const s = R() < 0.5 ? -1 : 1, c = [0xe2574c, 0x2f9bd6, 0xf2c94c, 0x2bb673, 0xff8fb8, 0xffffff, 0xf2994a][Math.floor(R() * 7)], a = box(5, 0.18, 1.7, c, x, 3.3, s * 11.9); a.rotation.x = s * 0.22; world.add(a); }
+const palms = []; { let k = 0; for (let x = X0 + 8; x < X1; x += 13) { if (CROSS.some(c => Math.abs(x - c) < 9) || Math.abs(x) < 6) continue; for (const s of [-1, 1]) { if ((k++) % 3 === 2) { const l = lamp(); l.position.set(x, 0.3, s * 7.6); l.rotation.y = s > 0 ? Math.PI / 2 : -Math.PI / 2; world.add(l); } else { const p = palm(R); p.position.set(x + R() * 2, 0.3, s * (7.7 + R() * 0.3)); p.rotation.y = R() * 6; p.scale.setScalar(0.85); world.add(p); palms.push(p); } } } }
+for (const [x, z] of [[-3.2, 7.4], [3.2, -7.4]]) { const g = new THREE.Group(); g.add(box(0.16, 4.4, 0.16, 0x2f333a, 0, 2.2, 0)); g.add(box(0.42, 1.1, 0.36, 0x1c1f24, 0, 4.3, 0)); g.add(box(0.24, 0.24, 0.4, 0xe2574c, 0, 4.62, 0)); g.add(box(0.24, 0.24, 0.4, 0x3a3a3a, 0, 4.3, 0)); g.add(box(0.24, 0.24, 0.4, 0x3a3a3a, 0, 3.98, 0)); g.position.set(x, 0.3, z); world.add(shadowAll(g)); }
+for (let i = 0; i < 10; i++) { const c = cloud(R); c.position.set(-300 + R() * 1500, 190 + R() * 110, (R() < 0.5 ? -1 : 1) * (150 + R() * 500)); c.scale.setScalar(1.6 + R() * 1.6); city.add(c); }
+// loose things: people, cars, bus. Everything here keeps its eastward speed when the ground stops.
+const loose = []; const addLoose = (o, kind, extra = {}) => { o.userData.b = { p: o.position.clone(), r: o.rotation.clone() }; Object.assign(o.userData, { lk: kind, j: R(), j2: R(), j3: R() }, extra); world.add(o); loose.push(o); return o; };
+function car(col) { const c = new THREE.Group(); c.add(box(1.9, 0.7, 4.2, col, 0, 0.6, 0)); c.add(box(1.7, 0.6, 2.2, 0x26313f, 0, 1.2, -0.2)); for (const [x, z] of [[-0.95, -1.3], [0.95, -1.3], [-0.95, 1.3], [0.95, 1.3]]) c.add(box(0.25, 0.6, 0.6, 0x111111, x, 0.3, z)); return shadowAll(c); }
+function bus() { const c = new THREE.Group(); c.add(box(2.5, 2.7, 10.5, 0xe2574c, 0, 1.75, 0)); c.add(box(2.54, 0.95, 9.6, 0x26313f, 0, 2.25, 0)); c.add(box(2.56, 0.2, 10.54, 0xf5f1e6, 0, 1.25, 0)); for (const z of [-3.6, 3.6]) for (const x of [-1.2, 1.2]) c.add(box(0.3, 0.9, 0.9, 0x111111, x, 0.45, z)); return shadowAll(c); }
+const CC = [0xe2574c, 0xffffff, 0x2f56d6, 0x49c6d8, 0xf2c94c, 0x9aa3ad, 0x2bb673];
+const addCar = (x, lane, speed, isBus) => { const c = isBus ? bus() : car(CC[Math.floor(R() * CC.length)]); c.position.set(x, 0.06, lane * 3.4); c.rotation.y = lane < 0 ? Math.PI / 2 : -Math.PI / 2; return addLoose(c, 'car', { dir: lane < 0 ? 1 : -1, speed }); };
+addCar(-6.2, -1, 0); addCar(-12.6, -1, 0); addCar(6.4, 1, 0); addCar(17, 1, 0, true); addCar(28, 1, 0);
+for (const x of [-105, -60, 22, 58, 96, 150, 210, 300, 372]) addCar(x - 170, -1, 11); for (const x of [-40, -90, -150, 160, 230, 320, 410]) addCar(x + 170, 1, 11);
+const people = []; const addPerson = (x, z, kind, ry, cols) => { const p = person(R, kind, cols); p.position.set(x, Math.abs(z) > 7 ? 0.3 : 0.06, z); p.rotation.y = ry; addLoose(p, 'person', { walk: kind === 'walk' ? 1.25 : 0 }); people.push(p); return p; };
+for (let i = 0; i < 64; i++) { const s = R() < 0.5 ? -1 : 1, x = -90 + R() * 330, k = R() < 0.72 ? 'walk' : 'stand'; if (CROSS.some(c => Math.abs(x - c) < 7)) continue; addPerson(x, s * (8.3 + R() * 3.2), k, k === 'walk' ? (R() < 0.5 ? Math.PI / 2 : -Math.PI / 2) : R() * 6.28); }
+const hero = addPerson(0.2, 8.2, 'walk', Math.PI, { shirt: 0xf2c94c, pants: 0x1e3aa8, shorts: false, skin: 0xe0ac7e, hair: 0x2b1b12 }); hero.userData.hero = 1; hero.scale.setScalar(1.08);
+const crossers = [addPerson(-1.0, 9.0, 'walk', Math.PI), addPerson(1.3, 9.6, 'walk', Math.PI), addPerson(0.9, -8.6, 'walk', 0), addPerson(-0.8, -9.4, 'walk', 0)]; for (const c of crossers) c.userData.cross = 1;
+// air: motes and leaves that travel with the air (and with you)
+const moteN = 520, moteGeo = new THREE.BufferGeometry(), moteP = new Float32Array(moteN * 3), moteB = []; for (let i = 0; i < moteN; i++) moteB.push([-70 + R() * 240, 0.4 + Math.pow(R(), 1.6) * 16, -11 + R() * 22, R() * 6.28]);
+moteGeo.setAttribute('position', new THREE.BufferAttribute(moteP, 3)); const motes = new THREE.Points(moteGeo, new THREE.PointsMaterial({ color: 0xfffbe6, size: 0.11, transparent: true, opacity: 0.85, depthWrite: false })); motes.frustumCulled = false; world.add(motes);
+const gulls = []; for (let i = 0; i < 7; i++) { const g = new THREE.Group(), wg = new THREE.ConeGeometry(0.16, 1.3, 3); const a = new THREE.Mesh(wg, mat(0xffffff)), b = new THREE.Mesh(wg, mat(0xffffff)); a.rotation.z = 1.2; a.position.x = -0.55; b.rotation.z = -1.2; b.position.x = 0.55; g.add(a); g.add(b); g.userData = { a, b, c: V(10 + R() * 120, 9 + R() * 14, -5 + R() * 10), r: 4 + R() * 5, s: R() * 6 }; world.add(g); gulls.push(g); }
+// aftermath dust
+const dustN = 420, dustGeo = new THREE.BufferGeometry(), dustP = new Float32Array(dustN * 3), dustS = []; for (let i = 0; i < dustN; i++) dustS.push([360 + R() * 300, -9 + R() * 18, 1 + R() * 5, R() * 4]);
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustP, 3)); const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xcbbfa8, size: 1.5, transparent: true, opacity: 0.42, depthWrite: false })); dust.frustumCulled = false; dust.visible = false; world.add(dust);
+
+// =====================================================  SPACE: the spinning globe
+const space = new THREE.Scene(); space.background = new THREE.Color(0x05060d); space.add(stars(rng(7)));
+space.add(new THREE.HemisphereLight(0x8fb4ff, 0x10131f, 0.55)); const sl = new THREE.DirectionalLight(0xffffff, 2.7); sl.position.set(-30, 22, 40); space.add(sl);
+const earth = new THREE.Group(); earth.rotation.x = 0.3; space.add(earth); const spinG = new THREE.Group(); earth.add(spinG); const G = globe(10, 26); spinG.add(G);
+const ringAt = (lat, col) => { const r = 10.1 * Math.cos(lat), m = new THREE.Mesh(new THREE.TorusGeometry(r, 0.07, 6, 140), new THREE.MeshBasicMaterial({ color: col, transparent: true })); m.rotation.x = Math.PI / 2; m.position.y = 10.1 * Math.sin(lat); earth.add(m); return m; };
+const LAT60 = Math.PI / 3, ringEq = ringAt(0, 0xffd64a), ring60 = ringAt(LAT60, 0x9cc0ff);
+const axis = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 25, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 })); earth.add(axis);
+const cityDot = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8), new THREE.MeshBasicMaterial({ color: 0xff4a3a })); cityDot.position.set(0, 0, 10.12); spinG.add(cityDot);
+const eastArrow = arrow(3.4, 0xffd64a, 0.13); eastArrow.rotation.z = -Math.PI / 2; eastArrow.position.set(0.45, 0, 10.75); spinG.add(eastArrow);
+// escape comparison, to scale: 1,674 km/h vs 40,270 km/h (x 24.05)
+const youArrow = arrow(0.46, 0x7fd0ff, 0.045); youArrow.rotation.z = -Math.PI / 2; youArrow.position.set(0.35, -0.55, 10.5); spinG.add(youArrow);
+const escArrow = arrow(0.46 * 24.05, 0xff9a3c, 0.1); escArrow.rotation.z = -Math.PI / 2; escArrow.position.set(0.35, 0.55, 10.5); spinG.add(escArrow);
+// latitude arrows (length in proportion to ground speed), fixed to the front of the globe
+const eqA = arrow(4.2, 0xffd64a, 0.13); eqA.rotation.z = -Math.PI / 2; eqA.position.set(-2.1, 0, 10.8); earth.add(eqA);
+const a60 = arrow(2.1, 0x9cc0ff, 0.11); a60.rotation.z = -Math.PI / 2; a60.position.set(-1.05, 10.1 * Math.sin(LAT60), 10.1 * Math.cos(LAT60) + 0.7); earth.add(a60);
+const poleDot = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff })); poleDot.position.set(0, 10.15, 0); earth.add(poleDot);
+const moon = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5, 3), mat(0xb8b8b8)); moon.position.set(-13, 21, -30); space.add(moon);
+
+const postCity = makePost(renderer, city, cam, { bloom: 0.16, bloomThreshold: 0.95, warm: 0.035, sat: 1.15 }), postSpace = makePost(renderer, space, cam, { ao: false, bloom: 0.45, bloomThreshold: 0.74, bloomRadius: 0.7, sat: 1.1 });
+// =====================================================  TIMELINE
+const T = { street: 3.2, glb: 5.0, back: 12.2, count: 15.3, stop: 18.3, esc: 21.1, ride: 25.8, lat: 36.5, restart: 44.3, calm: 47.0, end: 50.1 };
+const CAPS = [
+ [3.2, 4.85, "You're in a city on the equator."],
+ [5.0, 7.1, 'The ground under you<br>is moving <em>east</em>…'], [7.1, 9.75, 'at <em>1,670 km/h</em>.'], [9.75, 11.7, 'Faster than sound.'],
+ [12.4, 14.95, 'You feel <em>nothing</em>: everything<br>moves with you.'],
+ [15.3, 17.2, 'In three seconds,<br>the planet <em>stops</em>.'],
+ [18.7, 19.55, 'The ground stops.'], [19.55, 20.15, "You <em>don't</em>."], [20.15, 21.05, 'Nothing loose does.'],
+ [21.3, 23.0, "You won't fly off into space."], [23.0, 25.7, 'That takes<br><em>40,000 km/h</em>.'],
+ [26.0, 27.4, 'And no wind hits you.'], [27.4, 29.2, 'The air is still<br>travelling <em>with you</em>.'], [29.2, 32.4, "It's the ground, and everything<br>fixed to it, that <em>comes at you</em>."],
+ [32.7, 36.4, 'In one second,<br>you cross <em>465 metres</em>.'],
+ [36.9, 39.5, 'Further from the equator,<br>the ground moves slower.'], [39.5, 41.9, 'At 60° north,<br><em>half</em> as fast.'], [41.9, 44.1, "At the poles, you'd<br>barely notice."],
+ [44.6, 45.6, 'Then the Earth spins again.'], [45.6, 46.85, 'Too late.'],
+ [47.3, 48.3, 'You never feel <em>speed</em>.'], [48.3, 49.95, 'Only a <em>change</em> in speed.'] ];
+const fmt = (s) => { s = Math.max(0, s); const a = Math.floor(s), ms = Math.floor((s - a) * 1000 + 1e-6); return '0:' + String(a).padStart(2, '0') + '.' + String(ms).padStart(3, '0'); };
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+// fraction of the stopped second that has passed (slow motion)
+const simS = (t) => t < T.stop ? 0 : (t < T.esc ? 0.08 * Math.pow(seg(t, T.stop, T.esc), 2) : (t < T.ride ? 0.08 + 0.02 * seg(t, T.esc, T.ride) : (t < T.lat ? 0.1 + 0.9 * seg(t, T.ride, T.lat) : 1)));
+const inSpaceAt = (t) => (t >= T.glb && t < T.back) || (t >= T.esc && t < T.ride) || (t >= T.lat && t < T.restart) || t >= T.calm;
+let heroPos = V(0, 0, 0);
+function cityFrame(t) {
+  const s = simS(t), D = VEQ * s, wt = t < T.stop ? t : T.stop + s, after = t >= T.restart, slid = s > 0;
+  for (const o of loose) { const u = o.userData, b = u.b; o.position.copy(b.p); o.rotation.copy(b.r); o.visible = true;
+    if (u.lk === 'car') { o.position.x += u.dir * u.speed * (wt - 3.2);
+      if (slid) { o.position.x += D * (1 - u.j * 0.012); o.rotation.y += (u.j2 - 0.5) * 0.5 * s; o.position.z += (u.j3 - 0.5) * 2.2 * s; }
+      if (after) { o.position.x = 395 + u.j * 250 + (u.j2 - 0.5) * 30; o.position.z = (u.j3 - 0.5) * 15; o.rotation.y = u.j * 6.28; o.rotation.z = u.j2 < 0.4 ? Math.PI / 2 : (u.j2 < 0.55 ? Math.PI : 0); o.position.y = u.j2 < 0.55 ? 1.0 : 0.06; } }
+    else { let mode = o.userData.kind, ph = wt * 5.2 + u.seed;
+      if (u.hero || u.cross) { const dz = Math.max(0, wt - 12.4) * 1.3 * (u.cross ? 0.9 + u.j * 0.2 : 1), sg = b.p.z > 0 ? -1 : 1; o.position.z += sg * Math.min(dz, u.hero ? 7.7 : 6 + u.j * 9); if (wt < 12.4) mode = 'stand'; }
+      else if (u.walk) { const d = (wt - 3.2) * u.walk; o.position.x += Math.sin(b.r.y) * d; }
+      if (slid) { const k = smooth(seg(s, 0, 0.05)), tip = k * (0.55 + u.j * 0.5) + s * (0.3 + u.j2 * 0.8); o.position.x += D * (1 + (u.cross ? 0.006 + u.j * 0.016 : -u.j * 0.01) * (u.hero ? 0 : 1)); if (u.cross) o.position.z += (b.p.z > 0 ? 1 : -1) * (1.5 + u.j3 * 3) * smooth(seg(s, 0.02, 0.3)); o.position.y += k * (0.25 + u.j2 * 0.35); o.rotation.z = -(u.hero ? Math.min(tip, 0.5) : tip) * 0.9; o.rotation.x += (u.j3 - 0.5) * 0.6 * k; mode = 'float'; ph = s * 26 + u.seed; }
+      if (after) o.visible = false; u.pose(ph, mode); } }
+  heroPos.copy(hero.position);
+  for (let i = 0; i < moteN; i++) { const m = moteB[i]; moteP[i * 3] = m[0] + D + Math.sin(wt * 0.6 + m[3]) * 0.5; moteP[i * 3 + 1] = m[1] + Math.sin(wt * 0.8 + m[3] * 2) * 0.3; moteP[i * 3 + 2] = m[2] + Math.cos(wt * 0.5 + m[3]) * 0.4; } moteGeo.attributes.position.needsUpdate = true; motes.visible = !after;
+  for (const g of gulls) { const u = g.userData, a = wt * 0.7 + u.s; g.position.set(u.c.x + D + Math.cos(a) * u.r, u.c.y + Math.sin(a * 1.7) * 0.8, u.c.z + Math.sin(a) * u.r); g.rotation.y = -a; const fl = Math.sin(wt * 9 + u.s) * 0.5; u.a.rotation.z = 1.2 + fl; u.b.rotation.z = -1.2 - fl; g.visible = !after; }
+  for (const p of palms) p.userData.top.rotation.z = Math.sin(wt * 1.3 + p.position.x) * 0.035;
+  dust.visible = after; if (after) { const q = t - T.restart; for (let i = 0; i < dustN; i++) { const d = dustS[i], v = (q + d[3]) % 5; dustP[i * 3] = d[0] + Math.sin(i + v) * 2; dustP[i * 3 + 1] = 0.5 + v * d[2]; dustP[i * 3 + 2] = d[1] + Math.cos(i * 3 + v) * 2; } dustGeo.attributes.position.needsUpdate = true; }
+  // camera
+  const hp = heroPos;
+  if (t < T.street) camPath([[0, V(-190, 215, 190), V(120, 20, 0), 50], [T.street, V(-70, 46, 46), V(150, 16, 0), 50]], t);
+  else if (t < T.glb) camPath([[T.street, V(-10.5, 2.3, 4.6), V(60, 10, -1.5), 62], [T.glb, V(-9.2, 2.2, 4.2), V(60, 9.5, -1.5), 62]], t);
+  else if (t < T.esc) { camPath([[T.back, V(-10.5, 2.6, -0.4), V(40, 6.5, 2.6), 60], [T.stop, V(-8.6, 2.2, -0.9), V(40, 5.2, 2.2), 60], [T.esc, V(-8.6, 2.2, -0.9), V(40, 5.6, 2.0), 62]], t);
+    const q = t - T.stop; if (q > 0 && q < 0.9) { const k = (1 - q / 0.9) * 0.12; cam.position.x += Math.sin(q * 61) * k; cam.position.y += Math.sin(q * 77 + 1) * k * 0.6; } }
+  else if (t < T.lat) { const u = seg(t, T.ride, T.lat), k = 0.035; cam.position.set(hp.x - 9.4 + u * 1.2 + Math.sin(t * 37) * k, 2.7 - u * 0.2 + Math.sin(t * 53 + 1) * k, hp.z + 1.7 - u * 0.6); cam.fov = lerp(64, 70, u); cam.up.set(0, 1, 0); cam.lookAt(V(hp.x + 30, 1.5, hp.z - 0.5)); cam.updateProjectionMatrix(); }
+  else camPath([[T.restart, V(318, 40, 3), V(520, 0, 0), 56], [T.calm, V(342, 34, 2), V(540, 0, -1), 56]], t);
+  sun.target.position.set(cam.position.x + 60, 0, 0); sun.position.set(cam.position.x + 60 - 70, 95, 60);
+  const dark = after ? 0.25 : 0; sun.intensity = 3.0 - dark * 2; renderer.toneMappingExposure = 1.0 - dark * 0.3; postCity.render();
+}
+let spinA = 0;
+function spaceFrame(t) {
+  const sc = t < T.back ? 1 : (t < T.ride ? 2 : (t < T.restart ? 3 : 4));
+  spinA = sc === 1 ? -1.0 + (t - T.glb) * 0.27 : (sc === 2 ? -0.42 : (sc === 3 ? 0.2 : 0.2 + easeIn(seg(t, T.calm, T.calm + 1.2)) * 0.5 + Math.max(0, t - T.calm - 1.2) * 0.42)); spinG.rotation.y = spinA;
+  ringEq.material.opacity = sc === 2 ? 0.35 : 0.95; ring60.visible = sc === 3; ring60.material.opacity = smooth(seg(t, T.lat + 2.4, T.lat + 3.0));
+  eastArrow.visible = sc === 1 || sc === 4; eastArrow.userData.mat.opacity = sc === 1 ? smooth(seg(t, T.glb + 0.3, T.glb + 0.9)) : smooth(seg(t, T.calm + 0.4, T.calm + 1.2));
+  youArrow.visible = escArrow.visible = sc === 2; escArrow.scale.set(1, sc === 2 ? Math.max(0.001, easeOut(seg(t, T.esc + 1.5, T.esc + 2.6))) : 1, 1);
+  eqA.visible = sc === 3; eqA.userData.mat.opacity = smooth(seg(t, T.lat + 0.3, T.lat + 0.9)); a60.visible = sc === 3 && t > T.lat + 2.4; a60.userData.mat.opacity = smooth(seg(t, T.lat + 2.6, T.lat + 3.2)); poleDot.visible = sc === 3 && t > T.lat + 4.9; cityDot.visible = sc !== 3;
+  const zc = sc === 1 ? seg(t, T.glb, T.back) : (sc === 2 ? seg(t, T.esc, T.ride) : (sc === 3 ? seg(t, T.lat, T.restart) : seg(t, T.calm, DUR)));
+  cam.up.set(0, 1, 0); cam.fov = 40; cam.position.set(0, 2 + (sc === 3 ? 3 : 0), 64 - zc * 3 + (sc === 4 ? zc * 9 : 0)); cam.lookAt(V(0, -4.0, 0)); cam.updateProjectionMatrix();
+  renderer.toneMappingExposure = 1.1; postSpace.render();
+}
+const wp = new THREE.Vector3(); const pix = (obj, off) => { obj.updateWorldMatrix(true, false); wp.copy(off || V(0, 0, 0)); obj.localToWorld(wp); return proj(wp, cam); };
+function overlayFrame(t) {
+  const inSpace = inSpaceAt(t), s = simS(t), D = VEQ * s;
+  const ta = t < 3.1 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 2.75, 3.1)) : 0; O.set(O.title, 'What if the Earth<br>stopped <em>spinning</em><br>for 1 second?'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`;
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = (inSpace ? 1420 : 1230) + 'px';
+  O.show(O.chip, 0);
+  // HUD
+  let ha = 1;
+  if (t < T.street) ha = 0;
+  else if (t < T.count) { O.hudSet('Ground speed', '1,670 km/h', t >= T.glb && t < T.back ? 'Heading east · spin sped up to show it' : 'Heading east · on the equator'); ha = seg(t, T.street, T.street + 0.4); }
+  else if (t < T.stop) O.hudSet('Earth stops in', fmt(T.stop - t), 'Just the planet\nNot the air, the sea or you');
+  else if (t < T.lat) O.hudSet('Earth restarts in', fmt(1 - s), t < T.esc ? 'Slow motion' : (t < T.ride ? 'Arrows to scale' : `You, over the ground: ${Math.round(D)} m\nAir around you: still`));
+  else if (t < T.restart) O.hudSet('Ground speed', t < T.lat + 2.6 ? '1,670 km/h' : (t < T.lat + 5.0 ? '840 km/h' : '0 km/h'), t < T.lat + 2.6 ? 'At the equator' : (t < T.lat + 5.0 ? 'At 60° north (about)' : 'At the poles'));
+  else if (t < T.calm) O.hudSet('Earth', 'SPINNING', 'One second later');
+  else if (t < T.end) O.hudSet('Ground speed', '1,670 km/h', 'And you feel nothing');
+  else ha = 0;
+  O.show(O.hud, ha); O.hud.style.top = (inSpace ? 1235 : 860) + 'px';
+  // labels
+  let lab = ''; const L = (x, y, a, html, al) => `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${a.toFixed(3)};${al || ''}">${html}</div>`;
+  if (t >= T.glb + 0.4 && t < T.back) { const p = pix(cityDot); lab += L(clamp(p[0] - 60, 60, 640), p[1] + 46, seg(t, T.glb + 0.4, T.glb + 0.9), 'Your city<b>1,670 km/h east</b>'); }
+  if (t >= T.esc && t < T.ride) { const p = pix(cityDot); lab += L(clamp(p[0] - 250, 60, 600), p[1] + 60, seg(t, T.esc + 0.2, T.esc + 0.7), 'Your speed<b>1,670 km/h</b>');
+    lab += L(clamp(p[0] - 60, 60, 420), p[1] - 250, seg(t, T.esc + 1.7, T.esc + 2.3), 'Needed to leave Earth<b>40,270 km/h</b>'); }
+  if (t >= T.lat && t < T.restart) { const pe = pix(eqA, V(0, 0, 0)), p6 = pix(a60, V(0, 0, 0)), pp = pix(poleDot);
+    lab += L(60, pe[1] + 34, seg(t, T.lat + 0.4, T.lat + 0.9), 'Equator<b>1,670 km/h</b>');
+    lab += L(60, p6[1] + 22, seg(t, T.lat + 2.7, T.lat + 3.2), '60° north<b>about 840 km/h</b>');
+    lab += L(pp[0] + 40, pp[1] - 62, seg(t, T.lat + 5.0, T.lat + 5.5), 'Pole<b>0 km/h</b>'); }
+  if (!inSpace && t >= T.back && t < T.lat) { const p = proj(V(heroPos.x + (t >= T.stop ? 0.5 : 0), heroPos.y + (t >= T.stop ? 2.2 : 2.5), heroPos.z), cam), a = Math.min(seg(t, T.back + 0.5, T.back + 1.0), 1) * (p[0] > 40 && p[0] < 900 && (p[1] < 840 || p[1] > 1010) ? 1 : 0); lab += L(p[0] - 34, p[1] - 44, a, 'You'); }
+  if (!inSpace && t >= T.street && t < T.restart) lab += L(700, 880, 0.9 * seg(t, T.street, T.street + 0.4), 'East →');
+  if (O.labels._h !== lab) { O.labels._h = lab; O.labels.innerHTML = lab; }
+  let fl = 0; for (const [a, d, k] of [[T.glb, 0.3, 0.6], [T.back, 0.3, 0.6], [T.stop, 0.55, 0.95], [T.esc, 0.3, 0.6], [T.ride, 0.3, 0.6], [T.lat, 0.45, 0.9], [T.restart, 0.5, 0.9], [T.calm, 0.35, 0.7]]) if (t >= a - 0.06 && t < a + d) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + d)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { if (inSpaceAt(t)) spaceFrame(t); else cityFrame(t); overlayFrame(t); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>

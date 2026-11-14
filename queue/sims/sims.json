@@ -52,6 +52,17 @@
     "https://www.encyclopedia-titanica.org/on-titanics-bridge.html",
     "https://www.encyclopedia-titanica.org/titanic-survivor/reginald-robinson-lee.html"
    ]
+  },
+  {
+   "file": "sim-05-spin.mp4",
+   "title": "What if the Earth stopped spinning for one second?",
+   "made": "2026-11-15",
+   "caption": "What if the Earth stopped spinning for one second? The ground would stop, but you, the air and the sea would keep going east at 1,670 km/h. You never feel speed, only a change in speed. 🌍\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #earth #studytok #space",
+   "science": "Idealised: only the solid planet stops; air, sea and anything loose keep their eastward speed. Equator speed = 2*pi*6378.137 km / 86164.1 s = 465.1 m/s = 1,674 km/h (said as 1,670). Distance in 1 s = 465 m. Speed scales with cos(latitude): 60 deg -> 837 km/h (shown as about 840), poles 0. Escape velocity 11.186 km/s = 40,270 km/h, about 24 times the equator speed, so nothing is thrown into space. Speed of sound 343 m/s = 1,235 km/h at 20 C, from the standard formula 331.3*sqrt(1+T/273.15); the web check of this one figure was blocked in the run, the other figures were checked against the sources below.",
+   "sources": [
+    "https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html",
+    "https://space.com/33527-how-fast-is-earth-moving.html"
+   ]
   }
  ]
 }
