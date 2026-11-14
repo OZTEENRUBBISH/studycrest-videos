@@ -162,6 +162,30 @@
    "hook": "Pompeii, hour by hour",
    "the surprising true point": "It was not lava: fast, hot clouds of gas and ash did the damage, many hours after the eruption began",
    "status": "planned"
+  },
+  {
+   "title": "What if you sank to the deepest point in the ocean?",
+   "kind": "what-if",
+   "setting": "The open Pacific, then down past the light to the sea floor",
+   "hook": "What if you sank to the deepest point in the ocean?",
+   "the surprising true point": "The pressure is around a thousand atmospheres, but you would not be squashed flat: water barely compresses, so it is the air spaces in your body that collapse",
+   "status": "planned"
+  },
+  {
+   "title": "What if you held your breath for as long as you could?",
+   "kind": "what-if",
+   "setting": "A swimming pool, with a cutaway of the lungs and blood",
+   "hook": "What if you held your breath for as long as you could?",
+   "the surprising true point": "The desperate urge to breathe comes from carbon dioxide building up, not from running out of oxygen",
+   "status": "planned"
+  },
+  {
+   "title": "Mount St. Helens, second by second",
+   "kind": "second-by-second",
+   "setting": "The mountain and the forest around it, Washington State, 18 May 1980",
+   "hook": "Mount St. Helens, second by second",
+   "the surprising true point": "It did not blow its top first: the north side slid away in a giant landslide, and that uncorked a blast that shot out sideways",
+   "status": "planned"
   }
  ]
 }

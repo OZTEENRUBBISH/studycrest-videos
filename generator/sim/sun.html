@@ -1,0 +1,197 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// What if the Sun vanished right now?  (park at midday + orbit diagram)
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, noise3, mat, box, shadowAll, person, cloud, skyDome, stars, globe, arrow, overlay, capAt, tower, lamp, makePost, skyEnv, proj } from './common.js';
+const W = 1080, H = 1920, DUR = 49.6;
+const O = overlay(); O.show(O.chip, 0);
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.1, 3000);
+const R = rng(20261115), V = (x, y, z) => new THREE.Vector3(x, y, z), C = (h) => new THREE.Color(h);
+const T = { park: 3.0, van: 5.6, look: 6.5, space: 8.5, grav: 13.7, back: 20.8, dark: 22.2, fly: 25.2, jup: 31.2, cold: 34.8, year: 38.3, fin: 42.4, end: 46.8 };
+const LIGHT_S = 500;                      // 8 min 20 s
+// story clock (seconds since the Sun vanished). Sped up: 500 s pass between T.van and T.dark.
+const clockAt = (t) => t < T.van ? 0 : (t < T.dark ? (t - T.van) / (T.dark - T.van) * LIGHT_S : (t < T.jup ? LIGHT_S + (t - T.dark) * 20 : lerp(900, 2300, seg(t, T.jup, T.cold))));
+
+// =====================================================  PARK
+const park = new THREE.Scene(); park.fog = new THREE.Fog(0xcfe3f2, 260, 1300);
+const DAY = [C(0x2f7fdc), C(0xcfe7f8), C(0xa9d0ea)], NIGHT = [C(0x01020a), C(0x060a1a), C(0x04050c)], FOGD = C(0xcfe3f2), FOGN = C(0x05070f);
+const sky = skyDome(0x2f7fdc, 0xcfe7f8, 0xa9d0ea); park.add(sky); const ENV = skyEnv(renderer, 0x2f7fdc, 0xcfe7f8, 0x7fa860);
+const hemi = new THREE.HemisphereLight(0xd6e9ff, 0x9fc47a, 1.2); park.add(hemi);
+const SUNPOS = V(130, 300, -430);
+const sun = new THREE.DirectionalLight(0xffe9c4, 3.1); sun.position.copy(SUNPOS).multiplyScalar(0.5).add(V(0, 0, 0)); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+Object.assign(sun.shadow.camera, { left: -170, right: 170, top: 170, bottom: -170, near: 1, far: 700 }); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.05; park.add(sun); park.add(sun.target); sun.target.position.set(0, 0, -30);
+const sunDisc = new THREE.Group(); { const m = new THREE.Mesh(new THREE.SphereGeometry(17, 24, 16), new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 5.2, 3.6), fog: false, toneMapped: false })); sunDisc.add(m);
+  for (const [r, o] of [[30, 0.22], [52, 0.10], [90, 0.05]]) sunDisc.add(new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), new THREE.MeshBasicMaterial({ color: 0xfff1c9, transparent: true, opacity: o, fog: false, depthWrite: false, blending: THREE.AdditiveBlending }))); sunDisc.position.copy(SUNPOS).multiplyScalar(1.5); park.add(sunDisc); }
+const pStars = stars(rng(3), 2600, 800); pStars.material.opacity = 0; park.add(pStars);
+const world = new THREE.Group(); park.add(world);
+// ground with baked colours (grass) and a frost version
+const POND = { x: -16, z: -26, rx: 26, rz: 17 }; const inPond = (x, z, m = 0) => ((x - POND.x) / (POND.rx + m)) ** 2 + ((z - POND.z) / (POND.rz + m)) ** 2 < 1;
+const gGeo = new THREE.PlaneGeometry(1100, 1100, 150, 150); gGeo.rotateX(-Math.PI / 2); const gCol = new Float32Array(gGeo.attributes.position.count * 3), gFro = new Float32Array(gCol.length), gNow = new Float32Array(gCol.length);
+{ const p = gGeo.attributes.position, c = new THREE.Color(), f = new THREE.Color(); for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), n = fbm(x * 0.03, 1, z * 0.03, 3), n2 = fbm(x * 0.2, 4, z * 0.2, 2), far = smooth(seg(Math.hypot(x, z + 20), 90, 260));
+    p.setY(i, (n - 0.5) * 9 * far - (inPond(x, z, 3) ? 0.5 : 0)); c.set(0x5faa4a).lerp(C(0x7cc257), clamp(n2 * 1.4 - 0.2)).lerp(C(0x4a8f3f), clamp(n * 1.6 - 0.5)); f.set(0xdfe9f3).lerp(C(0xb9cde0), clamp(n2 * 1.3 - 0.2));
+    gCol.set([c.r, c.g, c.b], i * 3); gFro.set([f.r, f.g, f.b], i * 3); } gNow.set(gCol); gGeo.setAttribute('color', new THREE.BufferAttribute(gNow, 3)); gGeo.computeVertexNormals(); }
+const ground = new THREE.Mesh(gGeo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })); ground.receiveShadow = true; world.add(ground);
+let frostNow = -1; function setFrost(f) { if (Math.abs(f - frostNow) < 0.004) return; frostNow = f; for (let i = 0; i < gNow.length; i++) gNow[i] = gCol[i] + (gFro[i] - gCol[i]) * f; gGeo.attributes.color.needsUpdate = true; }
+// pond
+const pondMat = new THREE.MeshStandardMaterial({ color: 0x3f9fd0, roughness: 0.08, metalness: 0.35, envMap: ENV, envMapIntensity: 1.5, flatShading: true });
+const pond = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), pondMat); pond.scale.set(POND.rx, 1, POND.rz); pond.position.set(POND.x, 0.06, POND.z); pond.receiveShadow = true; world.add(pond);
+{ const rim = new THREE.Mesh(new THREE.RingGeometry(1, 1.06, 40).rotateX(-Math.PI / 2), mat(0xcdbf9d)); rim.scale.copy(pond.scale); rim.position.set(POND.x, 0.08, POND.z); world.add(rim); }
+// paths, plaza, benches
+const PATHC = 0xd9c9a3; world.add(box(420, 0.12, 5, PATHC, 0, 0.03, 18)); world.add(box(5, 0.12, 300, PATHC, 26, 0.03, -60)); world.add(box(5, 0.12, 160, PATHC, -62, 0.03, -40));
+const onPath = (x, z) => Math.abs(z - 18) < 5 || Math.abs(x - 26) < 5 || Math.abs(x + 62) < 5;
+function bench() { const g = new THREE.Group(); g.add(box(2.2, 0.1, 0.6, 0x8a6a45, 0, 0.5, 0)); g.add(box(2.2, 0.5, 0.08, 0x8a6a45, 0, 0.85, -0.28)); for (const x of [-0.95, 0.95]) g.add(box(0.1, 0.5, 0.55, 0x3a3f47, x, 0.25, 0)); return shadowAll(g); }
+for (let x = -120; x <= 120; x += 30) { const b = bench(); b.position.set(x + 6, 0.05, 14.4); b.rotation.y = 0; world.add(b); }
+// lamps with glow + a few real lights for the night
+const glowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.5, 1.5), toneMapped: false }), glows = [], lampL = [];
+for (let x = -135; x <= 135; x += 30) { const l = lamp(); l.position.set(x - 8, 0, 21.5); l.rotation.y = Math.PI / 2; world.add(l); const g = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 6), glowMat); g.position.set(x - 8, 4.84, 20.55); world.add(g); glows.push(g);
+  if (Math.abs(x) <= 45) { const pl = new THREE.PointLight(0xffd39a, 0, 60, 1.6); pl.position.set(x - 8, 4.6, 20.3); park.add(pl); lampL.push(pl); } }
+for (let z = -180; z <= -10; z += 34) { const l = lamp(); l.position.set(29.6, 0, z); l.rotation.y = Math.PI; world.add(l); const g = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 6), glowMat); g.position.set(28.65, 4.84, z); world.add(g); glows.push(g); }
+// trees (shared foliage materials so they can frost and darken together)
+const FOL = [0x3f9a4a, 0x4fae52, 0x2f8444, 0x6dbb55, 0x3a8f5c].map(c => ({ base: C(c), m: new THREE.MeshLambertMaterial({ color: c, flatShading: true }) }));
+function tree(Rr) { const g = new THREE.Group(), h = 3 + Rr() * 3, f = FOL[Math.floor(Rr() * FOL.length)].m; const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.42, h, 6), mat(0x6e4f33)); tr.position.y = h / 2; g.add(tr);
+  if (Rr() < 0.28) { for (let i = 0; i < 3; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(3.1 - i * 0.75, 4.2, 7), f); c.position.y = h + 1 + i * 2.5; g.add(c); } }
+  else { const n = 2 + Math.floor(Rr() * 3); for (let i = 0; i < n; i++) { const s = 2.4 + Rr() * 1.9, b = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), i % 2 ? FOL[Math.floor(Rr() * FOL.length)].m : f); b.position.set((Rr() - 0.5) * 3, h + 1.2 + Rr() * 2.6, (Rr() - 0.5) * 3); b.rotation.set(Rr() * 3, Rr() * 3, 0); b.scale.y = 0.85; g.add(b); } }
+  g.scale.setScalar(0.9 + Rr() * 0.8); return shadowAll(g); }
+const trees = []; { const Rt = rng(41); let tries = 0; while (trees.length < 150 && tries++ < 4000) { const x = -230 + Rt() * 460, z = -160 + Rt() * 250; if (inPond(x, z, 6) || onPath(x, z) || (Math.abs(x - 2) < 13 && z > -10) || (Math.abs(x - 2) < 26 && z > 22)) continue; if (trees.some(q => Math.hypot(q.position.x - x, q.position.z - z) < 7)) continue; const tr = tree(Rt); tr.position.set(x, 0, z); tr.rotation.y = Rt() * 6; world.add(tr); trees.push(tr); } }
+// city: identical day and night sets (same seeds); the tile cache is warmed first so both sets consume the generator identically
+{ const Rw = rng(5); for (const night of [false, true]) for (let i = 0; i < 260; i++) tower(Rw, 6, 12, 6, { env: ENV, night }); }
+const cityDay = new THREE.Group(), cityNight = new THREE.Group(); world.add(cityDay); world.add(cityNight);
+function city(G, night) { const Rc = rng(77); const put = (x, z, w, h, d, ry) => { const b = tower(Rc, w, h, d, { env: ENV, night }); b.position.set(x, 0, z); b.rotation.y = ry; G.add(b); };
+  for (const [z0, hmin, hmax] of [[-190, 18, 70], [-226, 35, 130], [-266, 50, 200], [-310, 45, 170]]) for (let x = -330; x < 330;) { const w = 15 + Rc() * 12, d = 15 + Rc() * 10, cx = 1 - Math.abs(x - 20) / 330, h = hmin + Math.pow(Rc(), 1.5) * (hmax - hmin) * (0.45 + 0.75 * Math.max(0, cx)); put(x + w / 2, z0 - Rc() * 8, w, h, d, Rc() < 0.5 ? 0 : Math.PI / 2); x += w + 3 + Rc() * 8; }
+  for (const sx of [-1, 1]) for (const [x0, hmax] of [[250, 60], [286, 110]]) for (let z = -170; z < 120;) { const w = 15 + Rc() * 10, d = 15 + Rc() * 10, h = 16 + Math.pow(Rc(), 1.5) * hmax; put(sx * (x0 + Rc() * 8), z + d / 2, w, h, d, Rc() < 0.5 ? 0 : Math.PI / 2); z += d + 4 + Rc() * 8; } }
+city(cityDay, false); city(cityNight, true); cityNight.traverse(o => { if (o.isMesh) for (const m of (Array.isArray(o.material) ? o.material : [o.material])) if (m.emissiveMap) { m.emissiveIntensity = 0.42; m.color.setScalar(0.5); } }); if (cityDay.children.length !== cityNight.children.length || cityDay.children.some((b, i) => Math.abs(b.userData.h - cityNight.children[i].userData.h) > 1e-6 )) console.error('CITY SETS DIFFER');
+world.add(box(760, 0.5, 14, 0x3d4148, 0, 0.05, -172)); for (let x = -360; x < 360; x += 9) world.add(box(4, 0.04, 0.25, 0xf2f2f2, x, 0.32, -172));
+// people
+const people = []; function addP(x, z, kind, ry, cols) { const p = person(R, kind, cols); p.position.set(x, 0.02, z); p.rotation.y = ry === undefined ? R() * 6.28 : ry; p.userData.b = { p: p.position.clone(), ry: p.rotation.y, d: R() }; world.add(p); people.push(p); return p; }
+const blankets = []; for (let i = 0; i < 9; i++) { let x, z; do { x = -70 + R() * 150; z = -70 + R() * 80; } while (inPond(x, z, 5) || onPath(x, z) || (Math.abs(x - 2) < 8 && z > 0)); const bl = box(2.6, 0.05, 1.9, [0xe2574c, 0x2f56d6, 0xf2c94c, 0xff7eb6, 0xffffff, 0x2bb673][i % 6], x, 0.06, z); bl.rotation.y = R() * 3; bl.castShadow = false; world.add(bl); blankets.push(bl); addP(x + 0.4, z, 'sit'); if (R() < 0.7) addP(x - 0.6, z + 0.3, 'sit'); world.add(box(0.5, 0.35, 0.4, 0x9a6b3c, x + 0.2, 0.2, z - 0.8)); }
+for (let i = 0; i < 12; i++) addP(-110 + i * 19 + R() * 8, 16.6 + R() * 2.8, 'walk', R() < 0.5 ? Math.PI / 2 : -Math.PI / 2);
+for (let i = 0; i < 6; i++) addP(24.6 + R() * 2.8, -150 + i * 26 + R() * 8, 'walk', R() < 0.5 ? 0 : Math.PI);
+for (let i = 0; i < 9; i++) { let x, z; do { x = -60 + R() * 120; z = -50 + R() * 60; } while (inPond(x, z, 3) || (Math.abs(x - 2) < 6 && z > 0)); addP(x, z, 'stand'); }
+const heroA = addP(6.2, 27.4, 'stand', Math.PI + 0.25, { shirt: 0xe2574c }), heroB = addP(8.1, 27.0, 'stand', Math.PI - 0.3, { shirt: 0x2f56d6 }), kid = addP(10.4, 25.6, 'stand', Math.PI + 0.1, { shirt: 0xf2c94c }); kid.scale.setScalar(0.62);
+const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 1), mat(0xffffff)); ball.castShadow = true; world.add(ball);
+const dog = new THREE.Group(); dog.add(box(0.75, 0.32, 0.28, 0xb5793a, 0, 0.42, 0)); dog.add(box(0.26, 0.26, 0.26, 0xb5793a, 0.46, 0.62, 0)); dog.add(box(0.07, 0.3, 0.07, 0x8a5a26, -0.42, 0.66, 0)); for (const [x, z] of [[-0.28, -0.09], [-0.28, 0.09], [0.28, -0.09], [0.28, 0.09]]) dog.add(box(0.09, 0.3, 0.09, 0x8a5a26, x, 0.15, z)); shadowAll(dog); dog.position.set(12.4, 0, 24.0); dog.rotation.y = 1.9; world.add(dog);
+const ducks = []; for (let i = 0; i < 5; i++) { const d = new THREE.Group(); d.add(box(0.5, 0.25, 0.3, 0xffffff, 0, 0.12, 0)); d.add(box(0.18, 0.2, 0.18, 0xffffff, 0.24, 0.32, 0)); d.add(box(0.12, 0.05, 0.1, 0xf2994a, 0.38, 0.3, 0)); d.userData = { a: R() * 6, r: 5 + R() * 9 }; world.add(shadowAll(d)); ducks.push(d); }
+const clouds = []; for (let i = 0; i < 8; i++) { const c = cloud(R); c.position.set(-380 + i * 95 + R() * 40, 150 + R() * 80, -560 + R() * 160); c.scale.setScalar(1.6 + R() * 1.6); park.add(c); clouds.push(c); } const cloudMat = clouds[0].children[0].material;
+const birds = []; for (let i = 0; i < 7; i++) { const g = new THREE.Group(), wg = new THREE.ConeGeometry(0.14, 1.1, 3), a = new THREE.Mesh(wg, mat(0x2a2a2a)), b = new THREE.Mesh(wg, mat(0x2a2a2a)); a.rotation.z = 1.2; a.position.x = -0.45; b.rotation.z = -1.2; b.position.x = 0.45; g.add(a); g.add(b); g.userData = { a, b, c: V(-30 + R() * 70, 16 + R() * 14, -70 + R() * 70), r: 8 + R() * 16, s: R() * 6 }; world.add(g); birds.push(g); }
+
+// =====================================================  SPACE (orbit diagram, not to scale)
+const space = new THREE.Scene(); space.background = new THREE.Color(0x04050b); space.add(stars(rng(7), 2600, 1500));
+const sAmb = new THREE.HemisphereLight(0x8fb4ff, 0x10131f, 0.22); space.add(sAmb); const sLight = new THREE.PointLight(0xfff0d0, 0, 0, 0); space.add(sLight);
+const RE = 20, RJ = 5.2 * RE, TH0 = 0.62;
+const flat = (m) => { m.rotation.x = Math.PI / 2; return m; };
+const orbitE = flat(new THREE.Mesh(new THREE.TorusGeometry(RE, 0.07, 6, 200), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.42 }))); space.add(orbitE);
+const orbitJ = flat(new THREE.Mesh(new THREE.TorusGeometry(RJ, 0.3, 6, 240), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 }))); space.add(orbitJ);
+const sunBall = new THREE.Group(); sunBall.add(new THREE.Mesh(new THREE.SphereGeometry(2.7, 28, 18), new THREE.MeshBasicMaterial({ color: new THREE.Color(5, 3.6, 1.4), toneMapped: false }))); space.add(sunBall);
+const ghost = new THREE.Group(); { const n = 28; for (let i = 0; i < n; i++) { const a = i / n * 6.283, d = box(0.5, 0.09, 0.09, 0xffffff); d.material = new THREE.MeshBasicMaterial({ color: 0xbfd0ff }); d.position.set(Math.cos(a) * 2.9, 0, Math.sin(a) * 2.9); d.rotation.y = -a + Math.PI / 2; d.castShadow = false; ghost.add(d); } space.add(ghost); }
+// last light: expanding ring + faint sphere ; gravity front drawn with it in blue
+const shellRing = flat(new THREE.Mesh(new THREE.TorusGeometry(1, 0.012, 8, 220), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 1.9, 0.7), toneMapped: false, transparent: true }))); space.add(shellRing);
+const shellGlow = flat(new THREE.Mesh(new THREE.RingGeometry(1, 1.9, 120, 1), new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, uniforms: { k: { value: 1 } }, vertexShader: 'varying float r; void main(){ r = length(position.xy); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'varying float r; uniform float k; void main(){ float f = pow(clamp(1.0 - (r - 1.0) / 0.9, 0.0, 1.0), 1.6); gl_FragColor = vec4(1.0, 0.8, 0.38, 1.0) * f * 0.55 * k; }' }))); space.add(shellGlow);
+const gravRing = flat(new THREE.Mesh(new THREE.TorusGeometry(1, 0.012, 8, 220), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.35, 0.7, 2.2), toneMapped: false, transparent: true, opacity: 0 }))); space.add(gravRing);
+const earth = new THREE.Group(); const EG = globe(1.25, 6); earth.add(EG); space.add(earth); const moon = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 1), mat(0xb8b8b8)); space.add(moon);
+const gArrow = arrow(4.2, 0x7fb0ff, 0.16); space.add(gArrow);
+const pathLine = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.7, 2.4, 2.8), toneMapped: false })); space.add(pathLine); const vArrow = arrow(5, 0x7ff0ff, 0.2); space.add(vArrow);
+const jup = new THREE.Group(); { const g = new THREE.SphereGeometry(5, 20, 12).toNonIndexed(), p = g.attributes.position, col = new Float32Array(p.count * 3), c = new THREE.Color(); for (let i = 0; i < p.count; i += 3) { const y = (p.getY(i) + p.getY(i + 1) + p.getY(i + 2)) / 15, b = Math.floor((y * 0.5 + 0.5) * 9); c.set([0xb07a4e, 0xe9d2b0, 0xc98d5a, 0xf1e2c6, 0xd4a273, 0xefdcbb, 0xb9794b, 0xe6cfa8, 0xa66f48][clamp(b, 0, 8)]); if (b === 3 && Math.abs(Math.atan2(p.getZ(i), p.getX(i)) - 0.9) < 0.45) c.set(0xc0492d); for (let k = 0; k < 3; k++) col.set([c.r, c.g, c.b], (i + k) * 3); }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3)); const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true })); m.rotation.z = 0.05; jup.add(m); jup.add(new THREE.Mesh(new THREE.SphereGeometry(6.2, 20, 12), new THREE.MeshBasicMaterial({ color: 0xffd9a8, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false }))); jup.position.set(Math.cos(-0.55) * RJ, 0, Math.sin(-0.55) * RJ); jup.scale.setScalar(3); space.add(jup); }
+const earthPos = (t) => { const c = clockAt(t), th = TH0 - Math.min(c, LIGHT_S) / LIGHT_S * 0.3, p = V(Math.cos(th) * RE, 0, Math.sin(th) * RE); if (c > LIGHT_S) { const s = t < T.jup ? (t - T.dark) * 1.55 + (t >= T.fly ? easeIO(seg(t, T.fly, T.fly + 4.5)) * 9 : 0) : 5.3 + 9 + 12 + seg(t, T.jup, T.cold) * 26; p.add(V(Math.sin(th), 0, -Math.cos(th)).multiplyScalar(s)); } return [p, th]; };
+
+const postPark = makePost(renderer, park, cam, { bloom: 0.34, bloomThreshold: 0.9, bloomRadius: 0.7, warm: 0.03, sat: 1.15 }), postSpace = makePost(renderer, space, cam, { ao: false, bloom: 0.6, bloomThreshold: 0.7, bloomRadius: 0.75, sat: 1.1 });
+const CAPS = [
+ [3.0, 4.15, "You're in the park."], [4.15, 4.95, "It's midday."], [4.95, 6.15, 'And the Sun has<br>just <em>vanished</em>.'], [6.6, 8.1, "But look up.<br>It's <em>still there</em>."],
+ [8.6, 10.6, 'The last sunlight<br>is still on its way.'], [10.6, 13.3, 'It needs about<br><em>8 minutes and 20 seconds</em>.'],
+ [13.8, 15.6, "Even gravity<br>isn't <em>instant</em>."], [15.6, 17.6, 'It travels at<br>the speed of light.'], [17.6, 20.5, 'So Earth keeps circling a Sun<br>that is <em>no longer there</em>.'],
+ [21.2, 22.15, "Then, time's up."], [22.2, 23.3, 'The sky goes <em>black</em>.'], [23.3, 24.6, 'Stars come out at noon.'],
+ [25.3, 27.1, 'Earth lets go<br>of its orbit.'], [27.1, 30.9, 'It flies off in a straight line,<br>at about <em>30 kilometres a second</em>.'],
+ [31.3, 34.4, 'Jupiter keeps shining for<br><em>over an hour</em>, on old sunlight.'],
+ [34.9, 38.2, 'Within a week, the average<br>temperature is <em>below freezing</em>.'], [38.3, 41.9, 'Within a year,<br>around <em>minus 73 °C</em>.'],
+ [42.5, 44.3, 'You never see<br>the Sun as it <em>is</em>.'], [44.3, 46.4, 'Only as it <em>was</em>,<br>eight minutes ago.'] ];
+const mmss = (s) => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const inSpaceAt = (t) => (t >= T.space && t < T.back) || (t >= T.fly && t < T.cold);
+const tmpC = new THREE.Color();
+function parkFrame(t) {
+  const fin = t >= T.fin, d = fin ? 0 : seg(t, T.dark, T.dark + 0.22), cold = t >= T.cold && !fin, fr = cold ? (t < T.year ? 0.55 + 0.2 * seg(t, T.cold, T.year) : 1) : 0, yr = cold && t >= T.year ? 1 : 0;
+  const wt = fin ? t - 30 : (t < T.dark ? t : T.dark + (t - T.dark) * 0.25);
+  // sky and light
+  const U = sky.material.uniforms; U.top.value.lerpColors(DAY[0], NIGHT[0], d); U.mid.value.lerpColors(DAY[1], NIGHT[1], d); U.bot.value.lerpColors(DAY[2], NIGHT[2], d); park.fog.color.lerpColors(FOGD, FOGN, d);
+  sun.intensity = 3.1 * (1 - d); hemi.intensity = lerp(1.2, cold ? 0.95 : 0.3, d); hemi.color.lerpColors(C(0xd6e9ff), C(0x8fa8ff), d); hemi.groundColor.lerpColors(C(0x9fc47a), C(0x1a2030), d);
+  sunDisc.visible = d < 0.5; pStars.material.opacity = d; cloudMat.emissiveIntensity = lerp(0.62, 0.015, d); cloudMat.color.setScalar(lerp(1, 0.12, d));
+  cityDay.visible = d < 0.5 || yr; cityNight.visible = !cityDay.visible; for (const g of glows) g.visible = d > 0.5 && !yr; for (const l of lampL) l.intensity = d > 0.5 && !yr ? 85 : 0;
+  renderer.toneMappingExposure = lerp(1.0, 1.05, d); postPark.bloom.strength = lerp(0.34, 0.22, d);
+  // frost
+  setFrost(fr); for (const f of FOL) f.m.color.copy(f.base).lerp(tmpC.set(0xe6eef6), fr * 0.82); pondMat.color.set(0x3f9fd0).lerp(tmpC.set(0xd4e4ee), fr ? 1 : 0); pondMat.roughness = fr ? 0.55 : 0.08; pondMat.metalness = fr ? 0.05 : 0.35; pondMat.envMapIntensity = lerp(1.5, 0.25, d);
+  for (const b of blankets) b.visible = !cold;
+  // life
+  const lookUp = d > 0.5;
+  for (const p of people) { const u = p.userData, b = u.b; p.visible = !cold; p.position.copy(b.p); p.rotation.y = b.ry; let mode = u.kind, ph = wt * 5.2 + u.seed; if (u.kind === 'walk') { const wd = (Math.min(wt, T.dark + 0.4 + b.d * 0.5) - 3) * 1.25; p.position.x += Math.sin(b.ry) * wd; p.position.z += Math.cos(b.ry) * wd; if (lookUp && wt > T.dark + 0.1 + b.d * 0.12) mode = 'stand'; } u.pose(ph, mode); if (lookUp && mode !== 'sit') { u.aR.rotation.x = -2.5 * smooth(seg(t, T.dark + 0.5 + b.d, T.dark + 1.0 + b.d)) * (b.d < 0.4 ? 1 : 0); } }
+  { const bt = (wt * 0.9) % 1.4, on = !cold; ball.visible = on; ball.position.set(10.1 + (lookUp ? 0.5 : 0), lookUp ? 0.3 : 0.3 + 2.4 * (bt / 1.4) * (1 - bt / 1.4) * 4 * 0.42, 24.7); dog.visible = on; dog.rotation.y = 1.9 + (lookUp ? 0 : Math.sin(wt * 2) * 0.15); }
+  for (const dk of ducks) { const u = dk.userData, a = u.a + (cold ? 0 : wt * 0.12); dk.visible = !cold; dk.position.set(POND.x + Math.cos(a) * u.r * 1.5, 0.05, POND.z + Math.sin(a) * u.r * 0.9); dk.rotation.y = -a - Math.PI / 2; }
+  for (const g of birds) { const u = g.userData, a = wt * 0.55 + u.s; g.visible = !cold && d < 0.5; g.position.set(u.c.x + Math.cos(a) * u.r, u.c.y + Math.sin(a * 1.7) * 1.5, u.c.z + Math.sin(a) * u.r); g.rotation.y = -a; const fl = Math.sin(wt * 8 + u.s) * 0.5; u.a.rotation.z = 1.2 + fl; u.b.rotation.z = -1.2 - fl; }
+  // camera
+  const eye = V(2.2, 1.72, 39.5), look0 = V(9, 13.5, -60);
+  if (t < T.park) camPath([[0, V(-70, 62, 150), V(10, 30, -160), 52], [T.park, V(-14, 16, 78), V(10, 26, -140), 52]], t);
+  else if (t < T.look) camPath([[T.park, V(2.6, 1.72, 41.5), look0, 64], [T.look, eye, look0, 64]], t);
+  else if (t < T.space) camPath([[T.look, eye, look0, 64], [T.look + 1.3, V(2.2, 1.72, 39.5), V(22, 52, -60), 58], [T.space, V(2.2, 1.72, 39.5), V(23, 55, -60), 56]], t);
+  else if (t < T.fly) camPath([[T.back, V(2.4, 1.72, 40.4), look0, 64], [T.fly, V(2.0, 1.72, 38.6), V(9, 17, -60), 64]], t);
+  else if (t < T.year) camPath([[T.cold, V(-46, 3.0, 9), V(-8, 9, -90), 60], [T.year, V(-42, 3.6, 5), V(-6, 10, -90), 60]], t);
+  else if (!fin) camPath([[T.year, V(40, 9, 60), V(-10, 10, -90), 58], [T.fin, V(34, 12, 52), V(-10, 13, -90), 58]], t);
+  else camPath([[T.fin, V(-4, 1.6, 34), V(24, 46, -60), 60], [T.end + 2.8, V(-2.5, 1.6, 33), V(26, 54, -60), 56]], t);
+  postPark.render();
+}
+function spaceFrame(t) {
+  const c = clockAt(t), wide = t >= T.jup, fly = t >= T.fly, [ep, th] = earthPos(t), lit = c < LIGHT_S;
+  sunBall.visible = false; ghost.rotation.y = t * 0.15;
+  const r = Math.max(0.3, RE * c / LIGHT_S); shellRing.scale.setScalar(r); shellRing.geometry.parameters; shellGlow.scale.setScalar(r * 0.52); shellGlow.material.uniforms.k.value = 1; shellGlow.visible = false;
+  const tk = wide ? 2.2 : (fly ? 0.45 : 0.75); shellRing.scale.set(r, r, tk * 12); shellRing.geometry === 0; shellRing.material.opacity = fly && !wide ? 0.5 : 1; shellRing.material.color.setRGB(2.6, 1.9, 0.7).multiplyScalar(fly && !wide ? 0.45 : 1); gravRing.scale.set(r * 0.88, r * 0.88, tk * 12); gravRing.material.opacity = t >= T.grav && !fly ? smooth(seg(t, T.grav + 0.2, T.grav + 0.9)) : 0; gravRing.visible = gravRing.material.opacity > 0.01;
+  earth.position.copy(ep); earth.rotation.y = t * 0.5; earth.scale.setScalar(wide ? 5 : 1); moon.position.copy(ep).add(V(Math.cos(t * 0.9) * 2.6, 0.3, Math.sin(t * 0.9) * 2.6).multiplyScalar(wide ? 5 : 1)); moon.scale.setScalar(wide ? 5 : 1);
+  sLight.intensity = lit ? 3.4 : 0; sAmb.intensity = lit ? 0.3 : 0.55; EG.userData.atm.material.uniforms.k.value = lit ? 1 : 0.45;
+  // gravity arrow: Earth still pulled toward the empty centre until the front arrives
+  const gOn = t >= T.grav && lit ? smooth(seg(t, T.grav + 0.3, T.grav + 1.0)) : 0; gArrow.visible = gOn > 0.01; gArrow.userData.mat.opacity = gOn; if (gArrow.visible) { const dir = ep.clone().multiplyScalar(-1).normalize(); gArrow.position.copy(ep).addScaledVector(dir, 2.0 + ((t * 1.2) % 1) * 1.2); gArrow.quaternion.setFromUnitVectors(V(0, 1, 0), dir); }
+  // straight path after release
+  const rel = V(Math.cos(TH0 - 0.3) * RE, 0, Math.sin(TH0 - 0.3) * RE), tan = V(Math.sin(TH0 - 0.3), 0, -Math.cos(TH0 - 0.3)), s = ep.distanceTo(rel);
+  pathLine.visible = fly; if (fly) { pathLine.scale.set(wide ? 3 : 1, wide ? 3 : 1, Math.max(0.01, s)); pathLine.position.copy(rel).addScaledVector(tan, s / 2); pathLine.lookAt(rel.clone().addScaledVector(tan, s + 1)); }
+  vArrow.visible = fly && !wide; if (vArrow.visible) { vArrow.position.copy(ep).addScaledVector(tan, 2.0); vArrow.quaternion.setFromUnitVectors(V(0, 1, 0), tan); vArrow.userData.mat.opacity = smooth(seg(t, T.fly + 0.2, T.fly + 0.8)); }
+  orbitJ.visible = jup.visible = wide; jup.children[0].rotation.y = t * 0.4;
+  if (!fly) camPath([[T.space, V(0, 96, 98), V(0, 0, 10), 40], [T.back, V(0, 90, 92), V(0, 0, 10), 40]], t);
+  else if (!wide) camPath([[T.fly, V(4, 62, 64), V(15, 0, 3), 40], [T.jup, V(10, 58, 60), V(21, 0, -2), 40]], t);
+  else camPath([[T.jup, V(22, 400, 420), V(22, 0, 44), 40], [T.cold, V(22, 420, 440), V(22, 0, 46), 40]], t);
+  renderer.toneMappingExposure = 1.1; postSpace.render();
+  return { ep, r, rel };
+}
+function overlayFrame(t, sp) {
+  const inSpace = !!sp, c = clockAt(t), wide = t >= T.jup && t < T.cold;
+  const ta = t < 2.9 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 2.5, 2.9)) : 0; O.set(O.title, 'What if the <em>Sun</em><br>vanished<br>right now?'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`;
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = (inSpace ? 1400 : 1240) + 'px';
+  let ha = 1;
+  if (t < T.park + 0.2) ha = 0;
+  else if (t < T.van) { O.hudSet('Midday', '12:00', 'Clear sky · 150 million km from the Sun'); ha = seg(t, T.park + 0.2, T.park + 0.6); }
+  else if (t < T.dark) O.hudSet('Last sunlight arrives in', mmss(LIGHT_S - c), inSpace ? 'Seen from above · not to scale\nTime sped up' : 'The Sun is already gone\nTime sped up');
+  else if (t < T.fly) O.hudSet('The Sun', 'GONE', '8 min 20 s after it vanished');
+  else if (t < T.jup) O.hudSet("Earth's speed", '29.8 km/s', '107,000 km/h · in a straight line\nNot to scale');
+  else if (t < T.cold) O.hudSet('Since the Sun vanished', Math.round(c / 60) + ' min', 'Earth is dark · Jupiter still shines\nNot to scale');
+  else if (t < T.year) { O.hudSet('One week later', 'Below 0 °C', 'Average surface temperature'); ha = seg(t, T.cold + 0.1, T.cold + 0.5); }
+  else if (t < T.fin) O.hudSet('One year later', 'About −73 °C', 'Average surface temperature');
+  else if (t < T.end) { O.hudSet('The sunlight on your face', '8 min 20 s old', 'It left the Sun before you looked up'); ha = seg(t, T.fin + 0.2, T.fin + 0.6); }
+  else ha = 1 - seg(t, T.end, T.end + 0.3);
+  O.hud.style.background = inSpace ? 'none' : 'rgba(6,10,26,.42)'; O.hud.style.boxShadow = inSpace ? 'none' : '0 0 0 14px rgba(6,10,26,.42)'; O.hud.style.borderRadius = '4px'; O.show(O.hud, ha); O.hud.style.top = (inSpace ? 1190 : (t >= T.fin ? 900 : 850)) + 'px';
+  // labels
+  let h = ''; const L = (x, y, a, small, big, col) => a > 0.01 ? `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${a}${col ? ';color:' + col : ''}">${small}${big ? '<b style="font-size:38px">' + big + '</b>' : ''}</div>` : '';
+  if (inSpace) { const a0 = t < T.fly ? seg(t, T.space + 0.3, T.space + 0.8) * (1 - seg(t, T.back - 0.3, T.back)) : (wide ? seg(t, T.jup + 0.2, T.jup + 0.6) : seg(t, T.fly + 0.2, T.fly + 0.6));
+    const [sx, sy] = proj(V(0, 0, 0), cam), [ex, ey] = proj(sp.ep, cam);
+    if (!wide) h += L(clamp(ex - (t < T.fly ? 150 : 250), 64, 700), ey + 34, a0, t < T.fly ? 'Earth' : 'Earth · dark', '');
+    if (t < T.grav + 0.6) h += L(64, 300, a0 * (1 - seg(t, T.grav + 0.3, T.grav + 0.6)), 'Dashed circle: where the Sun was', 'Its last light is still travelling', '#ffd98a');
+    if (t < T.fly) { const [lx, ly] = proj(V(0, 0, -sp.r), cam); h += L(t < T.grav + 0.5 ? lx - 85 : lx - 215, ly - 62, a0 * seg(t, T.space + 0.8, T.space + 1.4), t < T.grav + 0.5 ? 'Last light' : 'Last light + last gravity', '', t < T.grav + 0.5 ? '#ffd98a' : '#bcd4ff'); }
+    if (t >= T.grav + 0.6 && t < T.back) h += L(64, 300, seg(t, T.grav + 0.6, T.grav + 1.1) * (1 - seg(t, T.back - 0.3, T.back)), 'Gravity still pulls Earth', 'toward an empty point', '#bcd4ff');
+    if (t >= T.fly && !wide) h += L(64, 300, a0, 'No Sun, no orbit', 'A straight line');
+    if (wide) { const [jx, jy] = proj(jup.position, cam); h += L(clamp(jx - 330, 64, 560), jy - 30, a0, 'Jupiter', 'still lit', '#ffd98a'); h += L(clamp(ex - 70, 64, 640), ey + 40, a0, 'Earth', ''); h += L(64, 300, a0, 'Old sunlight is still', 'on its way out', '#ffd98a'); } }
+  if (O.labels._h !== h) { O.labels._h = h; O.labels.innerHTML = h; }
+  let fl = 0; for (const [a, dd, k] of [[T.space, 0.35, 0.7], [T.back, 0.35, 0.7], [T.fly, 0.3, 0.5], [T.jup, 0.3, 0.5], [T.cold, 0.4, 0.6], [T.year, 0.35, 0.5], [T.fin, 0.6, 0.95]]) if (t >= a - 0.06 && t < a + dd) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + dd)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.tint.style.background = (t >= T.cold && t < T.fin) ? 'linear-gradient(180deg,rgba(90,130,255,.10),rgba(140,190,255,.14))' : 'none';
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { const sp = inSpaceAt(t) ? spaceFrame(t) : (parkFrame(t), null); overlayFrame(t, sp); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>
