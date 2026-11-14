@@ -133,18 +133,18 @@ const alpha = new THREE.Group(); for (const [x, y, c] of [[-0.35, 0.3, 0xe2574c]
 const beta = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 1), new THREE.MeshBasicMaterial({ color: 0x6fd0ff })); atom.add(beta);
 const gamma = new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 90 }, () => V(0, 0, 0))), new THREE.LineBasicMaterial({ color: 0xfff27a, transparent: true })); gamma.frustumCulled = false; atom.add(gamma);
 const trails = [new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), V(0, 0, 0)]), new THREE.LineBasicMaterial({ color: 0xff9a8a, transparent: true, opacity: 0.6 })), new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), V(0, 0, 0)]), new THREE.LineBasicMaterial({ color: 0x6fd0ff, transparent: true, opacity: 0.6 }))]; trails.forEach(l => { l.frustumCulled = false; atom.add(l); });
-const DIR = { a: V(-0.86, -0.5, 0.1).normalize(), b: V(0.8, 0.55, 0.2).normalize(), g: V(0.55, -0.83, 0.1).normalize() };
+const DIR = { a: V(-0.86, -0.5, 0.1).normalize(), b: V(0.8, 0.55, 0.2).normalize(), g: V(0.9, -0.42, 0.1).normalize() };
 let atomLab = '';
 function atomFrame(t) {
   const u = t - T.atom; nuc.rotation.set(u * 0.25, u * 0.4, 0); for (const m of nuc.children) { const p = m.userData.p; m.position.set(p.x + Math.sin(t * 9 + p.y * 5) * 0.05, p.y + Math.sin(t * 8 + p.x * 5) * 0.05, p.z); }
   nGlow.intensity = 8 + Math.sin(t * 6) * 3;
-  const ua = seg(u, 0.5, 2.3), ub = seg(u, 1.5, 2.9), ug = seg(u, 2.5, 3.6);
+  const ua = seg(u, 0.4, 1.6), ub = seg(u, 1.2, 2.3), ug = seg(u, 2.0, 3.1);
   alpha.visible = ua > 0; alpha.position.copy(DIR.a).multiplyScalar(2 + easeOut(ua) * 3.3); alpha.rotation.z = u * 3; beta.visible = ub > 0; beta.position.copy(DIR.b).multiplyScalar(2 + easeOut(ub) * 3.6);
   trails[0].geometry.setFromPoints([DIR.a.clone().multiplyScalar(2.2), alpha.position.clone()]); trails[0].visible = ua > 0; trails[1].geometry.setFromPoints([DIR.b.clone().multiplyScalar(2.2), beta.position.clone()]); trails[1].visible = ub > 0;
-  const gp = [], side = V(0.83, 0.55, 0).normalize(); for (let i = 0; i < 90; i++) { const s = i / 89 * ug * 7.5; gp.push(DIR.g.clone().multiplyScalar(2.2 + s).addScaledVector(side, Math.sin(s * 3.2 - t * 14) * 0.38)); } gamma.geometry.setFromPoints(gp); gamma.visible = ug > 0;
+  const gp = [], side = V(0.42, 0.9, 0).normalize(); for (let i = 0; i < 90; i++) { const s = i / 89 * ug * 4.2; gp.push(DIR.g.clone().multiplyScalar(2.2 + s).addScaledVector(side, Math.sin(s * 3.2 - t * 14) * 0.38)); } gamma.geometry.setFromPoints(gp); gamma.visible = ug > 0;
   cam.up.set(0, 1, 0); cam.fov = 40; cam.position.set(0, 1.5, 30 - easeOut(seg(u, 0, 4)) * 4); cam.lookAt(V(0, -3.0, 0)); cam.updateProjectionMatrix(); renderer.toneMappingExposure = 1.1; postAtom.render();
-  const L = (v, a, name, sub) => { const [x, y] = proj(v, cam); return a > 0.3 ? `<div class="lab" style="left:${Math.round(x + 20)}px;top:${Math.round(y - 30)}px;opacity:${seg(a, 0.3, 0.5)}">${sub}<b>${name}</b></div>` : ''; };
-  atomLab = L(alpha.position.clone().add(V(-1.6, -1.5, 0)), ua, 'Alpha', '2 protons + 2 neutrons') + L(beta.position.clone().add(V(-2.6, 1.9, 0)), ub, 'Beta', 'a fast electron') + L(DIR.g.clone().multiplyScalar(2.2 + ug * 6.5).add(V(-3.2, -1.6, 0)), ug, 'Gamma', 'a burst of energy');
+  const L = (v, a, name, sub) => { const [x, y] = proj(v, cam); return a > 0.3 ? `<div class="lab" style="left:${Math.round(Math.min(600, Math.max(48, x + 20)))}px;top:${Math.round(y - 30)}px;opacity:${seg(a, 0.3, 0.5)}">${sub}<b>${name}</b></div>` : ''; };
+  atomLab = L(alpha.position.clone().add(V(-1.6, -1.5, 0)), ua, 'Alpha', '2 protons + 2 neutrons') + L(beta.position.clone().add(V(-2.6, 1.9, 0)), ub, 'Beta', 'a fast electron') + L(DIR.g.clone().multiplyScalar(2.2 + ug * 2.6).add(V(-1.6, -1.4, 0)), ug, 'Gamma', 'a burst of energy');
 }
 
 const postExt = makePost(renderer, ext, cam, { bloom: 0.75, bloomThreshold: 0.55, bloomRadius: 0.7 }), postRoom = makePost(renderer, room, cam, { bloom: 0.3, bloomThreshold: 0.8 }), postCore = makePost(renderer, core, cam, { bloom: 0.45, bloomThreshold: 0.82, bloomRadius: 0.6 }), postAtom = makePost(renderer, atom, cam, { bloom: 0.6, bloomThreshold: 0.6 });

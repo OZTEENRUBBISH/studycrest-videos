@@ -11,6 +11,17 @@
     "https://scienceinsights.org/what-does-the-center-of-the-earth-look-like/",
     "https://extension.wikiwand.com/en/High_pressure"
    ]
+  },
+  {
+   "file": "sim-02-chernobyl.mp4",
+   "title": "Chernobyl, second by second",
+   "made": "2026-11-14",
+   "caption": "Chernobyl, second by second. 36 seconds after the test began, the operators hit the shutdown button, and for a moment it made things worse. This is the physics of why. ☢️\n\nFollow for a new simulation every day.\n\n#chernobyl #simulation #science #physics #radioactivity #history #studytok",
+   "science": "Test began 01:23:04, AZ-5 pressed 01:23:40 (36 s later), explosions about 01:23:44-48. RBMK: positive void coefficient, graphite-tipped control rods. Power estimated at around 100 times nominal. Upper shield about 1,000 t. I-131 half-life 8 days, Cs-137 30 years. Graphite fire about 10 days.",
+   "sources": [
+    "https://world-nuclear.org/information-library/safety-and-security/safety-of-plants/appendices/chernobyl-accident-appendix-1-sequence-of-events",
+    "https://oecd-nea.org/jcms/pl_28271/chernobyl-chapter-i-the-site-and-accident-sequence"
+   ]
   }
  ]
 }
