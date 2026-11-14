@@ -36,6 +36,18 @@
    "kind": "feature",
    "due_at": "2026-11-16T12:00:00+11:00",
    "buffer_post_id": "6af80b2e81e1228421edde0c"
+  },
+  {
+   "file": "sim-03-sun",
+   "kind": "sim",
+   "due_at": "2026-11-16T00:00:00+11:00",
+   "buffer_post_id": "6af8952f76c23bf1c72c0f90"
+  },
+  {
+   "file": "sim-04-titanic",
+   "kind": "sim",
+   "due_at": "2026-11-16T18:00:00+11:00",
+   "buffer_post_id": "6af8953ce86a5789a6be0b3f"
   }
  ]
 }
