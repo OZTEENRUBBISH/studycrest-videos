@@ -48,6 +48,12 @@
    "kind": "sim",
    "due_at": "2026-11-16T18:00:00+11:00",
    "buffer_post_id": "6af8953ce86a5789a6be0b3f"
+  },
+  {
+   "file": "sim-05-spin",
+   "kind": "sim",
+   "due_at": "2026-11-17T00:00:00+11:00",
+   "buffer_post_id": "6af898c3e86a5789a6bf81a2"
   }
  ]
 }
