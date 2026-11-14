@@ -1,0 +1,53 @@
+{
+ "note": "Log of reels scheduled on the TikTok account @studycrest through Buffer (channel 6af80ae262b70b94b029534d). Slots are 12:00am, 6:00am, 12:00pm and 6:00pm Australia/Sydney. Separate from posted.json (Instagram).",
+ "scheduled": [
+  {
+   "file": "studycrest-11-tips-stop-procrastinating",
+   "kind": "tips",
+   "due_at": "2026-11-15T00:00:00+11:00",
+   "buffer_post_id": "6af80b2a4b28296eb13fc1ca"
+  },
+  {
+   "file": "studycrest-06-physics",
+   "kind": "spot",
+   "due_at": "2026-11-15T06:00:00+11:00",
+   "buffer_post_id": "6af80b2ad8bd2962e412bdba"
+  },
+  {
+   "file": "studycrest-09-test-predictor",
+   "kind": "feature",
+   "due_at": "2026-11-15T12:00:00+11:00",
+   "buffer_post_id": "6af80b2b81e1228421eddae9"
+  },
+  {
+   "file": "studycrest-12-tips-stop-losing-marks",
+   "kind": "tips",
+   "due_at": "2026-11-15T18:00:00+11:00",
+   "buffer_post_id": "6af80b2cd8bd2962e412bdf3"
+  },
+  {
+   "file": "studycrest-13-tips-week-before-exam",
+   "kind": "tips",
+   "due_at": "2026-11-16T00:00:00+11:00",
+   "buffer_post_id": "6af80b2cd16af15d4dfbf986"
+  },
+  {
+   "file": "studycrest-07-chemistry",
+   "kind": "spot",
+   "due_at": "2026-11-16T06:00:00+11:00",
+   "buffer_post_id": "6af80b2dbb36d00909f48e14"
+  },
+  {
+   "file": "studycrest-10-practice-questions",
+   "kind": "feature",
+   "due_at": "2026-11-16T12:00:00+11:00",
+   "buffer_post_id": "6af80b2e81e1228421edde0c"
+  },
+  {
+   "file": "studycrest-14-tips-focus",
+   "kind": "tips",
+   "due_at": "2026-11-16T18:00:00+11:00",
+   "buffer_post_id": "6af80b2e81e1228421edde37"
+  }
+ ]
+}

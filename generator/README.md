@@ -71,3 +71,16 @@ Separate queue, separate log, separate look (editorial: photo cover, serif headl
   write (tick, flag, hint), Test Predictor, Practice Questions. Every post ends with the `cta` slide and
   every caption keeps the offer wording (free for 30 days, promo code in the bio at @studycrestapp, $0
   for the first 30 days, never charged if cancelled before day 30). Do not copy another creator's post.
+
+## TikTok (@studycrest)
+
+Four videos a day, one every 6 hours: 12:00am, 6:00am, 12:00pm and 6:00pm Australia/Sydney, scheduled through
+Buffer (organization 6af52943363c789ae7ff8d6b, channel 6af80ae262b70b94b029534d). Log: `../posted_tiktok.json`.
+
+- TikTok uses the same reels as Instagram (`../queue/reels`, captions in `../queue/captions.json`) but its own log,
+  so a reel can go out on TikTok before or after Instagram. Never schedule a file already in `posted_tiktok.json`.
+- Mix: at most one `spot` reel per Sydney day on TikTok; the rest `tips` or `feature`. Do not put two reels of the
+  same kind back to back when another kind is available.
+- When fewer unposted reels are left than slots to fill, make new tip-list reels (section above) and add them to
+  the shared queue (reel, cover, caption, reel_kinds) so Instagram can use them later too.
+- The free Buffer plan allows 10 scheduled posts per channel, so keep at most 8 queued (the next two days).
