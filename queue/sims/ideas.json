@@ -1,0 +1,165 @@
+{
+ "note": "Week-ahead plan of simulation ideas for TikTok @studycrest, in making order. Planned by Max and Claude on 14 Nov 2026. Each 'point' is the angle only: every figure and fact must be worked out and verified when the video is made (generator/README.md, Simulation videos, step 2); if the point does not survive checking, tell the true version or skip the idea.",
+ "ideas": [
+  {
+   "title": "What if the Sun vanished right now?",
+   "kind": "what-if",
+   "setting": "A city park at midday",
+   "hook": "What if the Sun vanished right now?",
+   "the surprising true point": "Nothing changes for about 8 minutes: its light and its gravity both take that long to reach us",
+   "status": "planned"
+  },
+  {
+   "title": "Titanic, minute by minute",
+   "kind": "second-by-second",
+   "setting": "The deck and a cutaway of the hull, North Atlantic, 1912",
+   "hook": "Titanic, minute by minute",
+   "the surprising true point": "The iceberg did not rip one huge hole; narrow openings along the hull flooded too many compartments to stay afloat",
+   "status": "planned"
+  },
+  {
+   "title": "What if the Earth stopped spinning for one second?",
+   "kind": "what-if",
+   "setting": "A busy city street near the equator",
+   "hook": "What if the Earth stopped spinning for one second?",
+   "the surprising true point": "The ground stops but you do not: everything loose keeps moving east at the speed the surface was turning",
+   "status": "planned"
+  },
+  {
+   "title": "What if you stepped into space without a suit?",
+   "kind": "what-if",
+   "setting": "Outside a space station",
+   "hook": "What if you stepped into space without a suit?",
+   "the surprising true point": "You do not explode or freeze solid; you have seconds of consciousness, and the real danger is the air leaving your lungs and blood",
+   "status": "planned"
+  },
+  {
+   "title": "Hindenburg, second by second",
+   "kind": "second-by-second",
+   "setting": "The airship coming in to land, New Jersey, 1937",
+   "hook": "Hindenburg, second by second",
+   "the surprising true point": "The whole airship burned in well under a minute, and most people on board survived",
+   "status": "planned"
+  },
+  {
+   "title": "What if you fell through a tunnel to the other side of the Earth?",
+   "kind": "what-if",
+   "setting": "A shaft through the planet, with the Earth cutaway",
+   "hook": "What if you fell through a tunnel to the other side of the Earth?",
+   "the surprising true point": "You are weightless the whole way, fastest at the centre, and you arrive in about 40 minutes",
+   "status": "planned"
+  },
+  {
+   "title": "What if you could see radiation?",
+   "kind": "what-if",
+   "setting": "An ordinary kitchen and street",
+   "hook": "What if you could see radiation?",
+   "the surprising true point": "Everything glows a little: bananas, granite benchtops, and your own body",
+   "status": "planned"
+  },
+  {
+   "title": "Apollo 13, second by second",
+   "kind": "second-by-second",
+   "setting": "The spacecraft, 300,000 km from Earth, 1970",
+   "hook": "Apollo 13, second by second",
+   "the surprising true point": "One oxygen tank failed, and the crew survived by using the lunar lander as a lifeboat",
+   "status": "planned"
+  },
+  {
+   "title": "What if a teaspoon of neutron star appeared on your desk?",
+   "kind": "what-if",
+   "setting": "A student's desk, then the town",
+   "hook": "What if a teaspoon of neutron star appeared on your desk?",
+   "the surprising true point": "It would not sit there: without the star's gravity squeezing it, it would blow apart",
+   "status": "planned"
+  },
+  {
+   "title": "What if the Moon disappeared tonight?",
+   "kind": "what-if",
+   "setting": "A fishing harbour at night",
+   "hook": "What if the Moon disappeared tonight?",
+   "the surprising true point": "Tides do not stop, they shrink, because the Sun raises tides too",
+   "status": "planned"
+  },
+  {
+   "title": "Krakatoa, hour by hour",
+   "kind": "second-by-second",
+   "setting": "The island and the Sunda Strait, 1883",
+   "hook": "Krakatoa, hour by hour",
+   "the surprising true point": "The loudest sound in recorded history: its pressure wave went around the planet more than once",
+   "status": "planned"
+  },
+  {
+   "title": "What if you removed all the empty space from your atoms?",
+   "kind": "what-if",
+   "setting": "Inside a hand, zooming down to atoms",
+   "hook": "What if you removed all the empty space from your atoms?",
+   "the surprising true point": "You would be smaller than a speck of dust and weigh exactly the same; you never truly touch anything",
+   "status": "planned"
+  },
+  {
+   "title": "What if you dropped a coin from the top of a skyscraper?",
+   "kind": "what-if",
+   "setting": "The city skyline and the street below",
+   "hook": "What if you dropped a coin from the top of a skyscraper?",
+   "the surprising true point": "Air resistance caps its speed; it stings but it is not a bullet",
+   "status": "planned"
+  },
+  {
+   "title": "The first nuclear chain reaction, minute by minute",
+   "kind": "second-by-second",
+   "setting": "Chicago Pile-1 under the stadium stands, 1942",
+   "hook": "The first nuclear chain reaction, minute by minute",
+   "the surprising true point": "A pile of graphite and uranium, controlled by pulling one rod out by hand",
+   "status": "planned"
+  },
+  {
+   "title": "What if all the oxygen vanished for 5 seconds?",
+   "kind": "what-if",
+   "setting": "A city street and a beach",
+   "hook": "What if all the oxygen vanished for 5 seconds?",
+   "the surprising true point": "The viral version is mostly wrong; what really changes is pressure, fire and engines, not buildings turning to dust",
+   "status": "planned"
+  },
+  {
+   "title": "What if all the ice on Earth melted?",
+   "kind": "what-if",
+   "setting": "A coastal city, sped up over centuries",
+   "hook": "What if all the ice on Earth melted?",
+   "the surprising true point": "Sea level rises tens of metres, slowly, and the map of every coast is redrawn",
+   "status": "planned"
+  },
+  {
+   "title": "Tunguska, second by second",
+   "kind": "second-by-second",
+   "setting": "Siberian forest, 1908",
+   "hook": "Tunguska, second by second",
+   "the surprising true point": "There is no crater: the object exploded in the air and flattened a forest the size of a city",
+   "status": "planned"
+  },
+  {
+   "title": "What if the Earth were crushed into a black hole?",
+   "kind": "what-if",
+   "setting": "Earth from space, then a hand holding a marble",
+   "hook": "What if the Earth were crushed into a black hole?",
+   "the surprising true point": "It would be about the size of a marble, and the Moon would keep orbiting as if nothing happened",
+   "status": "planned"
+  },
+  {
+   "title": "What if the lift cable snapped?",
+   "kind": "what-if",
+   "setting": "A lift shaft in a skyscraper",
+   "hook": "What if the lift cable snapped?",
+   "the surprising true point": "Lifts have several cables and automatic brakes on the rails; the film version almost never happens",
+   "status": "planned"
+  },
+  {
+   "title": "Pompeii, hour by hour",
+   "kind": "second-by-second",
+   "setting": "The town under Vesuvius, AD 79",
+   "hook": "Pompeii, hour by hour",
+   "the surprising true point": "It was not lava: fast, hot clouds of gas and ash did the damage, many hours after the eruption began",
+   "status": "planned"
+  }
+ ]
+}
