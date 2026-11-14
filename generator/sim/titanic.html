@@ -184,12 +184,12 @@ function overlayFrame(t) {
   else if (t < T.hit) { val = '11:39 PM'; sub = 'From the crow’s nest:\n“Iceberg, right ahead!”'; }
   else if (t < T.cut) { val = '11:40 PM'; sub = t < T.impact ? 'Turning hard to port' : 'The starboard bow\nscrapes along the ice'; }
   else if (t < T.flood) { val = '11:40 PM'; sub = 'Starboard side, below the waterline\nNot to scale'; }
-  else if (t < T.mid) { const n = t < T.five ? Math.min(4, 1 + Math.floor((t - T.flood - 0.3) / 0.5)) : 5; val = '11:' + String(Math.floor(lerp(42, 56, seg(t, T.flood, T.mid)))).padStart(2, '0') + ' PM'; sub = `Compartments flooding: ${Math.max(1, n)}${n >= 5 ? ' ▲' : ''}\nShe stays afloat with: 4`; }
+  else if (t < T.mid) { const n = t < T.five ? Math.min(4, 1 + Math.floor((t - T.flood - 0.3) / 0.5)) : 5; val = 'The bow'; sub = `Compartments flooding: ${Math.max(1, n)}${n >= 5 ? ' ▲' : ''}\nShe stays afloat with: 4`; }
   else if (t < T.boats) { lab = 'Night of 14–15 April'; val = 'Below deck'; sub = 'Thomas Andrews, her designer,\ninspects the damage'; }
   else if (t < T.sink) { lab = 'Night of 14–15 April'; val = 'Lifeboats'; sub = t < 32.7 ? 'Lifeboat 7: about 28 people\nin a boat built for 65' : '20 lifeboats · 1,178 seats\nAround 2,200 people on board'; }
   else if (t < T.gone) { lab = '15 April 1912'; val = '2:' + String(Math.floor(lerp(0, 18, smooth(seg(t, T.sink, T.dark))))).padStart(2, '0') + ' AM'; sub = t < T.dark ? 'Only three collapsible\nboats are left' : (t < T.brk ? 'The lights fail' : 'The hull breaks apart'); }
   else if (t < T.dawn) { lab = '15 April 1912'; val = '2:20 AM'; sub = '2 hours 40 minutes\nafter the collision'; }
-  else { lab = '15 April 1912'; val = 'Dawn'; sub = 'Around 700 survivors are\npicked up by the Carpathia'; }
+  else { lab = '15 April 1912'; val = 'Rescue'; sub = 'About 705 survivors are\npicked up by the Carpathia'; }
   O.hudSet(lab, val, sub); O.show(O.hud, t >= T.end ? 1 - seg(t, T.end, T.end + 0.3) : ha); O.hud.style.top = (inCut ? 1150 : (t >= T.dawn ? 600 : (t >= T.sink ? 1150 : t >= T.boats ? 1060 : (t < T.look ? 430 : (t < T.cut ? 960 : 880))))) + 'px';
   let h = '';
   const L = (top, a, small, big, col) => a > 0 ? `<div class="lab" style="left:64px;top:${top}px;opacity:${a}${col ? ';color:' + col : ''}">${small}<b>${big}</b></div>` : '';

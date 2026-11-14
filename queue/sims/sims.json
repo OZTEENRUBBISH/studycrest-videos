@@ -22,6 +22,36 @@
     "https://world-nuclear.org/information-library/safety-and-security/safety-of-plants/appendices/chernobyl-accident-appendix-1-sequence-of-events",
     "https://oecd-nea.org/jcms/pl_28271/chernobyl-chapter-i-the-site-and-accident-sequence"
    ]
+  },
+  {
+   "file": "sim-03-sun.mp4",
+   "title": "What if the Sun vanished right now?",
+   "made": "2026-11-15",
+   "caption": "What if the Sun vanished right now? For 8 minutes and 20 seconds you'd notice nothing: its last light, and its last gravity, would still be on their way. ☀️\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #space #sun #studytok",
+   "science": "Sunlight takes about 8 min 20 s to reach Earth (about 150 million km / 299,792 km/s = 499 s). General relativity: changes in gravity travel at the speed of light (GW170817: gravitational waves and gamma rays arrived 1.7 s apart after more than 100 million light-years), so Earth keeps orbiting until the last light arrives, then leaves in a straight line at its orbital speed, 29.78 km/s = 107,000 km/h. Jupiter is 778 million km from the Sun (light time 43 min); seen from Earth it stays lit at least 66-70 min after Earth goes dark (computed from path lengths). Cooling: below freezing within about a week, roughly -100 F (about -73 C, 200 K) within about a year (D. Stevenson, Caltech; Popular Science). Diagram labelled not to scale, time sped up.",
+   "sources": [
+    "https://www.universetoday.com/articles/how-long-does-it-take-sunlight-to-reach-the-earth",
+    "https://ligo.org/science-summaries/GW170817GRB/",
+    "https://experts.caltech.edu/news/caltech-question-month-if-sun-ceased-exist-right-now-how-long-would-mankind-survive-would",
+    "https://www.popsci.com/science/article/2013-07/if-sun-went-out-how-long-could-life-earth-survive/",
+    "https://www.britannica.com/story/what-is-earths-velocity",
+    "https://www.britannica.com/place/Earth/Basic-planetary-data",
+    "https://www.britannica.com/place/Jupiter-planet/Basic-astronomical-data"
+   ]
+  },
+  {
+   "file": "sim-04-titanic.mp4",
+   "title": "Titanic, minute by minute",
+   "made": "2026-11-15",
+   "caption": "Titanic, minute by minute. The iceberg didn't rip one huge gash: it opened six thin tears adding up to about a square metre, across one compartment too many. 🚢\n\nFollow for a new simulation every day.\n\n#titanic #simulation #science #history #physics #studytok #whatif",
+   "science": "14 April 1912, moonless, unusually calm sea, about 22 knots. Crow's nest bell 11:39 pm ('Iceberg right ahead'), helm hard-a-starboard (ship turns to port), collision about 11:40 pm, under a minute after sighting. Damage: six thin tears, total open area about 1 square metre (12 sq ft), not one gash. 16 watertight compartments; afloat with four flooded; at least five ruptured. Thomas Andrews determined she would founder. Lifeboat 7 left first with about 27-28 people (65 seats). 20 boats, 1,178 places, about 2,200 aboard (53%). About 2:00 am only three collapsibles remained; 2:18 lights out and she broke in two; foundered 2:20 am (2 h 40 min after the collision). About 1,500 died; 705 rescued by the Carpathia (arrived about 3:30 am). Not verified from a page that could be opened in this run, so not stated in the film: the clock times of Andrews's inspection and of the first lifeboat. The cutaway is not to scale; where the hull parts and ice on the deck are illustrative.",
+   "sources": [
+    "https://www.britannica.com/topic/Titanic",
+    "https://www.nist.gov/preserving-past/ships-and-space/science-showed-how-tiny-iron-flaw-doomed-titanic",
+    "https://www.encyclopedia-titanica.org/somewhere-about-12-square-feet.html",
+    "https://www.encyclopedia-titanica.org/on-titanics-bridge.html",
+    "https://www.encyclopedia-titanica.org/titanic-survivor/reginald-robinson-lee.html"
+   ]
   }
  ]
 }
