@@ -1,5 +1,5 @@
 {
- "note": "Log of videos scheduled on the TikTok account @studycrest through Buffer (channel 6af80ae262b70b94b029534d). Slots: 12:00am and 6:00pm = simulation (queue/sims), 6:00am and 12:00pm = ad (queue/reels, kind spot or feature). Separate from posted.json (Instagram).",
+ "note": "Log of videos scheduled on the TikTok account @studycrest through Buffer (channel 6af80ae262b70b94b029534d). Slots: 12:00am, 6:00am and 6:00pm = simulation (queue/sims), 12:00pm = ad (queue/reels, kind spot or feature). Separate from posted.json (Instagram).",
  "scheduled": [
   {
    "file": "sim-01-gravity",

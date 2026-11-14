@@ -74,13 +74,13 @@ Separate queue, separate log, separate look (editorial: photo cover, serif headl
 
 ## TikTok (@studycrest)
 
-Owner's instructions, 14 Nov 2026. Four videos a day, one every 6 hours, scheduled through Buffer (organization
+Owner's instructions, 14 Nov 2026. Four videos a day (three simulations, one StudyCrest ad), one every 6 hours, scheduled through Buffer (organization
 6af52943363c789ae7ff8d6b, channel 6af80ae262b70b94b029534d). Log: `../posted_tiktok.json`.
 
 | Sydney slot | What goes out |
 |---|---|
-| 12:00am and 6:00pm | A **simulation video** (below). These exist to win views, likes and follows. |
-| 6:00am and 12:00pm | An **ad** for StudyCrest: a `spot` or `feature` reel from `../queue/reels`. |
+| 12:00am, 6:00am and 6:00pm | A **simulation video** (below). These exist to win views, likes and follows. |
+| 12:00pm | One **ad** for the StudyCrest app: a `spot` or `feature` reel from `../queue/reels`. |
 
 - No tip-list ("5 ways to...") reels on TikTok. They stay on Instagram only.
 - Never schedule a file already in `posted_tiktok.json`. A simulation slot with no finished simulation stays empty.
