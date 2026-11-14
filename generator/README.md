@@ -74,13 +74,58 @@ Separate queue, separate log, separate look (editorial: photo cover, serif headl
 
 ## TikTok (@studycrest)
 
-Four videos a day, one every 6 hours: 12:00am, 6:00am, 12:00pm and 6:00pm Australia/Sydney, scheduled through
-Buffer (organization 6af52943363c789ae7ff8d6b, channel 6af80ae262b70b94b029534d). Log: `../posted_tiktok.json`.
+Owner's instructions, 14 Nov 2026. Four videos a day, one every 6 hours, scheduled through Buffer (organization
+6af52943363c789ae7ff8d6b, channel 6af80ae262b70b94b029534d). Log: `../posted_tiktok.json`.
 
-- TikTok uses the same reels as Instagram (`../queue/reels`, captions in `../queue/captions.json`) but its own log,
-  so a reel can go out on TikTok before or after Instagram. Never schedule a file already in `posted_tiktok.json`.
-- Mix: at most one `spot` reel per Sydney day on TikTok; the rest `tips` or `feature`. Do not put two reels of the
-  same kind back to back when another kind is available.
-- When fewer unposted reels are left than slots to fill, make new tip-list reels (section above) and add them to
-  the shared queue (reel, cover, caption, reel_kinds) so Instagram can use them later too.
+| Sydney slot | What goes out |
+|---|---|
+| 12:00am and 6:00pm | A **simulation video** (below). These exist to win views, likes and follows. |
+| 6:00am and 12:00pm | An **ad** for StudyCrest: a `spot` or `feature` reel from `../queue/reels`. |
+
+- No tip-list ("5 ways to...") reels on TikTok. They stay on Instagram only.
+- Never schedule a file already in `posted_tiktok.json`. A simulation slot with no finished simulation stays empty.
+- When the unposted `spot`/`feature` reels run out, make new spot-the-mistake or feature reels for TikTok (sections
+  above). The owner also wants other ad styles tried over time: low-poly story, whiteboard explainer, paper cut-out,
+  comic panels, clay look, horror style, talking object. Never use anyone else's characters or brands and never
+  imitate a named creator.
 - The free Buffer plan allows 10 scheduled posts per channel, so keep at most 8 queued (the next two days).
+- TikTok captions for simulations: the hook question, one line of what the viewer learns, "Follow for a new
+  simulation every day", then 5 to 7 hashtags (#whatif #simulation #science #physics #studytok plus topic tags).
+  No offer wording in the caption: the offer is already in the corner of the video.
+
+## Simulation videos (`sim/`)
+
+Low-poly 3D "what if" and "second by second" simulations, 45 to 60 seconds, 1080x1920, 30 fps, narrated. Finished
+examples: `sim/gravity.html` (What if gravity switched off for 5 seconds?) and `sim/chernobyl.html` (Chernobyl, second
+by second). Each video is one HTML page that draws any moment of the film on request (`window.renderAt(t)`), filmed
+frame by frame by headless Chrome.
+
+Files: `sim/common.js` (the kit: people, palms, towers and whole city rows, clouds, sky, globe, arrows, the overlay
+with the brand badge, HUD, captions, title and end card, and `makePost` for bloom and colour grade), `sim/render.py`
+(stills and full render), `sim/vo.py` (Kokoro voice, "puck"), `sim/audio_<name>.py` (narration + sound design),
+`sim/vendor` (three.js).
+
+Make a new one:
+1. Topic. A question or event with real science in it: gravity, electrons, radioactivity, pressure, light, the Sun,
+   the Moon, the ocean, the body, famous disasters and experiments. Not used before (`../queue/sims/sims.json`).
+2. Get the science right before anything else. Work the physics out from first principles and check every number
+   by running the arithmetic; check every historical fact (times, names, figures) with a web search of primary or
+   official sources, and keep the sources in `sims.json`. If a popular version of the story is wrong, say what
+   really happens: that is the hook. Never state a figure you could not verify; say "around" when sources differ.
+3. Script: 110 to 140 spoken words. Title question in the first second. Second person ("You're at the beach").
+   Short sentences. One surprising turn in the middle. End on one line that sums up the idea, then "Follow for more."
+   Tragedies are told plainly and respectfully: no jokes, no gore, no blame beyond the documented facts.
+4. Time the lines (`vo.speak`), lay out the timeline, then copy the closest example page and build the scenes from
+   the kit. Rules for every frame: the StudyCrest badge with the offer stays in the top-left corner from the first
+   frame to the end card; a HUD with a running clock or countdown; serif italic captions matching the narration;
+   keep text out of the top 150 px, the bottom 380 px and the right 150 px (TikTok's own buttons). Fill the world:
+   a real city, people, props, weather. Label anything exaggerated "not to scale".
+5. `python3 render.py stills <name> t1 t2 ...` at 15 or more moments, including the busiest. LOOK at the sheet and
+   fix overlaps, cut-off text, empty or ugly frames before any full render. `python3 audio_<name>.py` must print
+   "all lines fit".
+6. `python3 render.py video <name>` (about 3 to 4 seconds a frame, so over an hour: run it in the background and
+   wait), then mux: `ffmpeg -i work/<name>-silent.mp4 -i work/<name>.wav -map 0:v -map 1:a -c:v copy -af
+   loudnorm=I=-14.5:TP=-1.5:LRA=11 -ar 48000 -c:a aac -b:a 192k -shortest -movflags +faststart <out>.mp4`.
+   Check with ffprobe (1080x1920, audio present, right length) and a frame sheet of the finished file.
+7. Save as `../queue/sims/sim-<NN>-<name>.mp4`, add `{file, title, caption, sources}` to `../queue/sims/sims.json`,
+   commit and push. `sim/work/` is scratch and is not committed.

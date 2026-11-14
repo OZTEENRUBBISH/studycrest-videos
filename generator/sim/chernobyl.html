@@ -1,0 +1,196 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, noise3, mat, box, shadowAll, person, cloud, skyDome, stars, arrow, overlay, capAt, windowTex, proj, tower, lamp, makePost } from './common.js';
+const W = 1080, H = 1920, DUR = 60.0;
+const O = overlay();
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.1, 3000);
+const R = rng(19860426), V = (x, y, z) => new THREE.Vector3(x, y, z);
+const T = { ext: 0, room: 6.2, core: 11.2, test: 19.3, az: 26.8, rods: 31.7, surge: 36.6, boom: 40.6, after: 44.8, atom: 47.6, half: 51.6, end: 57.6 };
+
+// =====================================================  EXTERIOR (night)
+const ext = new THREE.Scene(); ext.fog = new THREE.Fog(0x0a1020, 250, 1500);
+ext.add(skyDome(0x050914, 0x16223f, 0x0a1020)); const st = stars(rng(5), 1800, 850); ext.add(st);
+const moonL = new THREE.DirectionalLight(0x9db8ff, 1.15); moonL.position.set(-120, 160, 140); moonL.castShadow = true; moonL.shadow.mapSize.set(4096, 4096); Object.assign(moonL.shadow.camera, { left: -220, right: 220, top: 220, bottom: -220, near: 1, far: 700 }); moonL.shadow.bias = -0.0008; ext.add(moonL);
+const extHemi = new THREE.HemisphereLight(0x4a64a8, 0x1a1f2a, 1.5); ext.add(extHemi);
+{ const g = new THREE.PlaneGeometry(2400, 2400, 80, 80); g.rotateX(-Math.PI / 2); const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setY(i, (fbm(p.getX(i) * 0.01, 0, p.getZ(i) * 0.01, 3) - 0.5) * 3 * clamp((Math.hypot(p.getX(i), p.getZ(i)) - 220) / 200)); const m = new THREE.Mesh(g, mat(0x1c2a22, { roughness: 1 })); m.receiveShadow = true; ext.add(m); }
+ext.add(box(700, 0.3, 200, 0x2a2d33, -60, 0.15, 30));                                     // concrete apron
+{ const w = new THREE.Mesh(new THREE.PlaneGeometry(900, 260).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x0c1a30, roughness: 0.15, metalness: 0.6 })); w.position.set(0, 0.4, 330); ext.add(w); }
+const nightTex = (c, r) => { const t = windowTex(R, c, r, '#3a3f4a', true); return new THREE.MeshStandardMaterial({ map: t, emissive: 0xffd98a, emissiveMap: t, emissiveIntensity: 0.55, roughness: 0.9 }); };
+function block(w, h, d, x, z, c, r) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [nightTex(Math.round(d / 6), r), nightTex(Math.round(d / 6), r), mat(0x2b2f37), mat(0x2b2f37), nightTex(c, r), nightTex(c, r)]); m.position.set(x, h / 2, z); m.castShadow = true; m.receiveShadow = true; ext.add(m); return m; }
+block(420, 34, 50, -110, 62, 60, 5);                                                      // turbine hall
+block(70, 50, 60, -75, 5, 10, 7); const u4 = block(70, 50, 60, 5, 5, 10, 7);              // units 3 and 4, lower blocks
+const top3 = box(44, 22, 44, 0x3b414c, -75, 61, 0); ext.add(top3);
+const top4 = new THREE.Group(); top4.add(box(44, 22, 44, 0x3b414c, 0, 11, 0)); top4.position.set(5, 50, 0); ext.add(top4);
+block(60, 26, 40, -35, -8, 9, 4);                                                         // auxiliary block between the units
+{ const s = new THREE.Group(), h = 110; s.add(new THREE.Mesh(new THREE.CylinderGeometry(3.4, 4.4, h, 12), mat(0xb9bcc2))); for (let i = 0; i < 7; i++) { const y = -h / 2 + 12 + i * 15; const ring = new THREE.Mesh(new THREE.TorusGeometry(7.2, 0.5, 5, 8), mat(i % 2 ? 0xd9d9d9 : 0xc23b2f)); ring.rotation.x = Math.PI / 2; ring.position.y = y; s.add(ring); for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + 0.4; s.add(box(0.5, 15, 0.5, i % 2 ? 0xd9d9d9 : 0xc23b2f, Math.cos(a) * 7.2, y - 7.5, Math.sin(a) * 7.2)); } } s.position.set(-35, 26 + h / 2, -8); shadowAll(s); ext.add(s);
+  const bl = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3020 })); bl.position.set(-35, 26 + h + 1, -8); ext.add(bl); ext.userData.beacon = bl; }
+for (let i = 0; i < 14; i++) { const x = -330 + i * 44, p = new THREE.Group(); p.add(box(0.5, 14, 0.5, 0x555b66, 0, 7, 0)); const l = new THREE.Mesh(new THREE.SphereGeometry(0.9, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffe2a6 })); l.position.y = 14.4; p.add(l); p.position.set(x, 0, 100); ext.add(p); }
+for (let i = 0; i < 60; i++) { const tr = new THREE.Mesh(new THREE.ConeGeometry(3 + R() * 2, 12 + R() * 9, 5), mat(0x14251c)); const a = R() * 6.28, r = 300 + R() * 500; tr.position.set(Math.cos(a) * r, 7, -Math.abs(Math.sin(a)) * r - 60); ext.add(tr); }
+{ const Rt = rng(77); for (let i = 0; i < 46; i++) { const b = tower(Rt, 14 + Rt() * 16, 16 + Rt() * 34, 12 + Rt() * 6, { night: true, style: Rt() < 0.7 ? 'white' : 'sand' }); b.position.set(-560 + (i % 12) * 34 + Rt() * 10, 0, -420 - Math.floor(i / 12) * 60 - Rt() * 20); ext.add(b); }
+  for (const x of [230, 320]) { const pts = []; for (let k = 0; k <= 10; k++) { const u = k / 10; pts.push(new THREE.Vector2(26 - 11 * Math.sin(u * Math.PI * 0.62), u * (x === 230 ? 95 : 60))); } const ct = new THREE.Mesh(new THREE.LatheGeometry(pts, 20), mat(0x565b63, { side: THREE.DoubleSide })); ct.position.set(x, 0, -230); ct.castShadow = true; ext.add(ct); }
+  for (let i = 0; i < 6; i++) { const p = new THREE.Group(), x = -420 + i * 90; p.add(box(1, 46, 1, 0x596070, 0, 23, 0)); p.add(box(22, 0.8, 0.8, 0x596070, 0, 40, 0)); p.add(box(15, 0.8, 0.8, 0x596070, 0, 33, 0)); p.position.set(x, 0, 150); ext.add(p); if (i) for (const [dx, y] of [[-10, 40], [10, 40], [-7, 33], [7, 33]]) { const w = box(90, 0.14, 0.14, 0x20242c, x - 45 + dx, y - 1.5, 150); w.castShadow = false; ext.add(w); } }
+  for (let i = 0; i < 9; i++) { const pipe = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 60, 8), mat(0x8c9198)); pipe.rotation.z = Math.PI / 2; pipe.position.set(-150 + i * 3.2, 36 + (i % 3) * 2.6, 36.5); ext.add(pipe); }
+  for (let i = 0; i < 10; i++) ext.add(box(2.2, 50, 1, i % 2 ? 0x4a505b : 0x646b78, -28 + i * 7.4, 25, 35.6)); }
+// explosion pieces
+const coreGlow = new THREE.PointLight(0xff7a2a, 0, 600, 1.4); coreGlow.position.set(5, 62, 0); ext.add(coreGlow);
+const crater = new THREE.Mesh(new THREE.CylinderGeometry(15, 15, 1.2, 20), new THREE.MeshBasicMaterial({ color: 0xff8a2a })); crater.position.set(5, 51, 0); crater.visible = false; ext.add(crater);
+const lid = new THREE.Group(); { const d = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 2.6, 24), mat(0x8a8f99, { metalness: 0.4, roughness: 0.5 })); lid.add(d); for (let i = 0; i < 40; i++) { const a = R() * 6.28, r = R() * 9.5; lid.add(box(0.35, 5 + R() * 5, 0.35, 0xb5b9c2, Math.cos(a) * r, -4, Math.sin(a) * r)); } lid.visible = false; ext.add(shadowAll(lid)); }
+const debN = 260, debGeo = new THREE.BoxGeometry(1, 1, 1), deb = new THREE.InstancedMesh(debGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }), debN), debS = []; { const c = new THREE.Color(); for (let i = 0; i < debN; i++) { const a = R() * 6.28, el = 0.5 + R() * 1.0, sp = 28 + R() * 62; debS.push({ vx: Math.cos(a) * Math.cos(el) * sp * 0.6, vy: Math.sin(el) * sp, vz: Math.sin(a) * Math.cos(el) * sp * 0.6, s: 0.5 + R() * 1.8, r: R() * 6, hot: R() < 0.6 }); c.set(debS[i].hot ? (R() < 0.5 ? 0xffb347 : 0xff6a1f) : 0x3b3f47); deb.setColorAt(i, c); } deb.visible = false; deb.frustumCulled = false; ext.add(deb); }
+const smoke = []; for (let i = 0; i < 46; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ color: 0x4a4038, flatShading: true, roughness: 1, transparent: true, opacity: 0.9, emissive: 0xff5a1a, emissiveIntensity: 0 })); m.userData = { d: R() * 3.2, dx: (R() - 0.5) * 16, dz: (R() - 0.5) * 16, s: 6 + R() * 9, v: 9 + R() * 8 }; m.visible = false; ext.add(m); smoke.push(m); }
+const beam = new THREE.Mesh(new THREE.CylinderGeometry(3, 6, 700, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0x7fc4ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); beam.position.set(5, 400, 0); ext.add(beam);
+const radN = 900, radGeo = new THREE.BufferGeometry(), radP = new Float32Array(radN * 3), radS = []; for (let i = 0; i < radN; i++) radS.push({ a: R() * 6.28, r: R(), v: 14 + R() * 30, d: R() * 6, w: (R() - 0.5) * 2 }); radGeo.setAttribute('position', new THREE.BufferAttribute(radP, 3));
+const rad = new THREE.Points(radGeo, new THREE.PointsMaterial({ color: 0xb6ff5a, size: 4.5, sizeAttenuation: false, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); rad.frustumCulled = false; ext.add(rad);
+const dm = new THREE.Object3D();
+function extFrame(t) {
+  const q = t - T.boom, on = q > 0; ext.userData.beacon.visible = Math.sin(t * 5) > -0.2;
+  top4.visible = !on || q < 0.12; crater.visible = on; lid.visible = on; deb.visible = on; coreGlow.intensity = on ? (60000 * Math.exp(-q * 3) + 9000 + Math.sin(t * 17) * 1200) : 0;
+  if (on) { lid.position.set(5 + q * 4.5, 52 + 46 * q - 9.5 * q * q, q * 2.5); lid.rotation.set(q * 1.9, 0, q * 1.1); if (lid.position.y < 53 && q > 2) { lid.position.y = 54; lid.rotation.set(1.25, 0, 0.3); lid.position.x = 5 + 8; }
+    for (let i = 0; i < debN; i++) { const s = debS[i]; let y = 52 + s.vy * q - 9.8 * q * q * 1.6; const g = y < 1; dm.position.set(5 + s.vx * q, g ? 1 : y, s.vz * q); if (g) { const tg = (s.vy + Math.sqrt(s.vy * s.vy + 4 * 15.68 * 51)) / (2 * 15.68); dm.position.set(5 + s.vx * tg, 0.8, s.vz * tg); } dm.rotation.set(q * 3 + s.r, q * 2 + s.r, s.r); dm.scale.setScalar(s.s); dm.updateMatrix(); deb.setMatrixAt(i, dm.matrix); } deb.instanceMatrix.needsUpdate = true; }
+  for (const m of smoke) { const u = m.userData, v = on ? ((q - 0.25 + u.d) % 6.4) : -1; m.visible = on && q > 0.25 && v >= 0; if (m.visible) { m.position.set(5 + u.dx * (0.4 + v * 0.35) + v * v * 0.9, 54 + v * u.v, u.dz * (0.4 + v * 0.3)); m.scale.setScalar(u.s * (0.5 + v * 0.55)); m.material.opacity = 0.85 * (1 - v / 6.4); m.material.emissiveIntensity = Math.max(0, 0.9 - v * 0.35); m.rotation.set(v * 0.3 + u.d, v * 0.2, u.d); } }
+  beam.material.opacity = on ? smooth(seg(q, 0.6, 2.2)) * 0.05 * (0.85 + 0.15 * Math.sin(t * 6)) : 0;
+  const ra = t >= T.after ? smooth(seg(t, T.after, T.after + 1.0)) : 0; rad.material.opacity = ra * 0.9; if (ra > 0) { const tt = t - T.after + 3; for (let i = 0; i < radN; i++) { const s = radS[i], v = (tt + s.d) % 7, rr = 6 + s.r * 10 + v * (6 + s.r * 22); radP[i * 3] = 5 + Math.cos(s.a + v * s.w * 0.1) * rr + v * v * 2.2; radP[i * 3 + 1] = 56 + v * s.v; radP[i * 3 + 2] = Math.sin(s.a + v * s.w * 0.1) * rr; } radGeo.attributes.position.needsUpdate = true; }
+  extHemi.intensity = 1.5 + (on ? Math.exp(-q * 4) * 6 : 0);
+  if (t < T.room) camPath([[0, V(150, 16, 330), V(-20, 46, 0), 44], [T.room, V(120, 22, 250), V(-10, 44, 0), 44]], t);
+  else if (t < T.after) { camPath([[T.boom, V(110, 14, 190), V(0, 62, 0), 50], [T.after, V(118, 12, 205), V(8, 96, 0), 56]], t); const s = Math.exp(-q * 1.3) * 2.2; cam.position.x += Math.sin(q * 47) * s; cam.position.y += Math.sin(q * 61) * s; }
+  else camPath([[T.after, V(-150, 60, 230), V(10, 70, 0), 48], [T.atom, V(-120, 76, 200), V(20, 96, 0), 48]], t);
+  renderer.toneMappingExposure = 1.2; postExt.render();
+}
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.up.set(0, 1, 0); cam.position.lerpVectors(a[1], b[1], u); cam.fov = lerp(a[3], b[3], u); cam.lookAt(a[2].clone().lerp(b[2], u)); cam.updateProjectionMatrix(); }
+
+// =====================================================  CONTROL ROOM
+const room = new THREE.Scene(); room.background = new THREE.Color(0x0d1014); room.fog = new THREE.Fog(0x0d1014, 30, 80);
+const roomAmb = new THREE.HemisphereLight(0xe8f0ff, 0x2a2622, 1.0); room.add(roomAmb); const roomL = new THREE.DirectionalLight(0xfff2dc, 1.5); roomL.position.set(4, 12, 10); roomL.castShadow = true; roomL.shadow.mapSize.set(2048, 2048); Object.assign(roomL.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 60 }); room.add(roomL);
+const alarm = new THREE.PointLight(0xff2a1a, 0, 60); alarm.position.set(0, 6, 2); room.add(alarm);
+room.add(box(60, 0.2, 40, 0x5a6a5c, 0, -0.1, 0)); room.add(box(60, 0.3, 40, 0xd9d6cc, 0, 9.2, 0)); room.add(box(60, 9.4, 0.4, 0xb9c2b6, 0, 4.6, -12)); room.add(box(0.4, 9.4, 40, 0xb0b9ad, -22, 4.6, 0)); room.add(box(0.4, 9.4, 40, 0xb0b9ad, 22, 4.6, 0));
+const panelTex = (() => { const c = document.createElement('canvas'); c.width = 2048; c.height = 512; const x = c.getContext('2d'), Rp = rng(3); x.fillStyle = '#8f9c8c'; x.fillRect(0, 0, 2048, 512);
+  for (let s = 0; s < 8; s++) { x.fillStyle = '#7d8a7b'; x.fillRect(s * 256 + 6, 10, 244, 492); for (let i = 0; i < 12; i++) for (let j = 0; j < 9; j++) { const r = Rp(); x.fillStyle = r < 0.1 ? '#ff5a3c' : (r < 0.3 ? '#ffd24a' : (r < 0.55 ? '#7dff8a' : '#d9d6c8')); if (s === 3 || s === 4) continue; x.fillRect(s * 256 + 18 + i * 19, 260 + j * 25, 13, 16); }
+    if (s !== 3 && s !== 4) for (let k = 0; k < 3; k++) { x.fillStyle = '#e9e6d8'; x.beginPath(); x.arc(s * 256 + 50 + k * 76, 130, 30, 0, 7); x.fill(); x.strokeStyle = '#222'; x.lineWidth = 3; x.beginPath(); x.moveTo(s * 256 + 50 + k * 76, 130); x.lineTo(s * 256 + 50 + k * 76 + Math.cos(Rp() * 3 + 3.5) * 24, 130 + Math.sin(Rp() * 3 + 3.5) * 24); x.stroke(); } }
+  x.fillStyle = '#1b2420'; x.beginPath(); x.arc(1024, 256, 230, 0, 7); x.fill(); for (let i = -14; i <= 14; i++) for (let j = -14; j <= 14; j++) { if (i * i + j * j > 196) continue; const r = Rp(); x.fillStyle = r < 0.08 ? '#ff5a3c' : (r < 0.5 ? '#7dff8a' : '#ffd24a'); x.fillRect(1024 + i * 15.5 - 5, 256 + j * 15.5 - 5, 10, 10); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+{ const m = new THREE.Mesh(new THREE.PlaneGeometry(40, 8), new THREE.MeshStandardMaterial({ map: panelTex, emissive: 0xffffff, emissiveMap: panelTex, emissiveIntensity: 0.35, roughness: 0.7 })); m.position.set(0, 4.6, -11.7); room.add(m); }
+const deskTex = (() => { const c = document.createElement('canvas'); c.width = 1024; c.height = 128; const x = c.getContext('2d'), Rp = rng(8); x.fillStyle = '#9aa596'; x.fillRect(0, 0, 1024, 128); for (let i = 0; i < 60; i++) for (let j = 0; j < 6; j++) { const r = Rp(); if (i > 27 && i < 33) continue; x.fillStyle = r < 0.12 ? '#ff5a3c' : (r < 0.3 ? '#ffd24a' : (r < 0.5 ? '#f2f2ea' : '#2c332e')); x.fillRect(8 + i * 17, 10 + j * 19, 11, 12); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+{ const top = new THREE.Mesh(new THREE.BoxGeometry(26, 0.25, 2.4), [mat(0x8d9889), mat(0x8d9889), new THREE.MeshStandardMaterial({ map: deskTex, roughness: 0.6 }), mat(0x8d9889), mat(0x8d9889), mat(0x8d9889)]); top.position.set(0, 1.35, -3); top.rotation.x = 0.28; top.castShadow = true; room.add(top); room.add(box(26, 1.3, 2.0, 0x7d8879, 0, 0.65, -3.2)); }
+const btn = new THREE.Group(); { const base = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.1, 20), mat(0x22252a)); btn.add(base); const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.16, 20), new THREE.MeshStandardMaterial({ color: 0xe0281c, emissive: 0xff2a1a, emissiveIntensity: 0.25, roughness: 0.4 })); cap.position.y = 0.12; btn.add(cap); btn.userData.cap = cap; btn.position.set(0, 1.56, -2.72); btn.rotation.x = 0.28; room.add(shadowAll(btn)); }
+const coat = { shirt: 0xf4f4f0, pants: 0xeeeee8, sleeve: 0xf4f4f0 }; const ops = [];
+for (const [x, z, ry] of [[-0.75, -1.3, Math.PI], [-6.5, -1.4, Math.PI + 0.2], [6.2, -1.5, Math.PI - 0.25], [3.2, 2.4, Math.PI - 0.6], [-10.5, -6, 0.9]]) { const p = person(R, 'stand', coat); p.scale.setScalar(1.25); p.position.set(x, 0, z); p.rotation.y = ry; p.userData.hips.add(box(0.3, 0.09, 0.3, 0xf4f4f0, 0, 1.02, 0)); room.add(p); ops.push(p); }
+function roomFrame(t) {
+  const press = t >= T.az ? smooth(seg(t, T.az + 2.3, T.az + 2.75)) : 0, after = t >= T.az + 2.75;
+  btn.userData.cap.position.y = 0.12 - press * 0.07; btn.userData.cap.material.emissiveIntensity = after ? 1.6 : 0.25 + 0.2 * Math.sin(t * 6);
+  const o = ops[0]; o.userData.pose(0, 'stand'); if (t >= T.az) { const r = smooth(seg(t, T.az + 1.2, T.az + 2.5)); o.userData.aR.rotation.x = -r * 1.25; o.userData.hips.rotation.x = r * 0.18; }
+  for (let i = 1; i < ops.length; i++) ops[i].userData.pose(t * 1.5 + i, 'stand');
+  alarm.intensity = t >= T.az ? (0.5 + 0.5 * Math.sin(t * 9)) * 220 * smooth(seg(t, T.az, T.az + 1.2)) : 0; roomAmb.intensity = t >= T.az ? 0.8 : 1.0;
+  if (t < T.core) camPath([[T.room, V(9, 4.6, 13), V(0, 3.6, -8), 58], [T.core, V(5, 3.8, 9), V(0, 3.4, -8), 58]], t);
+  else { camPath([[T.az, V(4.2, 3.6, 4.4), V(0, 2.4, -4), 52], [T.az + 1.6, V(2.2, 3.1, 1.6), V(-0.2, 1.7, -2.72), 46], [T.rods, V(1.7, 2.9, 0.9), V(-0.2, 1.65, -2.72), 44]], t); if (after) { const s = 0.02; cam.position.x += Math.sin(t * 50) * s; cam.position.y += Math.sin(t * 63) * s; } }
+  renderer.toneMappingExposure = 1.0; postRoom.render();
+}
+
+// =====================================================  REACTOR CORE (schematic in 3D)
+const core = new THREE.Scene(); core.background = new THREE.Color(0x07090f); core.add(stars(rng(11), 500, 400));
+core.add(new THREE.HemisphereLight(0xbfd0ff, 0x1a1a22, 0.9)); const cl = new THREE.DirectionalLight(0xffffff, 1.6); cl.position.set(-8, 14, 20); core.add(cl);
+const heat = new THREE.PointLight(0xff8a2a, 0, 60); heat.position.set(0, -2.5, 4); core.add(heat);
+const CH = 9, CW = 1.5, HC = 9;                       // channels, spacing, core height
+const rig = new THREE.Group(); core.add(rig);
+rig.add(box(CH * CW + 3.2, 1.0, 5.2, 0x8a8f99, 0, HC / 2 + 0.9, 0, { metalness: 0.4, roughness: 0.5 })); rig.add(box(CH * CW + 3.2, 0.8, 5.2, 0x6d727c, 0, -HC / 2 - 0.6, 0));    // lid and base
+rig.add(box(1.3, HC + 3.2, 5.2, 0x4a4e57, -(CH * CW) / 2 - 1.3, 0.1, 0)); rig.add(box(1.3, HC + 3.2, 5.2, 0x4a4e57, (CH * CW) / 2 + 1.3, 0.1, 0));
+const fuels = [], rods = [], waters = [], bubbles = [];
+for (let i = 0; i < CH; i++) { const x = (i - (CH - 1) / 2) * CW, isRod = i % 2 === 1;
+  for (const z of [-1.4, 1.4]) rig.add(box(CW * 0.98, HC, 1.3, 0x3a3d44, x, 0, z));                               // graphite blocks behind and in front? (kept behind only below)
+  rig.add(box(0.22, HC, 0.9, 0x34373e, x - CW / 2 + 0.11, 0, 0));
+  if (!isRod) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, HC, 12), new THREE.MeshStandardMaterial({ color: 0x2f8fe6, transparent: true, opacity: 0.55, roughness: 0.2 })); w.position.set(x, 0, 0); rig.add(w); waters.push(w);
+    const f = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, HC - 0.6, 8), new THREE.MeshStandardMaterial({ color: 0xc8d86a, emissive: 0xffa02a, emissiveIntensity: 0.25, roughness: 0.5 })); f.position.set(x, 0, 0); rig.add(f); fuels.push(f);
+    for (let k = 0; k < 16; k++) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11 + R() * 0.09, 0), new THREE.MeshLambertMaterial({ color: 0xdfeaf5, transparent: true, opacity: 0.8 })); b.userData = { x, ph: R(), dx: (R() - 0.5) * 0.5, lim: R() }; rig.add(b); bubbles.push(b); } }
+  else { const g = new THREE.Group(); const ab = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, HC * 0.78, 10), mat(0x15171b, { roughness: 0.5 })); ab.position.y = HC * 0.39 + 0.3; g.add(ab);
+    const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, HC * 0.5, 10), new THREE.MeshStandardMaterial({ color: 0x9a9da3, emissive: 0xffc04a, emissiveIntensity: 0, roughness: 0.6 })); tip.position.y = -HC * 0.25 - 0.1; g.add(tip); g.userData.tip = tip;
+    const wb = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, HC, 12), new THREE.MeshStandardMaterial({ color: 0x2f8fe6, transparent: true, opacity: 0.28, roughness: 0.2 })); wb.position.set(x, 0, 0); rig.add(wb);
+    g.position.x = x; rig.add(g); rods.push(g); } }
+// remove the front graphite blocks so the channels are visible (keep the back ones)
+rig.children.filter(o => o.isMesh && Math.abs(o.position.z - 1.4) < 0.01).forEach(o => rig.remove(o));
+const pipes = new THREE.Group(); for (let i = 0; i < CH; i++) pipes.add(box(0.16, 2.4, 0.16, 0xb5b9c2, (i - (CH - 1) / 2) * CW, HC / 2 + 2.6, -0.6)); rig.add(pipes);
+function coreFrame(t) {
+  // steam fraction, rod position, power
+  const steam = t < T.test ? 0.12 : (t < T.rods ? lerp(0.12, 0.6, smooth(seg(t, T.test + 1.5, T.az))) : lerp(0.6, 1, seg(t, T.rods, T.boom)));
+  const ins = t < T.rods + 0.9 ? 0 : easeOut(seg(t, T.rods + 0.9, T.rods + 3.4)) * 0.36;                 // rods jam about a third of the way in
+  const pw = t < T.test ? 0.06 : (t < T.rods ? lerp(0.06, 0.17, smooth(seg(t, T.test + 2, T.rods))) : (t < T.surge ? lerp(0.17, 0.5, easeIn(seg(t, T.rods + 0.9, T.surge))) : lerp(0.5, 3.2, easeIn(seg(t, T.surge, T.boom)))));
+  for (const g of rods) { g.position.y = HC * 0.62 - ins * HC * 0.62 * 2.2; g.userData.tip.material.emissiveIntensity = ins > 0 ? 1.4 * smooth(seg(t, T.rods + 0.9, T.rods + 2.2)) * (0.8 + 0.2 * Math.sin(t * 14)) : 0; }
+  for (const f of fuels) { f.material.emissiveIntensity = 0.2 + pw * 1.3; f.material.emissive.set(pw > 1.2 ? 0xffe2b0 : 0xffa02a); }
+  for (const w of waters) { w.material.opacity = 0.6 - steam * 0.42; w.material.color.set(0x2f8fe6).lerp(new THREE.Color(0xd8ecff), steam * 0.8); }
+  for (const b of bubbles) { const u = b.userData, v = (u.ph + t * (0.25 + steam * 0.9)) % 1; b.visible = u.lim < steam * 1.15; b.position.set(u.x + u.dx * 0.5, -HC / 2 + 0.3 + v * (HC - 0.6), 0.36); b.scale.setScalar(0.7 + v * 1.1 + steam); }
+  heat.intensity = pw * 70; const sh = t >= T.surge ? easeIn(seg(t, T.surge, T.boom)) * 0.16 : 0;
+  rig.position.set(Math.sin(t * 61) * sh, Math.sin(t * 47) * sh, 0);
+  const k = t < T.test ? [[T.core, V(0, 3.5, 30), V(0, 2.2, 0), 50], [T.test, V(-2.5, 4.5, 27), V(0, 2.2, 0), 50]] : (t < T.az ? [[T.test, V(-2.5, 4.5, 27), V(0, 2.2, 0), 50], [T.az, V(2.5, 2.5, 24), V(0, 1.5, 0), 50]] : [[T.rods, V(2.5, 6.5, 25), V(0, 3.4, 0), 50], [T.surge, V(0, 1.5, 23), V(0, 0.6, 0), 50], [T.boom, V(0, 0.2, 19), V(0, -1.2, 0), 50]]);
+  camPath(k, t); renderer.toneMappingExposure = 1.0 + (t >= T.surge ? easeIn(seg(t, T.surge, T.boom)) * 0.9 : 0); postCore.render();
+  return { steam, ins, pw };
+}
+
+// =====================================================  ATOM
+const atom = new THREE.Scene(); atom.background = new THREE.Color(0x05070d); atom.add(stars(rng(21), 900, 300)); atom.add(new THREE.HemisphereLight(0xcfe0ff, 0x151520, 1.0)); const al = new THREE.DirectionalLight(0xffffff, 2.0); al.position.set(-6, 8, 10); atom.add(al);
+const nuc = new THREE.Group(); { const Rn = rng(131); for (let i = 0; i < 70; i++) { const v = V(Rn() - 0.5, Rn() - 0.5, Rn() - 0.5).normalize().multiplyScalar(Math.cbrt(Rn()) * 2.1); const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.62, 1), mat(i % 5 < 2 ? 0xe2574c : 0x8aa0c8, { roughness: 0.5 })); m.position.copy(v); m.userData.p = v.clone(); nuc.add(m); } atom.add(nuc); }
+const nGlow = new THREE.PointLight(0xb6ff5a, 0, 30); atom.add(nGlow);
+const alpha = new THREE.Group(); for (const [x, y, c] of [[-0.35, 0.3, 0xe2574c], [0.35, 0.3, 0x8aa0c8], [-0.35, -0.3, 0x8aa0c8], [0.35, -0.3, 0xe2574c]]) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 1), mat(c, { roughness: 0.5 })); m.position.set(x, y, 0); alpha.add(m); } atom.add(alpha);
+const beta = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 1), new THREE.MeshBasicMaterial({ color: 0x6fd0ff })); atom.add(beta);
+const gamma = new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 90 }, () => V(0, 0, 0))), new THREE.LineBasicMaterial({ color: 0xfff27a, transparent: true })); gamma.frustumCulled = false; atom.add(gamma);
+const trails = [new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), V(0, 0, 0)]), new THREE.LineBasicMaterial({ color: 0xff9a8a, transparent: true, opacity: 0.6 })), new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), V(0, 0, 0)]), new THREE.LineBasicMaterial({ color: 0x6fd0ff, transparent: true, opacity: 0.6 }))]; trails.forEach(l => { l.frustumCulled = false; atom.add(l); });
+const DIR = { a: V(-0.86, -0.5, 0.1).normalize(), b: V(0.8, 0.55, 0.2).normalize(), g: V(0.55, -0.83, 0.1).normalize() };
+let atomLab = '';
+function atomFrame(t) {
+  const u = t - T.atom; nuc.rotation.set(u * 0.25, u * 0.4, 0); for (const m of nuc.children) { const p = m.userData.p; m.position.set(p.x + Math.sin(t * 9 + p.y * 5) * 0.05, p.y + Math.sin(t * 8 + p.x * 5) * 0.05, p.z); }
+  nGlow.intensity = 8 + Math.sin(t * 6) * 3;
+  const ua = seg(u, 0.5, 2.3), ub = seg(u, 1.5, 2.9), ug = seg(u, 2.5, 3.6);
+  alpha.visible = ua > 0; alpha.position.copy(DIR.a).multiplyScalar(2 + easeOut(ua) * 3.3); alpha.rotation.z = u * 3; beta.visible = ub > 0; beta.position.copy(DIR.b).multiplyScalar(2 + easeOut(ub) * 3.6);
+  trails[0].geometry.setFromPoints([DIR.a.clone().multiplyScalar(2.2), alpha.position.clone()]); trails[0].visible = ua > 0; trails[1].geometry.setFromPoints([DIR.b.clone().multiplyScalar(2.2), beta.position.clone()]); trails[1].visible = ub > 0;
+  const gp = [], side = V(0.83, 0.55, 0).normalize(); for (let i = 0; i < 90; i++) { const s = i / 89 * ug * 7.5; gp.push(DIR.g.clone().multiplyScalar(2.2 + s).addScaledVector(side, Math.sin(s * 3.2 - t * 14) * 0.38)); } gamma.geometry.setFromPoints(gp); gamma.visible = ug > 0;
+  cam.up.set(0, 1, 0); cam.fov = 40; cam.position.set(0, 1.5, 30 - easeOut(seg(u, 0, 4)) * 4); cam.lookAt(V(0, -3.0, 0)); cam.updateProjectionMatrix(); renderer.toneMappingExposure = 1.1; postAtom.render();
+  const L = (v, a, name, sub) => { const [x, y] = proj(v, cam); return a > 0.3 ? `<div class="lab" style="left:${Math.round(x + 20)}px;top:${Math.round(y - 30)}px;opacity:${seg(a, 0.3, 0.5)}">${sub}<b>${name}</b></div>` : ''; };
+  atomLab = L(alpha.position.clone().add(V(-1.6, -1.5, 0)), ua, 'Alpha', '2 protons + 2 neutrons') + L(beta.position.clone().add(V(-2.6, 1.9, 0)), ub, 'Beta', 'a fast electron') + L(DIR.g.clone().multiplyScalar(2.2 + ug * 6.5).add(V(-3.2, -1.6, 0)), ug, 'Gamma', 'a burst of energy');
+}
+
+const postExt = makePost(renderer, ext, cam, { bloom: 0.75, bloomThreshold: 0.55, bloomRadius: 0.7 }), postRoom = makePost(renderer, room, cam, { bloom: 0.3, bloomThreshold: 0.8 }), postCore = makePost(renderer, core, cam, { bloom: 0.45, bloomThreshold: 0.82, bloomRadius: 0.6 }), postAtom = makePost(renderer, atom, cam, { bloom: 0.6, bloomThreshold: 0.6 });
+// =====================================================  OVERLAY
+const CAPS = [
+ [2.5, 4.9, 'April 26th, 1986.'], [4.9, 6.2, '1:23 a.m.'], [6.2, 8.6, "You're in the control room<br>of <em>Reactor Four</em>."], [8.6, 10.85, 'A safety test is about to begin.'],
+ [11.2, 12.4, 'Inside the reactor:'], [12.4, 15.6, '<em>uranium fuel</em>, cooled by water,<br>wrapped in graphite.'], [15.6, 19.0, 'Tonight, almost every<br>control rod has been <em>pulled out</em>.'],
+ [19.3, 21.5, 'The test starts.<br>The pumps slow down.'], [21.5, 23.8, 'Water in the core<br>flashes to <em>steam</em>.'], [23.8, 26.65, 'And in this design,<br><em>more steam means more power</em>.'],
+ [26.9, 29.6, '36 seconds in, the operators hit<br>the emergency shutdown.'], [29.6, 31.5, '<em>AZ-5.</em>'],
+ [31.8, 33.0, 'The rods drop.'], [33.0, 34.5, 'But their tips are <em>graphite</em>.'], [34.5, 36.3, 'For a moment, they speed<br>the reaction <em>up</em>.'],
+ [36.6, 39.6, 'Power surges to around<br><em>100 times</em> its design value.'], [39.6, 40.9, 'The fuel shatters.'], [40.9, 44.5, 'Steam blows the <em>1,000-tonne lid</em><br>off the reactor.'],
+ [44.9, 46.6, 'The core is open to the sky.'], [46.6, 48.2, 'Unstable atoms pour out.'], [48.2, 51.4, 'Each one breaks apart,<br>firing out <em>radiation</em>.'],
+ [51.7, 54.4, '<em>Iodine-131</em> halves<br>every 8 days.'], [54.4, 57.3, '<em>Caesium-137</em>,<br>every 30 years.'] ];
+const st2 = document.createElement('style'); st2.textContent = `.grid{position:absolute;left:90px;width:900px}.grid .h{font-weight:800;font-size:34px;letter-spacing:2px;text-transform:uppercase}.grid .h span{font-weight:600;color:#cfe0ff;letter-spacing:1px;font-size:27px;text-transform:none;margin-left:14px}.grid .d{display:grid;grid-template-columns:repeat(15,1fr);gap:13px;margin-top:20px}.grid i{display:block;width:100%;aspect-ratio:1;border-radius:50%}.grid .n{font-family:Lora,serif;font-size:40px;margin-top:16px}`; document.head.appendChild(st2);
+const ORD = (() => { const r = rng(4), a = Array.from({ length: 60 }, (_, i) => i); for (let i = 59; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; })();
+function gridHtml(top, name, sub, left, col, time) { let d = ''; for (let i = 0; i < 60; i++) { const on = ORD.indexOf(i) < left; d += `<i style="background:${on ? col : 'rgba(255,255,255,.09)'};box-shadow:${on ? '0 0 18px ' + col : 'none'}"></i>`; } return `<div class="grid" style="top:${top}px"><div class="h">${name}<span>${sub}</span></div><div class="d">${d}</div><div class="n">${time}</div></div>`; }
+const clockAt = (t) => { let s; if (t < T.test) s = 0; else if (t < T.az) s = 4 + seg(t, T.test, T.az) * 30; else if (t < T.az + 2.6) s = 34 + seg(t, T.az, T.az + 2.6) * 6; else if (t < T.boom) s = 40 + seg(t, T.az + 2.6, T.boom) * 7; else s = 47 + Math.min(11, (t - T.boom) * 2.2); return '01:23:' + String(Math.floor(s)).padStart(2, '0'); };
+function overlayFrame(t, cs) {
+  const ta = t < 2.4 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 2.05, 2.4)) : 0; O.set(O.title, '<em>Chernobyl.</em><br>Second by second.'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`;
+  const dark = (t >= T.core && t < T.az) || (t >= T.rods && t < T.boom) || t >= T.atom;
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = (t >= T.half ? 1420 : (dark ? 1400 : 1250)) + 'px';
+  O.show(O.chip, 0);
+  let ha = t < 2.5 || t >= T.atom ? 0 : seg(t, 2.5, 2.9), sub = '';
+  if (t < T.core) sub = 'Chernobyl nuclear power plant\nSoviet Ukraine'; else if (t < T.test) sub = 'RBMK-1000 reactor\nPower: 200 MW (6% of design)';
+  else if (t < T.rods) sub = `Reactor power: ${Math.round(lerp(200, 530, smooth(seg(t, T.test + 2, T.rods))))} MW ▲\nSteam in the core: ${Math.round(cs ? cs.steam * 100 : 60)}%`;
+  else if (t < T.surge) sub = 'Emergency shutdown: AZ-5 pressed\nControl rods moving';
+  else if (t < T.boom) sub = `Reactor power: ${Math.round(lerp(1, 100, easeIn(seg(t, T.surge, T.boom - 0.3))))}× design ▲▲\nRods jammed`;
+  else sub = 'Reactor 4 destroyed\nGraphite fire: 10 days';
+  O.hudSet('26 April 1986', clockAt(t), sub); O.show(O.hud, ha); O.hud.style.top = (dark ? 1195 : 880) + 'px';
+  let lab = '';
+  if (t >= T.core && t < T.test) { const L = (v, a, name, sub2, dx = 0) => { const [x, y] = proj(v, cam); return a > 0 ? `<div class="lab" style="left:${Math.round(x + dx)}px;top:${Math.round(y)}px;opacity:${a}">${sub2}<b>${name}</b></div>` : ''; };
+    lab = L(V(-CW * 4, 6.2, 1), seg(t, 12.4, 12.9), 'Uranium fuel', 'yellow rods') + L(V(-CW * 0.6, 8.4, 1), seg(t, 13.5, 14.0), 'Water', 'blue: cools the fuel') + L(V(CW * 1.2, 6.2, 1), seg(t, 14.5, 15.0), 'Graphite', 'grey: keeps the reaction going') + L(V(-CW * 4, 10.6, 1), seg(t, 16.0, 16.5), 'Control rods', 'black: the brakes. Almost all out'); }
+  if (t >= T.rods + 1.2 && t < T.surge) lab = `<div class="lab" style="left:64px;top:300px;opacity:${seg(t, T.rods + 1.2, T.rods + 1.7)}">Design flaw<b>Graphite tips enter first</b></div>`;
+  if (t >= T.atom && t < T.half) lab = atomLab;
+  if (t >= T.half && t < T.end) { const u = t - T.half, day = Math.min(64, Math.floor(u / 3 * 64 / 8) * 8), yr = u < 3 ? 0 : Math.min(90, Math.floor((u - 3) / 2.8 * 90 / 30) * 30);
+    lab = gridHtml(330, 'Iodine-131', 'half-life: 8 days', Math.round(60 * Math.pow(0.5, day / 8)), '#b6ff5a', u < 3 ? `Day ${day}` : 'Gone within months') + gridHtml(800, 'Caesium-137', 'half-life: 30 years', Math.round(60 * Math.pow(0.5, yr / 30)), '#ffb04a', u < 3 ? `Day ${day}: almost unchanged` : `Year ${1986 + yr}` + (yr ? ` · ${yr} years later` : '')); }
+  if (O.labels._h !== lab) { O.labels._h = lab; O.labels.innerHTML = lab; }
+  let fl = 0; for (const [a, d, k] of [[T.room, 0.3, 0.5], [T.core, 0.3, 0.5], [T.az, 0.3, 0.5], [T.rods, 0.3, 0.5], [T.boom, 1.1, 1.0], [T.after, 0.3, 0.5], [T.atom, 0.35, 0.6], [T.half, 0.3, 0.4]]) if (t >= a - 0.06 && t < a + d) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + d)) * k);
+  if (t >= T.surge && t < T.boom) fl = Math.max(fl, easeIn(seg(t, T.boom - 1.2, T.boom)));
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.tint.style.background = (t >= T.az && t < T.rods) || (t >= T.rods && t < T.boom) ? `rgba(255,30,10,${0.07 + 0.05 * Math.sin(t * 9)})` : 'none';
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { let cs = null;
+  if (t < T.room || (t >= T.boom && t < T.atom)) extFrame(t); else if (t < T.core || (t >= T.az && t < T.rods)) roomFrame(t); else if (t < T.boom) cs = coreFrame(t); else { if (t < T.half) atomFrame(t); else { nuc.visible = alpha.visible = beta.visible = gamma.visible = false; trails.forEach(l => l.visible = false); postAtom.render(); nuc.visible = true; } }
+  overlayFrame(t, cs); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>

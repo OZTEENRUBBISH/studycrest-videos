@@ -1,0 +1,6 @@
+generator/kokoro/
+generator/out/
+generator/silent/
+generator/sim/work/
+generator/timings/
+generator/wav/

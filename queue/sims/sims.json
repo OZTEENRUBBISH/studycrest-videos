@@ -1,0 +1,16 @@
+{
+ "note": "Finished simulation videos for TikTok @studycrest. See generator/README.md, 'Simulation videos'.",
+ "sims": [
+  {
+   "file": "sim-01-gravity.mp4",
+   "title": "What if gravity switched off for 5 seconds?",
+   "made": "2026-11-14",
+   "caption": "What if gravity switched off for 5 seconds? You wouldn't float. The whole planet would spring outward under your feet, and you'd feel nothing until gravity came back. 🌍\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #gravity #studytok #space",
+   "science": "Earth is in balance between gravity and internal pressure. Remove gravity and every layer (rock, sea, air) accelerates outward at the local g, so the ground keeps pushing on your feet as before. After 5 s: v = 9.81*5 = 49 m/s = 176 km/h, rise = 0.5*9.81*25 = 123 m. Pressure at the centre about 364 GPa = 3.6 million atm. When gravity returns the outward motion continues and the planet oscillates (radial mode period about 20 minutes).",
+   "sources": [
+    "https://scienceinsights.org/what-does-the-center-of-the-earth-look-like/",
+    "https://extension.wikiwand.com/en/High_pressure"
+   ]
+  }
+ ]
+}
