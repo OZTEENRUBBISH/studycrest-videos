@@ -66,6 +66,12 @@
    "kind": "sim",
    "due_at": "2026-11-17T06:00:00+11:00",
    "buffer_post_id": "6af9d025544d0574a927c4f4"
+  },
+  {
+   "file": "sim-07-hindenburg",
+   "kind": "sim",
+   "due_at": "2026-11-17T18:00:00+11:00",
+   "buffer_post_id": "6af9d27d544d0574a92889b2"
   }
  ]
 }
