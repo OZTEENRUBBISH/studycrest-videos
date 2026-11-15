@@ -1,0 +1,153 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// What if you stepped into space without a suit?  (outside a space station + a 1966 vacuum chamber)
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, mat, box, shadowAll, person, stars, globe, overlay, capAt, makePost, proj } from './common.js';
+const W = 1080, H = 1920, DUR = 50.4;
+const O = overlay(); O.show(O.chip, 0); { const st = document.createElement('style'); st.textContent = '#cap{padding:26px 0;background:radial-gradient(ellipse 60% 70% at center,rgba(3,5,14,.5) 0,rgba(3,5,14,.3) 55%,rgba(3,5,14,0) 100%)}'; document.head.appendChild(st); }
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.05, 4000);
+const R = rng(20261116), V = (x, y, z) => new THREE.Vector3(x, y, z);
+const T = { out: 3.0, gone: 4.5, myth: 6.1, breath: 10.2, boil: 14.8, swell: 21.2, black: 25.2, cham: 30.5, room: 31.9, air: 36.2, save: 38.8, fin: 43.2, end: 47.2 };
+// story clock: seconds in vacuum. Slow motion: 10 s pass between T.gone and T.black.
+const clockAt = (t) => t < T.gone ? 0 : (t < T.black ? (t - T.gone) / (T.black - T.gone) * 10 : (t < T.save ? 10 + (t - T.black) * 1.2 : lerp(48, 84, seg(t, T.save, T.fin - 0.4))));
+
+// =====================================================  ORBIT
+const sp = new THREE.Scene(); sp.background = new THREE.Color(0x02030a); sp.add(stars(rng(7), 3200, 2500));
+sp.add(new THREE.HemisphereLight(0x101a30, 0x6f9fe0, 1.0));
+const sun = new THREE.DirectionalLight(0xfff4e0, 2.3); sun.position.set(60, 55, 70); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 300 }); sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.04; sp.add(sun); sp.add(sun.target);
+const earth = globe(150, 30); earth.position.set(10, -166, -60); earth.rotation.set(1.2, 0, 0.35); sp.add(earth);
+const M = (c, o = {}) => mat(c, { metalness: 0.25, roughness: 0.6, ...o });
+const cyl = (r, len, col, axis) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 14), M(col)); if (axis === 'x') m.rotation.z = Math.PI / 2; if (axis === 'z') m.rotation.x = Math.PI / 2; m.castShadow = m.receiveShadow = true; return m; };
+const station = new THREE.Group(); sp.add(station);
+{ const WH = 0xe4e7ec, GR = 0xb9bec6;
+  station.add(cyl(2.2, 14, WH, 'x')); for (const x of [-7.2, 7.2]) { const c = cyl(1.6, 0.8, GR, 'x'); c.position.x = x; station.add(c); } for (const x of [-4.5, -1.5, 1.5, 4.5]) { const r = cyl(2.28, 0.25, GR, 'x'); r.position.x = x; station.add(r); }
+  const al = cyl(1.7, 7, WH, 'z'); al.position.z = 4.7; station.add(al); for (const z of [2.6, 5.4, 7.9]) { const r = cyl(1.78, 0.22, GR, 'z'); r.position.z = z; station.add(r); }
+  const back = cyl(1.9, 9, 0xd9dde3, 'z'); back.position.z = -6.6; station.add(back); const cap = cyl(1.2, 1.2, GR, 'z'); cap.position.z = -11.6; station.add(cap);
+  const lab = cyl(2.0, 10, WH, 'x'); lab.position.set(13, 0, 0); station.add(lab); const lab2 = cyl(2.0, 9, 0xd9dde3, 'x'); lab2.position.set(-12.6, 0, 0); station.add(lab2);
+  station.add(box(1.2, 1.8, 1.2, GR, 0, 2.9, 0)); station.add(box(64, 1.3, 1.3, 0x9aa1ab, 0, 4.2, 0, { metalness: 0.4, roughness: 0.5 }));
+  for (let x = -30; x <= 30; x += 4) station.add(box(0.18, 1.5, 1.5, 0x6d747e, x, 4.2, 0));
+  for (const sx of [-1, 1]) for (const k of [0, 1]) { const p = new THREE.Group(); p.add(box(7.4, 0.1, 19, 0x1c3f96, 0, 0, 0, { metalness: 0.6, roughness: 0.35, emissive: 0x0a1a4a, emissiveIntensity: 0.5 })); for (let z = -9; z <= 9; z += 2.25) p.add(box(7.5, 0.14, 0.12, 0xd8b85a, 0, 0, z)); p.add(box(0.14, 0.14, 19, 0xd8b85a, 0, 0, 0)); p.position.set(sx * (19 + k * 9), 4.2, 0); p.rotation.x = 0.5; station.add(p); }
+  for (const sx of [-1, 1]) { const r = box(5.5, 0.08, 3, 0xf4f4f4, sx * 6.5, 4.2, -3.2); r.rotation.x = -0.9; station.add(r); }
+  for (const a of [0.6, 2.5, -0.6]) station.add(box(0.07, 0.07, 5.2, 0xf2c94c, Math.cos(a) * 1.82, Math.sin(a) * 1.82, 5.0));
+  const dish = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.7, 12, 1, true), M(0xf0f0f0, { side: THREE.DoubleSide })); dish.position.set(-6, 6.4, 0); dish.rotation.z = 0.5; station.add(dish); station.add(box(0.12, 1.6, 0.12, 0x888888, -5.7, 5.4, 0));
+  for (let i = 0; i < 9; i++) { const w = new THREE.Mesh(new THREE.CircleGeometry(0.26, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.9, 1.0), toneMapped: false })); w.position.set(-16 + i * 4, 0.5, i % 3 === 1 ? 2.02 : 2.215); if (Math.abs(-16 + i * 4) < 2) continue; station.add(w); }
+  shadowAll(station); }
+const hatchRim = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.14, 8, 24), M(0x8c929c)); hatchRim.position.z = 8.22; station.add(hatchRim);
+const hatchIn = new THREE.Mesh(new THREE.CircleGeometry(1.2, 24), new THREE.MeshBasicMaterial({ color: 0x06080c })); hatchIn.position.z = 8.21; station.add(hatchIn);
+const hatchL = new THREE.PointLight(0xffd9a0, 0, 30, 1.5); hatchL.position.set(0, 0, 9.4); sp.add(hatchL);
+// people
+const SUITC = { skin: 0xf3f3f3, shirt: 0xf3f3f3, pants: 0xe6e6e6, hair: 0xf3f3f3, sleeve: 0xf3f3f3, shorts: false, shoe: 0xbfc4cc };
+function helmet() { const g = new THREE.Group(); g.add(box(0.42, 0.42, 0.42, 0xf3f3f3)); const v = box(0.32, 0.24, 0.03, 0xd9a520, 0, 0.01, 0.215, { metalness: 0.9, roughness: 0.2 }); g.add(v); g.add(box(0.46, 0.08, 0.46, 0xbfc4cc, 0, -0.22, 0)); return shadowAll(g); }
+function suited(Rr) { const p = person(Rr, 'float', SUITC), h = helmet(); h.position.set(0, 0.84, 0); p.userData.hips.add(h); p.userData.hips.add(box(0.5, 0.62, 0.26, 0xdfe2e7, 0, 0.36, -0.26)); p.userData.hips.add(box(0.2, 0.14, 0.03, 0x2f56d6, 0, 0.42, 0.135)); return shadowAll(p); }
+const FL = 0xf2853a; const hero = person(rng(5), 'float', { skin: 0xe0ac7e, shirt: FL, pants: FL, sleeve: FL, shorts: false, hair: 0x2b1b12, shoe: 0x333333 }); hero.scale.setScalar(1); sp.add(hero);
+const mouth = box(0.1, 0.03, 0.02, 0x3a1410, 0, 0.725, 0.132); mouth.castShadow = false; hero.userData.hips.add(mouth); hero.userData.hips.add(box(0.2, 0.1, 0.02, 0x2f56d6, -0.1, 0.45, 0.135));
+const lostHelmet = helmet(); lostHelmet.scale.setScalar(1.15); sp.add(lostHelmet);
+const glove = box(0.2, 0.26, 0.2, 0xf3f3f3); sp.add(glove);
+const rescuer = suited(rng(9)); sp.add(rescuer); const tether = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, 1), new THREE.MeshBasicMaterial({ color: 0xf2c94c })); sp.add(tether);
+const puffM = (o) => new THREE.MeshBasicMaterial({ color: 0xdfefff, transparent: true, opacity: o, depthWrite: false });
+const puffs = []; for (let i = 0; i < 22; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), puffM(0.4)); sp.add(m); puffs.push(m); }
+const bubs = []; for (let i = 0; i < 16; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0xe6f4ff, transparent: true, opacity: 0.9 })); sp.add(m); bubs.push(m); }
+const H0 = V(3.0, 1.0, 13.0), HATCH = V(0, 0, 8.6);
+const heroPos = (t) => { const p = H0.clone().add(V(0.25 * Math.sin(t * 0.3), 0.2 * Math.sin(t * 0.23 + 1), 0.03 * t)); if (t >= T.save) p.lerp(HATCH.clone().add(V(0.2, 0, 0.6)), easeIO(seg(t, T.save + 1.1, T.fin - 0.5))); return p; };
+const headW = () => hero.userData.hips.localToWorld(V(0, 0.8, 0)), mouthW = () => hero.userData.hips.localToWorld(V(0, 0.725, 0.15));
+
+// =====================================================  VACUUM CHAMBER, 1966
+const ch = new THREE.Scene(); ch.background = new THREE.Color(0x0b0d10); ch.fog = new THREE.Fog(0x0b0d10, 14, 40);
+const chHemi = new THREE.HemisphereLight(0xcfe0ea, 0x39414a, 0.9); ch.add(chHemi); const chKey = new THREE.SpotLight(0xfff2dc, 150, 40, 0.75, 0.6, 1.4); chKey.position.set(2, 8.6, 5); chKey.castShadow = true; chKey.shadow.mapSize.set(2048, 2048); ch.add(chKey); ch.add(chKey.target); chKey.target.position.set(0, 0.8, 0);
+const alarm = new THREE.PointLight(0xff3020, 0, 30, 1.4); alarm.position.set(-3.5, 6.2, -3); ch.add(alarm);
+{ const wall = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 10, 28, 1, true), new THREE.MeshLambertMaterial({ color: 0x8e9c98, side: THREE.BackSide, flatShading: true })); wall.position.y = 5; wall.receiveShadow = true; ch.add(wall);
+  const fl = new THREE.Mesh(new THREE.CircleGeometry(8, 28).rotateX(-Math.PI / 2), mat(0x5f666b)); fl.receiveShadow = true; ch.add(fl); const ce = new THREE.Mesh(new THREE.CircleGeometry(8, 28).rotateX(Math.PI / 2), mat(0x6f7a78)); ce.position.y = 10; ch.add(ce);
+  for (const y of [0.3, 3.4, 6.6, 9.7]) { const r = new THREE.Mesh(new THREE.TorusGeometry(7.9, 0.22, 6, 40).rotateX(Math.PI / 2), mat(0x6b7775)); r.position.y = y; ch.add(r); }
+  for (let i = 0; i < 14; i++) { const a = i / 14 * 6.283; const s = box(0.35, 10, 0.35, 0x717d7b, Math.cos(a) * 7.8, 5, Math.sin(a) * 7.8); s.rotation.y = -a; ch.add(s); }
+  const door = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.5, 24).rotateX(Math.PI / 2), mat(0x9aa6a3)); door.position.set(0, 3.2, -7.7); ch.add(door); const dr = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.25, 8, 28), mat(0x596462)); dr.position.set(0, 3.2, -7.45); ch.add(dr); for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; ch.add(box(0.22, 0.22, 0.3, 0x3f4745, Math.cos(a) * 2.3, 3.2 + Math.sin(a) * 2.3, -7.4)); } ch.add(box(1.6, 0.2, 0.3, 0x3f4745, 0, 3.2, -7.3)); ch.add(box(0.2, 1.6, 0.3, 0x3f4745, 0, 3.2, -7.3));
+  const win = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.6), new THREE.MeshBasicMaterial({ color: 0x9fd0e0 })); win.position.set(-5.3, 3.4, -5.6); win.rotation.y = 0.76; ch.add(win); const wf = box(3.9, 2.1, 0.2, 0x3f4745, -5.42, 3.4, -5.72); wf.rotation.y = 0.76; ch.add(wf);
+  for (const [x, z, h] of [[4.6, -4.4, 3.2], [5.6, -2.6, 2.4], [-5.6, -1.2, 2.8]]) { const r = box(1.5, h, 1.1, 0x4c5a66, x, h / 2, z); r.rotation.y = Math.atan2(x, z); ch.add(r); for (let k = 0; k < 3; k++) { const d = new THREE.Mesh(new THREE.CircleGeometry(0.2, 12), new THREE.MeshBasicMaterial({ color: 0xf2f2e6 })); d.position.set(x * 0.87, h - 0.45 - k * 0.55, z * 0.87); d.lookAt(0, h - 0.45 - k * 0.55, 0); ch.add(d); } }
+  for (const x of [-2.2, 2.2]) ch.add(box(0.25, 2.2, 0.25, 0x7b8480, x, 1.1, -1.6)); ch.add(box(4.7, 0.2, 0.25, 0x7b8480, 0, 2.2, -1.6)); ch.add(box(3.4, 0.12, 2.2, 0x4a5258, 0, 0.06, 0.2)); }
+const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), new THREE.MeshBasicMaterial({ color: 0x551008 })); beacon.position.copy(alarm.position); ch.add(beacon);
+const tech = suited(rng(21)); tech.userData.pose(0, 'stand'); const techPivot = new THREE.Group(); techPivot.add(tech); ch.add(techPivot); techPivot.position.set(0, 0.12, 0.4);
+const hose = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 1), mat(0x2a2a2a)); ch.add(hose);
+const mist = []; for (let i = 0; i < 26; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), puffM(0.3)); ch.add(m); mist.push(m); }
+
+const postS = makePost(renderer, sp, cam, { ao: false, bloom: 0.5, bloomThreshold: 0.8, bloomRadius: 0.7, sat: 1.14, con: 1.08 }), postC = makePost(renderer, ch, cam, { ao: false, bloom: 0.3, bloomThreshold: 0.9, bloomRadius: 0.6, sat: 1.0, con: 1.08, warm: 0.02 });
+const CAPS = /*CAPS*/[[3.0, 4.51, "You're outside<br>the space station."], [4.53, 5.55, "And your suit<br>is <em>gone</em>."], [6.1, 7.11, "You don't <em>explode</em>."], [7.13, 8.09, "And you don't <em>freeze</em>."], [8.11, 9.48, "A vacuum is<br>an insulator."], [10.2, 11.58, "First rule:<br><em>breathe out</em>."], [11.6, 12.46, "Hold your breath,"], [12.48, 14.33, "and the expanding air<br>tears your lungs."], [14.8, 16.92, "The saliva on your tongue<br>starts to <em>boil</em>."], [16.94, 17.79, "Not from heat."], [17.81, 18.82, "With no pressure,"], [18.84, 20.7, "water boils at<br><em>body temperature</em>."], [21.2, 22.14, "Your body swells,"], [22.16, 23.39, "up to <em>twice</em> its size."], [23.41, 24.46, "But your skin holds."], [25.2, 27.29, "After about <em>ten seconds</em>,<br>you black out."], [27.31, 29.97, "The blood reaching your brain<br>carries no oxygen."], [30.5, 31.38, "But you're <em>not dead</em>."], [31.4, 35.02, "In 1966, this happened<br>to a NASA technician"], [35.04, 36.13, "in a vacuum chamber."], [36.15, 37.31, "The air rushed back in,"], [37.33, 38.21, "and he <em>recovered</em>."], [38.8, 41.25, "Get back inside within<br>about <em>ninety seconds</em>,"], [41.27, 42.62, "and you would<br>probably live."], [43.2, 45.26, "Space doesn't crush you,<br>or freeze you."], [45.28, 46.61, "It just takes<br>the <em>air</em> away."]]/*END*/;
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const inRoom = (t) => t >= T.room && t < T.save;
+const hr = (i, k) => { const s = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return s - Math.floor(s); };
+function spaceFrame(t) {
+  earth.userData.mesh.rotation.y = 1.9 + t * 0.006;
+  const out = t >= T.black, saved = t >= T.fin, hp = heroPos(t), ph = out ? T.black * 1.3 + (t - T.black) * 0.22 : t * 1.3;
+  hero.visible = !saved; hero.position.copy(hp); hero.userData.pose(ph, 'float'); hero.rotation.set(0.12 * Math.sin(t * 0.21), 0.35 + 0.25 * Math.sin(t * 0.17), 0.18 * Math.sin(t * 0.19) + 0.12);
+  if (out) { const u = hero.userData, k = smooth(seg(t, T.black, T.black + 1.2)); u.aL.rotation.x = lerp(u.aL.rotation.x, -0.5, k); u.aR.rotation.x = lerp(u.aR.rotation.x, -0.3, k); hero.userData.hips.rotation.x = 0.25 * k; }
+  const sw = smooth(seg(t, T.swell + 0.3, T.swell + 2.6)); hero.userData.hips.scale.set(1 + 0.26 * sw, 1 + 0.06 * sw, 1 + 0.3 * sw);
+  mouth.scale.y = t >= T.breath + 0.7 && t < T.black ? 2.6 : 1;
+  // helmet and glove drift away once the suit is "gone"
+  const g = Math.max(0, t - T.out + 2.2); lostHelmet.visible = glove.visible = t < T.black && t >= T.out; lostHelmet.position.set(1.3 - g * 0.42, 2.0 + g * 0.2, 13.4 - g * 0.5); lostHelmet.rotation.set(g * 0.5, g * 0.7, g * 0.2); glove.position.set(4.6 + g * 0.3, 0.2 - g * 0.12, 13.5 - g * 0.3); glove.rotation.set(g, g * 0.6, 0);
+  // breath
+  const hw = headW(), mw = mouthW(), fw = V(0, 0, 1).applyQuaternion(hero.getWorldQuaternion(new THREE.Quaternion()));
+  puffs.forEach((m, i) => { const age = t - (T.breath + 0.8) - i * 0.07, on = age > 0 && age < 2.6 && t < T.boil + 1; m.visible = on; if (on) { m.position.copy(mw).addScaledVector(fw, 0.1 + age * (0.5 + hr(i, 1) * 0.5)).add(V((hr(i, 2) - 0.5) * age * 0.5, (hr(i, 3) - 0.3) * age * 0.4, 0)); m.scale.setScalar(0.025 + age * (0.045 + hr(i, 4) * 0.04)); m.material.opacity = 0.42 * (1 - age / 2.6); } });
+  // boiling saliva
+  bubs.forEach((m, i) => { const on = t >= T.boil + 0.5 && t < T.black + 0.4; m.visible = on; if (on) { const a = (t * (0.9 + hr(i, 5) * 0.8) + hr(i, 6)) % 1; m.position.copy(mw).add(V((hr(i, 7) - 0.5) * 0.11, -0.012 + a * 0.05 + (hr(i, 8) - 0.5) * 0.02, -0.01)).addScaledVector(fw, a * 0.07); m.scale.setScalar(0.004 + 0.008 * Math.sin(a * Math.PI)); m.material.opacity = 0.9 * Math.sin(a * Math.PI); } });
+  // rescue
+  const rs = t >= T.save - 0.01 && !saved; rescuer.visible = tether.visible = rs; hatchIn.material.color.set(t >= T.save - 2 && !saved ? 0xd9a35c : 0x06080c); hatchL.intensity = rs ? 5 : 0;
+  if (rs) { const a = hp.clone().add(V(-0.15, 0.25, -1.05)); rescuer.position.copy(a); rescuer.rotation.set(0.1, 0.5, -0.1); rescuer.userData.pose(t * 1.1, 'float'); rescuer.userData.aR.rotation.x = -1.5; rescuer.userData.aR.rotation.z = 0.2; rescuer.userData.aL.rotation.x = -1.2;
+    const b = HATCH.clone().add(V(0, 0, -0.5)), c = a.clone().add(V(0, 0.9, 0)), d = c.distanceTo(b); tether.scale.z = d; tether.position.copy(c).lerp(b, 0.5); tether.lookAt(b); }
+  // camera
+  const hl = hp.clone().add(V(0, 0.85, 0));
+  if (t < T.out) camPath([[0, V(44, 22, 74), V(0, -4, 0), 50], [T.out, V(30, 14, 54), V(0, -3, 2), 50]], t);
+  else if (t < T.myth) camPath([[T.out, V(6.4, 1.3, 20.4), hl, 52], [T.myth, V(5.6, 1.5, 19.2), hl, 50]], t);
+  else if (t < T.breath) camPath([[T.myth, V(7.6, 0.2, 18.4), hl.clone().add(V(0, -0.75, 0)), 46], [T.breath, V(6.8, 0.5, 18.9), hl.clone().add(V(0, -0.75, 0)), 46]], t);
+  else if (t < T.boil) camPath([[T.breath, V(5.4, 1.5, 19.6), hl.clone().add(V(-0.3, -0.6, 0)), 42], [T.boil, V(5.0, 1.6, 19.0), hl.clone().add(V(-0.3, -0.6, 0)), 40]], t);
+  else if (t < T.swell) camPath([[T.boil, hw.clone().add(V(0.55, 0.02, 1.75)), hw.clone().add(V(0.0, -0.28, 0)), 34], [T.swell, hw.clone().add(V(0.4, 0.0, 1.5)), hw.clone().add(V(0, -0.28, 0)), 33]], t);
+  else if (t < T.black) camPath([[T.swell, V(6.4, 1.0, 19.4), hl.clone().add(V(0, -0.55, 0)), 46], [T.black, V(6.0, 1.2, 18.9), hl.clone().add(V(0, -0.55, 0)), 45]], t);
+  else if (t < T.save) camPath([[T.black, V(6.4, 1.6, 19.5), hl.clone().add(V(0, -1.0, 0)), 46], [T.room, V(9.5, 2.6, 24), hl.clone().add(V(0, -1.6, 0)), 46]], t);
+  else if (!saved) { cam.position.copy(hp).add(V(6.2, 1.2, 3.4)); cam.fov = 50; cam.up.set(0, 1, 0); cam.lookAt(hp.clone().add(V(-0.2, 0.25, -0.9))); cam.updateProjectionMatrix(); }
+  else camPath([[T.fin, V(34, 16, 60), V(0, -6, 0), 50], [T.end + 3.2, V(48, 24, 84), V(0, -8, 0), 50]], t);
+  sun.target.position.set(0, 0, 6); renderer.toneMappingExposure = 1.05; postS.render();
+}
+function roomFrame(t) {
+  const fall = easeIO(seg(t, T.room + 0.5, T.room + 1.7)), air = t >= T.air, up = easeIO(seg(t, T.air + 1.0, T.air + 2.3));
+  techPivot.rotation.x = -1.5 * fall * (1 - up * 0.35); tech.userData.pose(0, 'stand'); tech.userData.aL.rotation.x = tech.userData.aR.rotation.x = -0.6 * fall; if (up > 0) { tech.userData.lL.rotation.x = tech.userData.lR.rotation.x = -0.9 * up; }
+  const al = t >= T.room + 0.4 && !air; alarm.intensity = al ? 90 * (0.55 + 0.45 * Math.sin(t * 9)) : 0; beacon.material.color.set(al ? 0xff3a20 : 0x551008); chHemi.intensity = air ? 1.25 : (al ? 0.55 : 0.9); chKey.intensity = air ? 200 : 150;
+  const a = V(0.2, 1.3, 0.4).applyAxisAngle(V(1, 0, 0), techPivot.rotation.x).add(techPivot.position).add(V(0.5, 0, 0)), b = V(2.2, 2.2, -1.6), d = a.distanceTo(b); hose.scale.z = d; hose.position.copy(a).lerp(b, 0.5); hose.lookAt(b);
+  mist.forEach((m, i) => { const age = t - T.air - hr(i, 1) * 0.7, on = age > 0 && age < 2.2; m.visible = on; if (on) { const an = hr(i, 2) * 6.283; m.position.set(Math.cos(an) * (7 - age * (2 + hr(i, 3) * 2.4)), 7.5 - age * (1.4 + hr(i, 4)), Math.sin(an) * (7 - age * (2 + hr(i, 5) * 2.4))); m.scale.setScalar(0.3 + age * 0.9); m.material.opacity = 0.34 * Math.sin(Math.PI * age / 2.2); } });
+  camPath([[T.room, V(2.6, 2.3, 5.4), V(-0.2, 0.4, -0.8), 56], [T.save, V(1.6, 2.0, 4.8), V(-0.2, 0.3, -0.8), 54]], t);
+  renderer.toneMappingExposure = 1.0; postC.render();
+}
+function overlayFrame(t) {
+  const room = inRoom(t), c = clockAt(t);
+  const ta = t < 2.9 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 2.5, 2.9)) : 0; O.set(O.title, 'What if you stepped<br>into <em>space</em><br>without a suit?'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`;
+  const [chh, ca] = capAt(CAPS, t); if (chh) O.set(O.cap, chh); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  let ha = 1; const tv = c.toFixed(1) + ' s';
+  if (t < T.out + 0.2) ha = 0;
+  else if (t < T.gone) { O.hudSet('Low Earth orbit', '400 km up', 'Outside pressure: almost zero\nNot to scale'); ha = seg(t, T.out + 0.2, T.out + 0.6); }
+  else if (t < T.myth) O.hudSet('Time in vacuum', tv, 'Slow motion');
+  else if (t < T.breath) O.hudSet('Time in vacuum', tv, 'No air to carry your heat away\nYou cool slowly, by radiation');
+  else if (t < T.boil) O.hudSet('Time in vacuum', tv, 'Air in the lungs expands\nBreathe out · never hold it in');
+  else if (t < T.swell) O.hudSet('Time in vacuum', tv, 'Below about 6 kPa, water boils\nat 37 °C · the Armstrong limit');
+  else if (t < T.black) O.hudSet('Time in vacuum', tv, 'Swelling: up to about twice\nnormal volume · skin holds');
+  else if (t < T.room) O.hudSet('Time in vacuum', '10 s', 'Unconscious · still alive');
+  else if (t < T.air) O.hudSet('NASA vacuum chamber', '1966', 'Suit leak during a test\nOut cold in about 15 seconds');
+  else if (t < T.save) O.hudSet('NASA vacuum chamber', 'Air back in', 'Technician Jim LeBlanc\nmade a full recovery');
+  else if (t < T.fin) O.hudSet('Time in vacuum', Math.round(c) + ' s', 'Back under pressure within\nabout 90 s: likely to survive');
+  else if (t < T.end) { O.hudSet('In a vacuum', 'No air', 'Not crushed · not flash-frozen\nabout 10 s of consciousness'); ha = seg(t, T.fin + 0.2, T.fin + 0.6); }
+  else ha = 1 - seg(t, T.end, T.end + 0.3);
+  O.hud.style.background = 'rgba(6,10,26,.42)'; O.hud.style.boxShadow = '0 0 0 14px rgba(6,10,26,.42)'; O.hud.style.borderRadius = '4px'; O.show(O.hud, ha); O.hud.style.top = '850px';
+  let h = ''; const L = (x, y, a, small, big, col) => a > 0.01 ? `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${a}${col ? ';color:' + col : ''}">${small}${big ? '<b style="font-size:40px">' + big + '</b>' : ''}</div>` : '';
+  if (!room) {
+    if (t >= T.myth && t < T.breath) h += L(64, 300, Math.min(seg(t, T.myth + 0.2, T.myth + 0.6), 1 - seg(t, T.breath - 0.3, T.breath)), 'Film myth', 'No explosion · no instant ice', '#ffd98a');
+    if (false) h += L(64, 300, Math.min(seg(t, T.boil + 0.4, T.boil + 0.8), 1 - seg(t, T.swell - 0.3, T.swell)), 'Low pressure, not heat', 'Saliva boils at 37 °C', '#bcd4ff');
+    if (t >= T.black && t < T.room) h += L(64, 300, Math.min(seg(t, T.black + 0.3, T.black + 0.7), 1 - seg(t, T.room - 0.3, T.room)), 'About 10 seconds in', 'You black out', '#ffd98a');
+    if (t >= T.save && t < T.fin) h += L(64, 300, Math.min(seg(t, T.save + 0.3, T.save + 0.7), 1 - seg(t, T.fin - 0.3, T.fin)), 'From animal tests and accidents', 'About 90 seconds to act', '#bcd4ff'); }
+  if (O.labels._h !== h) { O.labels._h = h; O.labels.innerHTML = h; }
+  let fl = 0; for (const [a, dd, k] of [[T.out, 0.3, 0.6], [T.boil, 0.25, 0.4], [T.room, 0.4, 0.8], [T.air, 0.5, 0.7], [T.save, 0.4, 0.8], [T.fin, 0.5, 0.8]]) if (t >= a - 0.06 && t < a + dd) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + dd)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  const bl = t >= T.black && t < T.room ? smooth(seg(t, T.black + 0.6, T.room - 0.2)) : 0, r1 = lerp(75, 14, bl);
+  O.tint.style.background = bl > 0 ? `radial-gradient(circle at 50% 46%,rgba(0,0,0,0) ${r1}%,rgba(0,0,0,${0.5 + 0.45 * bl}) ${r1 + 26}%)` : 'none';
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { if (inRoom(t)) roomFrame(t); else spaceFrame(t); overlayFrame(t); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>

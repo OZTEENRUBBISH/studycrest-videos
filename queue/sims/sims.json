@@ -63,6 +63,19 @@
     "https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html",
     "https://space.com/33527-how-fast-is-earth-moving.html"
    ]
+  },
+  {
+   "file": "sim-06-space.mp4",
+   "title": "What if you stepped into space without a suit?",
+   "made": "2026-11-16",
+   "caption": "What if you stepped into space without a suit? You wouldn't explode or freeze solid. You'd have about 10 seconds awake, and around 90 seconds to be rescued. 🧑‍🚀\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #space #astronaut #studytok",
+   "science": "Sudden exposure to vacuum. Useful consciousness about 10 s (sources give 9-12 s and 10-15 s). Never hold the breath: air in the lungs expands and can rupture them. Water boils at body temperature (37 C) below 47 mmHg = 6.27 kPa, the Armstrong limit (about 63,000 ft = 19.2 km); Jim LeBlanc, whose suit lost pressure in a NASA vacuum chamber, reported the saliva on his tongue bubbling before he passed out (three sources give 1966, one 1965; unconscious in about 14-15 s; recovered with no lasting harm). Body swells to perhaps twice its normal volume (2x volume = 1.26x linear, as drawn); skin holds, no explosion. No instant freezing: no medium to conduct heat; computed radiative loss 0.98*5.67e-8*1.8 m2*306 K^4 = about 880 W, which cools a 70 kg body by about 0.2 C a minute at most. Recompression within about 60-90 s usually allows survival (animal experiments and accidents); death likely after about 2 minutes. Not stated in the film because sources disagree: whether blood itself boils. Station and Earth are not to scale; the 10 s are shown in slow motion.",
+   "sources": [
+    "https://aerospaceweb.org/question/atmosphere/q0291.shtml",
+    "https://www.livescience.com/human-body-no-spacesuit",
+    "https://oikofuge.com/human-exposure-to-vacuum-part-2/",
+    "https://engines.egr.uh.edu/episode/2691"
+   ]
   }
  ]
 }
