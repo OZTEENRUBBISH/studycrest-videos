@@ -93,6 +93,23 @@ Owner's instructions, 14 Nov 2026. Four videos a day (three simulations, one Stu
   simulation every day", then 5 to 7 hashtags (#whatif #simulation #science #physics #studytok plus topic tags).
   No offer wording in the caption: the offer is already in the corner of the video.
 
+## Covers (every TikTok video must have one)
+
+Owner's instruction, 15 Nov 2026: no video may show as a blank or random tile on the profile, and covers must look
+professional; they do not have to be a screenshot of the video. TikTok uses a frame of the video as the cover, so
+the cover is baked in as the first 0.3 seconds and that is the file that gets scheduled.
+
+- Simulations: `cd generator/sim && python3 cover.py make <page> <t> ../../queue/tiktok/covers/<file>.jpg "<KICKER>"
+  "<title with *accent words* and | line breaks>"`. `<t>` is the most striking moment of the film (it is filmed
+  clean, without captions or HUD). Kicker is "WHAT IF…" or the date and time of a real event. Title: the hook in 3 to
+  4 short lines, the key words in `*yellow*`. LOOK at the cover: title readable at thumbnail size, nothing cut off,
+  the middle of the frame (y 420 to 1400) holds everything because the profile grid crops top and bottom.
+- Ads: use the reel's designed cover in `queue/covers/<file>.jpg` (make it first if missing).
+- Bake: `python3 cover.py bake <video.mp4> <cover.jpg> ../../queue/tiktok/<file>.mp4`, check the first frames of the
+  result show the cover, commit and push.
+- Schedule `queue/tiktok/<file>.mp4` (never the file in `queue/sims` or `queue/reels`) and pass
+  `metadata.thumbnailOffset: 100` on the video asset.
+
 ## Simulation videos (`sim/`)
 
 Low-poly 3D "what if" and "second by second" simulations, 45 to 60 seconds, 1080x1920, 30 fps, narrated. Finished

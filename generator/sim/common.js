@@ -170,7 +170,7 @@ export function overlay() {
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   const stage = document.getElementById('stage');
   const add = (id, html = '', cls = 'ov') => { const d = document.createElement('div'); d.id = id; if (cls) d.className = cls; d.innerHTML = html; stage.appendChild(d); return d; };
-  const o = { stage };
+  const o = { stage }; if (new URLSearchParams(location.search).get('clean') === '1') { const cs = document.createElement('style'); cs.textContent = '#stage > div{display:none !important}'; document.head.appendChild(cs); }
   o.tint = add('tint'); o.vig = add('vig'); o.flash = add('flash'); o.glitch = add('glitch');
   o.labels = add('labels');
   o.title = add('title', '', ''); o.chip = add('chip', '<span></span>', ''); o.hud = add('hud', '<div class="l"></div><div class="v"></div><div class="s"></div>', ''); o.cap = add('cap', '', '');
