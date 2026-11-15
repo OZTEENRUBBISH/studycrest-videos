@@ -1,0 +1,150 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// Hindenburg, second by second  (Lakehurst, New Jersey, 6 May 1937). 1 unit = 1 metre.
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, mat, box, shadowAll, person, skyDome, overlay, capAt, makePost, proj } from './common.js';
+const W = 1080, H = 1920, DUR = 55.4;
+const O = overlay(); O.show(O.chip, 0); { const st = document.createElement('style'); st.textContent = '#cap{padding:26px 0;background:radial-gradient(ellipse 60% 70% at center,rgba(3,5,14,.5) 0,rgba(3,5,14,.3) 55%,rgba(3,5,14,0) 100%)}'; document.head.appendChild(st); }
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1); renderer.localClippingEnabled = true;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.3, 6000);
+const R = rng(19370506), V = (x, y, z) => new THREE.Vector3(x, y, z), C = (h) => new THREE.Color(h);
+const T = { in: 2.5, cut: 12.4, rope: 14.9, fire: 18.2, spread: 21.2, ground: 29.4, count: 33.6, why: 40.4, cause: 44.9, age: 49.6, end: 52.2 };
+// story seconds since the first flame (negative = before)
+const sAt = (t) => t < T.fire ? -1 : t < T.spread ? lerp(0, 3, seg(t, T.fire, T.spread)) : t < T.ground ? lerp(3, 31, seg(t, T.spread, T.ground)) : t < T.count ? lerp(31, 38, seg(t, T.ground, T.count)) : t < T.why ? lerp(38, 62, seg(t, T.count, T.why)) : t < T.cause ? lerp(14.5, 18.5, seg(t, T.why, T.cause)) : t < T.age ? -1 : 120 + (t - T.age) * 3;
+
+// =====================================================  WORLD
+const sc = new THREE.Scene(); sc.fog = new THREE.Fog(0x6f7486, 500, 2600);
+sc.add(skyDome(0x2b3350, 0x7d7f93, 0xd49a6e)); const hemi = new THREE.HemisphereLight(0xa9b4d6, 0x8a8468, 1.5); sc.add(hemi);
+const sun = new THREE.DirectionalLight(0xffc9a0, 1.5); sun.position.set(-320, 190, 260); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); Object.assign(sun.shadow.camera, { left: -340, right: 340, top: 340, bottom: -340, near: 1, far: 1200 }); sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.3; sc.add(sun); sc.add(sun.target);
+const fireL = new THREE.PointLight(0xff8a30, 0, 0, 0); sc.add(fireL);
+{ const g = new THREE.PlaneGeometry(5000, 5000, 120, 120); g.rotateX(-Math.PI / 2); const p = g.attributes.position, col = new Float32Array(p.count * 3), c = new THREE.Color();
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), n = fbm(x * 0.004, 2, z * 0.004, 3), n2 = fbm(x * 0.03, 5, z * 0.03, 2); c.set(0x66754a).lerp(C(0x8a8658), clamp(n * 1.8 - 0.5)).lerp(C(0x556b44), clamp(n2 * 1.4 - 0.3)); if (Math.hypot(x - 215, z) < 95) c.lerp(C(0xa89f7c), 0.75); col.set([c.r, c.g, c.b], i * 3); }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3)); const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })); m.receiveShadow = true; sc.add(m); }
+// mooring mast
+{ const g = new THREE.Group(); for (const [x, z] of [[-4, -4], [4, -4], [-4, 4], [4, 4]]) { const l = box(0.7, 24, 0.7, 0x3a3f47, x * 0.6, 12, z * 0.6); l.rotation.z = -x * 0.022; l.rotation.x = z * 0.022; g.add(l); } for (let y = 3; y < 24; y += 4) g.add(box(5.4 - y * 0.12, 0.4, 5.4 - y * 0.12, 0x4a505a, 0, y, 0)); g.add(box(2.2, 2.4, 2.2, 0xb9bec6, 0, 25, 0)); const l = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.5, 0.3), toneMapped: false })); l.position.y = 27; g.add(l); g.position.set(215, 0, 0); sc.add(shadowAll(g)); }
+// hangar, sheds, tree line, vehicles
+{ const hg = new THREE.Group(), roof = new THREE.Mesh(new THREE.CylinderGeometry(42, 42, 294, 18, 1, false, 0, Math.PI), mat(0x8d9096)); roof.rotation.z = Math.PI / 2; roof.rotation.y = Math.PI / 2; roof.scale.set(1, 1, 1.0); roof.position.y = 26; hg.add(roof); hg.add(box(294, 26, 84, 0x9a9da3, 0, 13, 0)); for (const sx of [-1, 1]) { hg.add(box(6, 62, 30, 0x7c8087, sx * 150, 31, -30)); hg.add(box(6, 62, 30, 0x7c8087, sx * 150, 31, 30)); } for (let x = -130; x <= 130; x += 20) hg.add(box(8, 10, 0.6, 0x2c3340, x, 14, 42.2)); hg.position.set(-330, 0, -520); hg.rotation.y = 0.25; sc.add(shadowAll(hg));
+  for (let i = 0; i < 7; i++) sc.add(box(30 + R() * 30, 8 + R() * 6, 16, [0x8f8a80, 0x7b7f86, 0xa59b88][i % 3], 120 + i * 70 + R() * 20, 5, -470 - R() * 60));
+  const tm = [mat(0x2f4a35), mat(0x3a5a3c), mat(0x27402f)]; for (let i = 0; i < 260; i++) { const a = R() * 6.283, r = 800 + R() * 500, t = new THREE.Mesh(new THREE.ConeGeometry(10 + R() * 8, 34 + R() * 26, 6), tm[i % 3]); t.position.set(Math.cos(a) * r, 16, Math.sin(a) * r); sc.add(t); }
+  for (let i = 0; i < 6; i++) { const c = new THREE.Group(), col = [0x23262b, 0x5a1f1b, 0x2c3a4a][i % 3]; c.add(box(4.2, 1.1, 1.7, col, 0, 0.9, 0)); c.add(box(2.2, 0.9, 1.6, col, -0.3, 1.8, 0)); for (const [x, z] of [[-1.4, 0.9], [1.4, 0.9], [-1.4, -0.9], [1.4, -0.9]]) c.add(box(0.7, 0.7, 0.25, 0x111111, x, 0.35, z)); c.position.set(170 + i * 9 + R() * 3, 0, -95 - R() * 14); c.rotation.y = R() * 0.5 - 0.25; sc.add(shadowAll(c)); } }
+// storm clouds
+const cloudM = new THREE.MeshLambertMaterial({ color: 0x8d8f9e, flatShading: true, emissive: 0x3a3d4c, emissiveIntensity: 0.6 }); for (let i = 0; i < 16; i++) { const g = new THREE.Group(), n = 4 + Math.floor(R() * 4); for (let k = 0; k < n; k++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(40 + R() * 50, 1), cloudM); m.position.set((k - n / 2) * 60 + R() * 20, R() * 20, R() * 50); m.scale.y = 0.42; g.add(m); } g.position.set(-1100 + i * 150 + R() * 80, 330 + R() * 160, -900 + R() * 700); sc.add(g); }
+
+// =====================================================  AIRSHIP
+const LEN = 245, HL = LEN / 2, RAD = 20.6;
+const rad = (x) => { const u = clamp(x / HL, -1, 1); return RAD * (u > 0 ? Math.pow(1 - Math.pow(u, 2.3), 0.56) : Math.pow(1 - Math.pow(-u, 1.7), 0.72)); };
+const ship = new THREE.Group(); sc.add(ship);
+const clipF = new THREE.Plane(), clipR = new THREE.Plane();
+const skinM = new THREE.MeshStandardMaterial({ color: 0xc6c9ce, flatShading: true, metalness: 0.45, roughness: 0.5, side: THREE.DoubleSide, clippingPlanes: [clipF, clipR], clipIntersection: true, transparent: true });
+{ const pts = []; for (let i = 0; i <= 44; i++) { const x = -HL + i / 44 * LEN; pts.push(new THREE.Vector2(Math.max(0.05, rad(x)), x)); } const g = new THREE.LatheGeometry(pts, 28); g.rotateZ(-Math.PI / 2); const m = new THREE.Mesh(g, skinM); m.castShadow = true; ship.add(m); }
+const frameM = new THREE.MeshStandardMaterial({ color: 0x2c2f35, flatShading: true, roughness: 0.7, metalness: 0.3, emissive: 0xff5a10, emissiveIntensity: 0 });
+const frame = new THREE.Group(); ship.add(frame); const NCELL = 16, ST = []; for (let i = 0; i <= NCELL; i++) ST.push(-HL + 6 + i / NCELL * (LEN - 12));
+for (const x of ST) { const r = rad(x) * 0.985, m = new THREE.Mesh(new THREE.TorusGeometry(r, 0.42, 5, 28), frameM); m.rotation.y = Math.PI / 2; m.position.x = x; frame.add(m); }
+for (let k = 0; k < 14; k++) { const a = k / 14 * 6.283; for (let i = 0; i < ST.length - 1; i++) { const x0 = ST[i], x1 = ST[i + 1], r0 = rad(x0) * 0.985, r1 = rad(x1) * 0.985, p0 = V(x0, Math.cos(a) * r0, Math.sin(a) * r0), p1 = V(x1, Math.cos(a) * r1, Math.sin(a) * r1), b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 1), frameM); b.scale.z = p0.distanceTo(p1); b.position.copy(p0).lerp(p1, 0.5); b.lookAt(p1); frame.add(b); } }
+
+const cells = new THREE.Group(); ship.add(cells); for (let i = 0; i < NCELL; i++) { const x0 = ST[i] + 0.9, x1 = ST[i + 1] - 0.9, g = new THREE.CylinderGeometry(rad(x1) * 0.9, rad(x0) * 0.9, x1 - x0, 20), m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: i % 2 ? 0x9fd4ff : 0xc4e6ff, flatShading: true, roughness: 0.6, emissive: 0x2a6fd0, emissiveIntensity: 0.35, transparent: true, opacity: 0.92 })); m.rotation.z = -Math.PI / 2; m.position.x = (x0 + x1) / 2; cells.add(m); }
+const finM = new THREE.MeshStandardMaterial({ color: 0xb4b8be, flatShading: true, metalness: 0.4, roughness: 0.55 }); const fins = new THREE.Group(); ship.add(fins);
+for (let k = 0; k < 4; k++) { const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(40, 2); sh.lineTo(34, 17); sh.lineTo(8, 22); sh.lineTo(-4, 12); sh.closePath(); const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 1.4, bevelEnabled: false }), finM); m.position.set(-HL + 2, 6, -0.7); const p = new THREE.Group(); p.add(m); p.rotation.x = k * Math.PI / 2; m.castShadow = true; fins.add(p); }
+const under = new THREE.Group(); ship.add(under); under.add(box(13, 3.2, 5, 0x9da2a9, 86, -rad(86) - 0.6, 0)); for (let i = 0; i < 6; i++) under.add(box(1.2, 1.1, 5.1, 0x20262e, 81 + i * 2, -rad(86) - 0.2, 0));
+for (const [x, sz] of [[28, 1], [28, -1], [-38, 1], [-38, -1]]) { const e = new THREE.Mesh(new THREE.SphereGeometry(2.2, 8, 6), mat(0x8c9198)); e.scale.set(2.2, 1, 1); e.position.set(x, -rad(x) * 0.62, sz * rad(x) * 0.86); e.castShadow = true; under.add(e); under.add(box(0.3, 6, 0.3, 0x444444, x - 5, -rad(x) * 0.62, sz * rad(x) * 0.86)); }
+for (let i = 0; i < 16; i++) for (const sz of [-1, 1]) under.add(box(1.5, 1.1, 0.3, 0x1c222a, 44 + i * 2.1, -rad(50) * 0.66, sz * rad(50) * 0.752));
+// landing ropes from the bow
+const ropes = []; for (const sz of [-1, 1]) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 1), mat(0xcdbb8a)); sc.add(m); ropes.push([m, sz]); }
+// fire + smoke
+const hr = (i, k) => { const s = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return s - Math.floor(s); };
+const X0 = -78;                                         // where the first flame is drawn: on top, ahead of the upper fin
+const actS = (x) => x < X0 ? (X0 - x) / (X0 + HL) * 4 : 23 * Math.pow((x - X0) / (HL - X0), 1 / 1.35);       // story second the fire reaches station x
+const flameG = new THREE.IcosahedronGeometry(1, 1), flames = [], smokes = [];
+for (let i = 0; i < 130; i++) { const core = i % 3 === 0, m = new THREE.Mesh(flameG, new THREE.MeshBasicMaterial({ color: core ? new THREE.Color(1.9, 1.35, 0.5) : new THREE.Color(1.5, 0.45, 0.07), toneMapped: false, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); const x = i < 8 ? X0 + (hr(i, 1) - 0.5) * 8 : -HL + 4 + hr(i, 1) * (LEN - 8); m.userData = { x, a: (hr(i, 2) - 0.5) * 2.2, core }; m.renderOrder = 5; sc.add(m); flames.push(m); }
+for (let i = 0; i < 60; i++) { const m = new THREE.Mesh(flameG, new THREE.MeshBasicMaterial({ color: 0x2b2726, transparent: true, depthWrite: false })); m.userData = { x: -HL + 4 + hr(i, 11) * (LEN - 8) }; m.renderOrder = 4; sc.add(m); smokes.push(m); }
+const spark = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 3.0, 5.0), toneMapped: false, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); sc.add(spark);
+const leaks = []; for (let i = 0; i < 12; i++) { const m = new THREE.Mesh(flameG, new THREE.MeshBasicMaterial({ color: 0x9fd4ff, transparent: true, depthWrite: false, opacity: 0.3 })); sc.add(m); leaks.push(m); }
+// people: ground crew under the bow, and people getting clear in the replay
+const crew = []; for (let i = 0; i < 64; i++) { const line = i < 40, sz = i % 2 ? 1 : -1, p = person(R, 'stand', { shorts: false, shirt: [0xe8e4d8, 0x39465a, 0x2f3a4c, 0xd9d2c0][i % 4], pants: [0x2c3440, 0x3a3a3a, 0x4a4436][i % 3] }); const x = line ? 132 + Math.floor(i / 2) * 2.3 + R() : 90 + R() * 110, z = line ? sz * (16 + Math.floor(i / 2) * 1.5) + R() : (R() - 0.5) * 120; p.position.set(x, 0, z); p.userData.b = { p: p.position.clone(), d: R(), ry: Math.atan2(40 - x, 0 - z) }; sc.add(p); crew.push(p); }
+const surv = []; for (let i = 0; i < 16; i++) { const p = person(R, 'run', { shorts: false }); p.userData.b = { x: 30 + R() * 55, z: 6 + R() * 10, d: R(), ang: (R() - 0.5) * 0.9 }; sc.add(p); surv.push(p); }
+
+const post = makePost(renderer, sc, cam, { ao: false, bloom: 0.55, bloomThreshold: 0.85, bloomRadius: 0.75, sat: 1.08, con: 1.08, warm: 0.03 });
+const CAPS = /*CAPS*/[[2.5, 3.83, "Lakehurst, New Jersey."], [3.85, 6.55, "The sixth of May, 1937."], [6.57, 8.21, "After a day of<br>thunderstorms,"], [8.23, 10.94, "an airship<br><em>245 metres</em> long"], [10.96, 12.02, "comes in to land."], [12.4, 14.37, "Sixteen cells of <em>hydrogen</em><br>hold it up."], [14.9, 16.3, "7:21 p.m."], [16.32, 17.58, "The landing ropes drop."], [18.2, 19.29, "7:25."], [19.31, 20.73, "A <em>flame</em> appears<br>near the tail."], [21.2, 22.84, "Hydrogen burns fast,"], [22.86, 24.17, "and it burns <em>upward</em>."], [24.19, 25.26, "The tail sinks."], [25.28, 27.03, "The nose rears<br>into the sky."], [27.05, 28.82, "Fire runs the length<br>of the ship."], [29.4, 31.92, "About <em>thirty four seconds</em><br>after the first flame,"], [31.94, 32.9, "it is on the ground."], [33.6, 35.66, "Ninety seven people<br>were on board."], [35.68, 37.12, "Thirty five of them died,"], [37.14, 38.47, "and one man<br>on the ground."], [38.49, 39.82, "<em>Sixty two survived.</em>"], [40.4, 41.98, "The flames rose<br><em>away</em> from them,"], [42.0, 44.37, "and many jumped clear<br>as the ship came down."], [44.9, 45.86, "The likely cause:"], [45.88, 46.94, "leaking hydrogen,"], [46.96, 49.06, "lit by a spark of<br><em>static electricity</em>."], [49.6, 51.56, "It ended the age of<br>the passenger airship."]]/*END*/;
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const _m = new THREE.Matrix4();
+function frameAt(t) {
+  const s = sAt(t), burning = s >= 0, replay = t >= T.why && t < T.cause, after = t >= T.age;
+  // ship motion
+  const shipX = lerp(-230, 0, easeOut(seg(t, 0, T.rope))), hov = 78 + Math.sin(t * 0.5) * 0.8;
+  const tailY = burning ? lerp(hov, 9, easeIO(seg(s, 1, 14))) : hov, th = burning ? 0.56 * smooth(seg(s, 2, 13)) * (1 - smooth(seg(s, 16, 33))) : 0.015, flat = burning ? smooth(seg(s, 24, 40)) : 0;
+  ship.position.set(shipX, tailY + Math.sin(th) * 112 + (burning ? 0 : 0), 0); ship.rotation.z = th; ship.scale.set(1, 1 - 0.5 * flat, 1 + 0.12 * flat); ship.position.y = Math.max(ship.position.y, 9 + 0); ship.updateMatrixWorld(true);
+  // skin burns away behind the fire front
+  const sk = s - 1.3, xf = !burning ? X0 : (sk < 0 ? X0 : X0 + (HL - X0 + 6) * Math.pow(clamp(sk / 23), 1.35)), xr = !burning ? X0 : (sk < 0 ? X0 : lerp(X0, -HL - 6, clamp(sk / 4)));
+  clipF.set(V(1, 0, 0), -xf).applyMatrix4(ship.matrixWorld); clipR.set(V(-1, 0, 0), xr).applyMatrix4(ship.matrixWorld);
+  const cut = t >= T.cut && t < T.rope ? Math.min(smooth(seg(t, T.cut, T.cut + 0.5)), 1 - smooth(seg(t, T.rope - 0.35, T.rope))) : 0; skinM.opacity = 1 - 0.86 * cut; skinM.depthWrite = cut < 0.05; cells.visible = cut > 0.02 || (burning && s < 4); frame.visible = true;
+  for (const c of cells.children) c.material.opacity = cut > 0.02 ? 0.92 * cut : 0.0; if (burning) cells.visible = false;
+  fins.visible = !burning || s < 6; under.visible = !burning || s < 30;
+  frameM.emissiveIntensity = burning ? 1.6 * smooth(seg(s, 3, 12)) * (1 - 0.9 * smooth(seg(s, 34, 70))) : 0;
+  // ropes
+  ropes.forEach(([m, sz]) => { const on = t >= T.rope + 1.0 && (!burning || s < 8); m.visible = on; if (on) { const a = ship.localToWorld(V(HL - 6, -rad(HL - 6) * 0.9, sz * 1.5)), k = easeIn(seg(t, T.rope + 1.0, T.rope + 2.2)), b = a.clone().lerp(V(shipX + 150, 0.4, sz * 26), k), d = a.distanceTo(b); m.scale.z = Math.max(0.1, d); m.position.copy(a).lerp(b, 0.5); m.lookAt(b); } });
+  // flames
+  let F = 0;
+  for (let i = 0; i < flames.length; i++) { const m = flames[i], u = m.userData, a = s - actS(u.x) - hr(i, 3) * 1.2; let e = !burning || a < 0 ? 0 : Math.min(seg(a, 0, 1.6), 1) * lerp(1, 0.12, smooth(seg(a, 9, 20))) * (1 - smooth(seg(s, 45, 110)) * 0.75); if (i < 8 && burning && s < 3.5) e = Math.max(e, seg(s, 0, 0.4) * 0.8 * (0.3 + 0.2 * i));
+    m.visible = e > 0.01; if (!m.visible) continue; F += e; const ph = (s * (0.5 + hr(i, 4) * 0.5) + hr(i, 5)) % 1, r = rad(u.x), big = seg(a, 0, 3) * (1 - 0.6 * smooth(seg(a, 10, 20)));
+    const p = ship.localToWorld(V(u.x, Math.cos(u.a) * r * 0.75, Math.sin(u.a) * r * 0.8)); p.y += ph * (16 + hr(i, 6) * 46) * (0.35 + big); p.x += (hr(i, 7) - 0.5) * 10 - ph * 8; p.y = Math.max(p.y, 2);
+    m.position.copy(p); const sz = (u.core ? 6.5 : 10) * (0.45 + hr(i, 8)) * (0.35 + big * 1.25) * (1 - ph * 0.55); m.scale.set(sz, sz * 1.5, sz); m.material.opacity = e * (1 - ph) * (u.core ? 0.7 : 0.55); m.rotation.set(i, s * 0.7 + i, 0); }
+  F = clamp(F / 60); fireL.intensity = 5.5 * F; fireL.position.set(shipX - 20 + clamp(s, 0, 30) * 2, Math.max(30, ship.position.y + 20), 60);
+  for (let i = 0; i < smokes.length; i++) { const m = smokes[i], u = m.userData, a = s - actS(u.x) - 1.5 - hr(i, 12) * 3, e = !burning || a < 0 ? 0 : Math.min(1, a / 3) * (1 - 0.6 * smooth(seg(s, 50, 120))); m.visible = e > 0.01; if (!m.visible) continue; const ph = (s * (0.11 + hr(i, 13) * 0.08) + hr(i, 14)) % 1, p = ship.localToWorld(V(u.x, rad(u.x) * 0.6, (hr(i, 15) - 0.5) * 16)); p.y = Math.max(p.y, 8) + 20 + ph * (90 + hr(i, 16) * 120); p.x -= ph * (40 + hr(i, 17) * 50); m.position.copy(p); m.scale.setScalar(14 + ph * 46); m.material.opacity = e * 0.3 * Math.sin(Math.PI * Math.min(1, ph * 1.15)); }
+  // likely cause: leaking hydrogen and a spark, drawn on top of the hull ahead of the fin
+  const cs = t >= T.cause && t < T.age, lp = ship.localToWorld(V(X0, rad(X0) + 0.6, 0)); spark.visible = cs && t >= T.cause + 2.3; if (spark.visible) { const k = (t - T.cause - 2.3), fl = 0.5 + 0.5 * Math.sin(k * 47) * Math.sin(k * 13); spark.position.copy(lp).add(V(-1.5, 2.2, 0)); spark.scale.setScalar(0.5 + 1.1 * fl); spark.material.opacity = 0.9; }
+  leaks.forEach((m, i) => { m.visible = cs; if (cs) { const ph = ((t - T.cause) * (0.35 + hr(i, 21) * 0.3) + hr(i, 22)) % 1; m.position.copy(lp).add(V((hr(i, 23) - 0.5) * 6 - ph * 5, ph * 13, (hr(i, 24) - 0.5) * 5)); m.scale.setScalar(0.7 + ph * 2.6); m.material.opacity = 0.34 * (1 - ph); } });
+  // people
+  const runS = replay ? 6 : (t >= T.age ? 60 : (burning && t < T.why ? s : 0));
+  for (const p of crew) { const b = p.userData.b, run = Math.max(0, runS - 0.8 - b.d * 2.2), dir = V(b.p.x - 30, 0, b.p.z + (b.p.z >= 0 ? 30 : -30)).normalize(), dist = Math.min(run * 6.2, 150 + b.d * 60); p.visible = !replay; p.position.copy(b.p).addScaledVector(dir, dist); const moving = run > 0 && dist < 150 + b.d * 60 - 0.1; p.rotation.y = moving ? Math.atan2(dir.x, dir.z) : (run > 0 ? Math.atan2(-dir.x, -dir.z) : b.ry); p.userData.pose(t * 9 + b.d * 9, moving ? 'run' : 'stand'); if (!moving) { const up = run > 0 || t >= T.rope; p.userData.aR.rotation.x = up && b.d < 0.5 ? -2.6 : 0; } }
+  for (const p of surv) { const b = p.userData.b; p.visible = replay; if (!replay) continue; const k = Math.max(0, (t - T.why) + 1.5 - b.d * 2.2) * 6.4; p.position.set(shipX + b.x + Math.sin(b.ang) * k, 0, b.z + Math.cos(b.ang) * k); p.rotation.y = b.ang; p.userData.pose(t * 10 + b.d * 9, 'run'); }
+  // light and camera
+  hemi.intensity = 1.5 - 0.35 * F; sun.intensity = 1.5; sun.target.position.set(shipX, 0, 0); renderer.toneMappingExposure = lerp(1.0, 0.86, F);
+  const c0 = V(shipX, 78, 0);
+  if (t < T.in) camPath([[0, V(326, 4, 150), V(shipX + 30, 92, 0), 40], [T.in, V(326, 5, 152), V(shipX + 30, 92, 0), 43]], t);
+  else if (t < T.rope) camPath([[T.in, V(326, 5, 152), V(shipX + 30, 92, 0), 43], [T.cut, V(300, 9, 170), V(shipX + 14, 84, 0), 50], [T.rope, V(280, 16, 176), V(shipX + 8, 80, 0), 50]], t);
+  else if (t < T.fire) camPath([[T.rope, V(196, 1.9, 52), V(132, 24, 0), 70], [T.fire, V(192, 1.9, 48), V(130, 26, 0), 68]], t);
+  else if (t < T.spread) camPath([[T.fire, V(-262, 16, 140), V(-76, 96, 0), 46], [T.spread, V(-250, 20, 150), V(-70, 96, 0), 44]], t);
+  else if (t < T.ground) camPath([[T.spread, V(300, 5, 200), V(6, 84, 0), 58], [T.ground, V(336, 9, 226), V(10, 60, 0), 56]], t);
+  else if (t < T.count) camPath([[T.ground, V(262, 10, 180), V(6, 34, 0), 52], [T.count, V(250, 13, 172), V(6, 30, 0), 52]], t);
+  else if (t < T.why) camPath([[T.count, V(238, 22, 196), V(0, 36, 0), 52], [T.why, V(214, 30, 176), V(0, 32, 0), 50]], t);
+  else if (t < T.cause) camPath([[T.why, V(96, 2.6, 104), V(40, 44, 0), 60], [T.cause, V(90, 3.2, 98), V(38, 46, 0), 58]], t);
+  else if (t < T.age) camPath([[T.cause, V(-150, 118, 62), V(-80, 100, 0), 40], [T.age, V(-136, 114, 52), V(-80, 100, 0), 38]], t);
+  else camPath([[T.age, V(246, 26, 204), V(0, 42, 0), 52], [T.end + 3.2, V(270, 38, 228), V(0, 46, 0), 52]], t);
+  post.bloom.strength = 0.4; post.render(); return { s, F };
+}
+function overlayFrame(t, st) {
+  const s = st.s;
+  const ta = t < 2.4 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 2.0, 2.4)) : 0; O.set(O.title, '<em>Hindenburg</em>,<br>second<br>by second'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`;
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  let ha = 1;
+  if (t < T.in + 0.2) ha = 0;
+  else if (t < T.cut) { O.hudSet('Lakehurst, New Jersey', '6 May 1937', 'LZ 129 Hindenburg · 245 m long\n3 days out from Frankfurt'); ha = seg(t, T.in + 0.2, T.in + 0.6); }
+  else if (t < T.rope) O.hudSet('Lifting gas', 'Hydrogen', '16 gas cells · very flammable\nCutaway, simplified');
+  else if (t < T.fire) O.hudSet('Local time', '7:21 pm', 'Landing ropes dropped\nfrom about 90 m up');
+  else if (t < T.spread) O.hudSet('Local time', '7:25 pm', 'First flame, near the tail\nWitnesses differ on the exact spot');
+  else if (t < T.ground) O.hudSet('Since the first flame', Math.floor(s) + ' s', 'Hydrogen flames rise\nReconstruction, simplified');
+  else if (t < T.count) O.hudSet('Since the first flame', 'About 34 s', 'The whole ship is down\nAccounts give 32 to 37 seconds');
+  else if (t < T.why) O.hudSet('On board: 97', '62 survived', '35 on board died,\nand 1 of the ground crew');
+  else if (t < T.cause) O.hudSet('Replay', 'Flames go up', 'Hydrogen is lighter than air\nMany jumped or ran clear');
+  else if (t < T.age) O.hudSet('Most likely cause', 'A static spark', 'igniting leaking hydrogen\nNever proven for certain');
+  else if (t < T.end) O.hudSet('6 May 1937', 'The end of an era', 'Passenger airships\nnever recovered');
+  else ha = 1 - seg(t, T.end, T.end + 0.3);
+  O.hud.style.background = 'rgba(6,10,26,.42)'; O.hud.style.boxShadow = '0 0 0 14px rgba(6,10,26,.42)'; O.hud.style.borderRadius = '4px'; O.show(O.hud, ha); O.hud.style.top = '850px';
+  let h = ''; const L = (x, y, a, small, big, col) => a > 0.01 ? `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${a}${col ? ';color:' + col : ''}">${small}${big ? '<b style="font-size:40px">' + big + '</b>' : ''}</div>` : '';
+  const fade = (a, b) => Math.min(seg(t, a + 0.25, a + 0.65), 1 - seg(t, b - 0.3, b));
+  if (t >= T.cut && t < T.rope) h += L(64, 300, fade(T.cut, T.rope), 'Inside the hull', '16 cells of hydrogen', '#bcd4ff');
+  if (t >= T.fire && t < T.spread) h += L(64, 300, fade(T.fire, T.spread), 'After a day of thunderstorms', 'A flame near the tail', '#ffd98a');
+  if (t >= T.spread && t < T.ground) h += L(64, 300, fade(T.spread, T.ground), 'The tail sinks first', 'The nose points at the sky', '#ffd98a');
+  if (t >= T.why && t < T.cause) h += L(64, 300, fade(T.why, T.cause), 'Why most people lived', 'The fire went up, not down', '#ffd98a');
+  if (t >= T.cause && t < T.age) h += L(64, 300, fade(T.cause, T.age), 'Before the first flame', 'Hydrogen leaks · a spark', '#bcd4ff');
+  if (O.labels._h !== h) { O.labels._h = h; O.labels.innerHTML = h; }
+  let fl = 0; for (const [a, dd, k] of [[T.in, 0.3, 0.5], [T.rope, 0.3, 0.6], [T.fire, 0.3, 0.6], [T.spread, 0.35, 0.7], [T.ground, 0.3, 0.5], [T.count, 0.4, 0.5], [T.why, 0.4, 0.8], [T.cause, 0.4, 0.8], [T.age, 0.5, 0.8]]) if (t >= a - 0.06 && t < a + dd) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + dd)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.tint.style.background = st.F > 0.02 ? `rgba(255,120,30,${0.07 * st.F})` : 'none';
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { overlayFrame(t, frameAt(t)); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>
