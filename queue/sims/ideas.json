@@ -196,6 +196,30 @@
    "hook": "What if lightning struck your plane?",
    "the surprising true point": "It happens to airliners regularly: the current runs through the metal skin and leaves again, so the people inside are shielded",
    "status": "planned"
+  },
+  {
+   "title": "What if the Moon orbited as close as the space station?",
+   "kind": "what-if",
+   "setting": "A coastal city at night, with the Moon filling the sky",
+   "hook": "What if the Moon orbited as close as the space station?",
+   "the surprising true point": "It could not stay a moon: that close, Earth's tides would pull it apart into a ring long before you could enjoy the view",
+   "status": "planned"
+  },
+  {
+   "title": "What if you fell into Jupiter?",
+   "kind": "what-if",
+   "setting": "Above Jupiter's cloud tops, then down through the layers",
+   "hook": "What if you fell into Jupiter?",
+   "the surprising true point": "There is no ground to hit: you keep sinking while pressure and heat rise, as the Galileo probe showed before it went silent",
+   "status": "planned"
+  },
+  {
+   "title": "Tacoma Narrows Bridge, minute by minute",
+   "kind": "second-by-second",
+   "setting": "The suspension bridge over Puget Sound, Washington State, 7 November 1940",
+   "hook": "The bridge that twisted itself apart, minute by minute",
+   "the surprising true point": "It was not a storm and not simple resonance: a steady wind fed a twisting motion that kept growing, and no person died",
+   "status": "planned"
   }
  ]
 }
