@@ -146,3 +146,18 @@ Make a new one:
    Check with ffprobe (1080x1920, audio present, right length) and a frame sheet of the finished file.
 7. Save as `../queue/sims/sim-<NN>-<name>.mp4`, add `{file, title, caption, sources}` to `../queue/sims/sims.json`,
    commit and push. `sim/work/` is scratch and is not committed.
+
+## StudyCrest Business reels (owner's instruction, 15 Nov 2026: 2 reels + 1 swipe post a day)
+
+@studycrestbusiness posts a reel at 6:00am, a swipe post at 11:45am and a reel at 4:45pm (Sydney).
+- Reels wait in `queue/business/reels/sb-reel-NN-...mp4`, each with a cover of the same name in
+  `queue/business/covers/` and a caption under the same name in `queue/business/captions.json`.
+  Published reels are logged in `posted_business.json` with `"type": "reel"`.
+- To make a new one: add a tip list to `TIPS` in `generator/tips.py` with a key starting `biz-`, following
+  "Make a new tip-list reel" above (same rules: 3 to 5 tips, exactly one StudyCrest tip with `tag=SC_TAG`,
+  no statistics or "most students" claims, look at the stills sheet). Topics: accounting, finance,
+  economics, business statistics, marketing, management, HR, sports business, and business-degree study
+  and exam technique; never repeat an earlier reel's topic or tips (check the `biz-` keys).
+  Then copy `out/tips-<key>.mp4` and `.jpg` to `queue/business/reels|covers/sb-reel-<next number>-tips-<topic>`,
+  and add the caption from `python3 tips.py caption <key>` to `queue/business/captions.json`, replacing
+  "the promo code in our bio" with "the promo code in the bio at @studycrestapp". Commit and push.
