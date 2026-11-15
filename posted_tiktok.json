@@ -60,6 +60,12 @@
    "kind": "spot",
    "due_at": "2026-11-17T12:00:00+11:00",
    "buffer_post_id": "6af9bd5cb9a106584cb215e5"
+  },
+  {
+   "file": "sim-06-space",
+   "kind": "sim",
+   "due_at": "2026-11-17T06:00:00+11:00",
+   "buffer_post_id": "6af9d025544d0574a927c4f4"
   }
  ]
 }
