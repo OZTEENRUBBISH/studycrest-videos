@@ -88,6 +88,21 @@
     "https://www.smithsonianmag.com/smithsonian-institution/80th-anniversary-hindenburg-disaster-mysteries-remain-180963107/",
     "https://www.livescience.com/58959-hindenburg-crash.html"
    ]
+  },
+  {
+   "file": "sim-08-tunnel.mp4",
+   "title": "What if you fell through a tunnel to the other side of the Earth?",
+   "made": "2026-11-16",
+   "caption": "What if you fell through a tunnel to the other side of the Earth? You'd be weightless the whole way, fastest at the centre where gravity is zero, and you'd arrive in about 38 minutes. 🌍\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #gravity #earth #studytok",
+   "science": "Idealised: a straight, airless, frictionless tunnel from pole to pole (so the Earth's spin does not matter). In free fall you feel no weight the whole way. Fall time worked out by integrating the PREM density model numerically in this run: 38.0 minutes pole to pole (published: 38 min 11 s with PREM against 42 min 12 s for a uniform-density Earth; Klotz, Am. J. Phys. 83, 231, 2015); the film says 38 minutes. Gravity does not fall steadily: in PREM it stays between 100% and 109% of its surface value down to the core-mantle boundary at 2,890 km (45% of the way to the centre, reached after about 12.7 min), then falls to zero at the centre, where the pull is equal in every direction. Top speed at the centre: the PREM integration gives 9.9 km/s (about 35,700 km/h); the uniform-density textbook value is sqrt(gR) = 7.9 km/s (28,460 km/h); Klotz's paper says 'near 8 km/s' and Live Science quotes 'over 8 kilometers per second'. Because these differ, the film says only 'over 28,000 km/h', which is true in every case. You arrive at the far side with zero speed and fall back unless you hold on. Tunnel length shown as 'about 12,700 km' (diameter about 12,740 km; radius 6,370-6,371 km). Deepest hole ever drilled: Kola Superdeep Borehole, 12,262 m (1989), about 180 C at the bottom; 12.262/6371 = 0.19%, shown as 0.2% of the way to the centre. HUD depths and gravity percentages come from the same PREM integration. Layer names in the film change at 35 km (crust, illustrative), 2,890 km (outer core, liquid iron) and 5,150 km (inner core, solid iron); the 5,150 km figure is the PREM model value and was not confirmed from a page that could be opened in this run, and no figure for it is stated in the film. The tunnel is imaginary (heat and pressure make it impossible to build) and the film says no one can dig it. Cutaway is not to scale (tunnel and crust drawn thicker than they are); time is sped up, with slow motion through the centre; the half-turn that lets you leave head first is illustrative.",
+   "sources": [
+    "https://arxiv.org/abs/1308.1342",
+    "https://www.livescience.com/50312-how-long-to-fall-through-earth.html",
+    "https://phys.org/news/2015-03-fall-hole-earth.amp",
+    "https://www.damninteresting.com/the-deepest-hole/",
+    "https://www.hko.gov.hk/en/education/earth-science/general/00342-how-deep-is-the-earth-and-what-is-at-its-centre.html",
+    "https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html"
+   ]
   }
  ]
 }

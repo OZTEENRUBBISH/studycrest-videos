@@ -1,0 +1,238 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// What if you fell through a tunnel to the other side of the Earth?  South Pole -> shaft -> cutaway -> North Pole.
+// Physics: free fall through the PREM density model (worked out in sims.json): 38 minutes pole to pole, gravity about constant
+// down to the core (2,891 km), zero at the centre, top speed there (over 28,000 km/h).
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, noise3, mat, box, shadowAll, person, cloud, skyDome, stars, globe, arrow, overlay, capAt, proj, makePost } from './common.js';
+const W = 1080, H = 1920, DUR = 49.6, RKM = 6371, HALF = 19.0;
+// PREM fall, 41 samples over the first half of the trip: depth / radius, gravity / surface gravity, speed / top speed
+const DEP = [0,0.0008,0.0028,0.0061,0.0106,0.0165,0.0235,0.0319,0.0415,0.0524,0.0645,0.0779,0.0926,0.1086,0.1259,0.1444,0.1643,0.1853,0.2077,0.2314,0.2563,0.2825,0.3099,0.3387,0.3687,0.4,0.4327,0.4667,0.502,0.5386,0.5764,0.6154,0.6553,0.6962,0.738,0.7805,0.8236,0.8672,0.9113,0.9556,1];
+const GR = [1,1.001,1.002,1.003,1.004,1.005,1.006,1.008,1.011,1.013,1.016,1.018,1.019,1.02,1.018,1.016,1.015,1.013,1.012,1.012,1.012,1.014,1.017,1.024,1.034,1.048,1.07,1.07,1.017,0.958,0.894,0.824,0.749,0.67,0.588,0.503,0.413,0.313,0.21,0.105,0];
+const VR = [0.004,0.031,0.06,0.088,0.116,0.145,0.173,0.202,0.23,0.259,0.288,0.316,0.345,0.374,0.403,0.432,0.46,0.489,0.518,0.546,0.575,0.603,0.632,0.661,0.69,0.72,0.749,0.78,0.809,0.837,0.864,0.888,0.91,0.93,0.948,0.963,0.976,0.987,0.994,0.999,1];
+const tab = (A, u) => { u = clamp(u) * 40; const i = Math.min(39, Math.floor(u)); return lerp(A[i], A[i + 1], u - i); };
+const O = overlay();
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1); renderer.localClippingEnabled = true;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.1, 2400);
+const R = rng(20261116), V = (x, y, z) => new THREE.Vector3(x, y, z);
+const HOLE = 3.0, basic = (c, o = {}) => new THREE.MeshBasicMaterial({ color: c, ...o });
+const PARKA = { shirt: 0xe8641e, sleeve: 0xe8641e, pants: 0x20283a, shorts: false, shoe: 0x1a1a1a, hair: 0x2b1b12 };
+
+// =====================================================  TIMELINE
+const T = { pole: 7.0, drop: 10.3, shaft: 11.6, diag: 16.4, core: 25.0, thru: 29.2, north: 33.0, apex: 36.6, grab: 38.1, kola: 41.1, end: 47.4 };
+// film time -> minutes since stepping off (time is sped up; slow motion through the centre)
+const SIMK = [[T.drop, 0], [16.4, 7.0], [18.6, 12.65], [20.4, 15.5], [22.6, 18.85], [25.8, 19.0], [29.2, 19.2], [T.north, 36.6], [T.apex, 38.0]];
+const simMin = (t) => { if (t <= T.drop) return 0; if (t >= T.apex) return 38; let i = 0; while (i < SIMK.length - 2 && t > SIMK[i + 1][0]) i++; const a = SIMK[i], b = SIMK[i + 1]; return lerp(a[1], b[1], seg(t, a[0], b[0])); };
+const state = (t) => { const m = simMin(t), second = m > HALF, u = second ? (2 * HALF - m) / HALF : m / HALF; return { m, second, depth: tab(DEP, u), g: tab(GR, u), v: tab(VR, u) }; };
+// how far the shaft walls have streamed past (visual only)
+const SCR = new Float32Array(Math.ceil(DUR * 30) + 2); { let s = 0; for (let i = 0; i < SCR.length; i++) { SCR[i] = s; s += (22 + 150 * state(i / 30).v) / 30; } }
+const scrollAt = (t) => { const f = clamp(t * 30, 0, SCR.length - 2), i = Math.floor(f); return lerp(SCR[i], SCR[i + 1], f - i); };
+
+// =====================================================  POLES
+function snowGround(col, amp) {
+  const parts = [new THREE.RingGeometry(HOLE, 60, 48, 20), new THREE.RingGeometry(60, 1700, 48, 26)], g = new THREE.Group();
+  for (const geo0 of parts) { geo0.rotateX(-Math.PI / 2); const p0 = geo0.attributes.position;
+    for (let i = 0; i < p0.count; i++) { const x = p0.getX(i), z = p0.getZ(i), r = Math.hypot(x, z); p0.setY(i, (fbm(x * 0.045 + 7, 0.3, z * 0.045 + 3, 3) - 0.5) * 2 * amp * smooth(seg(r, 9, 34)) * (1 + smooth(seg(r, 60, 400)) * 2.5)); }
+    const geo = geo0.toNonIndexed(); geo.computeVertexNormals(); const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: col, flatShading: true })); m.receiveShadow = true; g.add(m); }
+  return g;
+}
+function holeParts(night) {
+  const g = new THREE.Group();
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(HOLE + 0.2, 0.32, 8, 40), mat(0x59626e)); collar.rotation.x = Math.PI / 2; collar.position.y = 0.1; collar.castShadow = true; g.add(collar);
+  const wg = new THREE.CylinderGeometry(HOLE, HOLE, 70, 40, 14, true), wp = wg.attributes.position, col = new Float32Array(wp.count * 3), a = new THREE.Color(night ? 0x3a5576 : 0x234462), b = new THREE.Color(0x02040a), c = new THREE.Color();
+  for (let i = 0; i < wp.count; i++) { const k = Math.pow(clamp((35 - wp.getY(i)) / 22), 0.4); c.copy(a).lerp(b, k); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+  wg.setAttribute('color', new THREE.BufferAttribute(col, 3)); const wall = new THREE.Mesh(wg, basic(0xffffff, { vertexColors: true, side: THREE.BackSide, fog: false })); wall.position.y = -35; g.add(wall);
+  for (const y of [-3.5, -9, -16, -25]) { const l = new THREE.Mesh(new THREE.TorusGeometry(HOLE - 0.06, 0.07, 6, 40), basic(0xffd08a, { fog: false })); l.rotation.x = Math.PI / 2; l.position.y = y; g.add(l); }
+  const n = 10; for (let i = 0; i < n; i++) { const an = (i + 0.5) / n * Math.PI * 2, x = Math.cos(an) * (HOLE + 1.5), z = Math.sin(an) * (HOLE + 1.5); if (Math.abs(z) < 1.4 && x > 0) continue;
+    g.add(box(0.14, 1.25, 0.14, 0xe8641e, x, 0.62, z)); const lampM = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), basic(night ? 0xffa030 : 0xffe9a8)); lampM.position.set(x, 1.34, z); g.add(lampM); }
+  return g;
+}
+function flag(col, h = 4.2) { const g = new THREE.Group(); g.add(box(0.09, h, 0.09, 0xd8dde3, 0, h / 2, 0)); g.add(box(1.25, 0.8, 0.05, col, 0.68, h - 0.45, 0)); return shadowAll(g); }
+function iceBlock(RR, s, col) { const m = box(s * (0.8 + RR() * 1.4), s * (0.5 + RR() * 1.1), s * (0.7 + RR() * 1.2), col); m.rotation.set((RR() - 0.5) * 0.9, RR() * 6.28, (RR() - 0.5) * 0.9); return m; }
+
+// ---- South Pole (start, daylight)
+const south = new THREE.Scene(); south.fog = new THREE.Fog(0xdcebf7, 140, 1500); south.add(skyDome(0x2470d2, 0xbfe0f8, 0xe9f2f9));
+south.add(new THREE.HemisphereLight(0xd6e6ff, 0xa9bcd6, 1.0)); const sunS = new THREE.DirectionalLight(0xffe6c4, 2.5); sunS.position.set(-80, 30, 50); sunS.castShadow = true; sunS.shadow.mapSize.set(4096, 4096);
+Object.assign(sunS.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 300 }); sunS.shadow.bias = -0.0006; sunS.shadow.normalBias = 0.05; south.add(sunS);
+south.add(snowGround(0xdfe9f4, 0.8)); south.add(holeParts(false));
+south.add(box(6.6, 0.18, 1.35, 0xc9a56a, 4.9, 0.5, 0)); for (const x of [3.3, 5.6, 7.9]) for (const z of [-0.55, 0.55]) south.add(box(0.14, 0.5, 0.14, 0x6a5a48, x, 0.25, z)); south.add(box(1.5, 0.3, 1.35, 0xc9a56a, 8.6, 0.2, 0));
+{ // research station on stilts, mast, flags, marker, vehicles, people
+  const st = new THREE.Group(); st.add(box(34, 5.5, 9, 0x35465f, 0, 7.2, 0)); st.add(box(34.4, 0.5, 9.4, 0xd9dee5, 0, 10.1, 0)); st.add(box(12, 4.5, 8, 0x8a2f2a, 23, 6.7, 0)); st.add(box(12.3, 0.4, 8.3, 0xd9dee5, 23, 9.1, 0));
+  for (let i = 0; i < 14; i++) st.add(new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.3, 0.1), basic(0xbfe3ff)).translateX(-15.5 + i * 2.4).translateY(7.8).translateZ(4.55));
+  for (let i = 0; i < 9; i++) for (const z of [-3, 3]) st.add(box(0.5, 4.5, 0.5, 0x6d7785, -16 + i * 5.6, 2.25, z));
+  st.add(box(1.6, 0.25, 6, 0x8d96a3, -8, 2.3, 7)); st.children[st.children.length - 1].rotation.x = 0.62; st.add(box(0.3, 22, 0.3, 0xc8ced6, -19, 21, -2)); st.add(new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), basic(0xff4030)).translateX(-19).translateY(32.3).translateZ(-2));
+  const dome = new THREE.Mesh(new THREE.IcosahedronGeometry(3.2, 1), mat(0xf0f3f6)); dome.position.set(9, 12, -1); st.add(dome);
+  st.position.set(-38, 0, -46); st.rotation.y = 0.32; south.add(shadowAll(st));
+  const FC = [0xe2574c, 0x2f56d6, 0xf2c94c, 0x2bb673, 0xf5f5f5, 0x9b59b6, 0xf2994a, 0x1abc9c, 0xe2574c, 0x34495e, 0xf2c94c, 0x2f56d6];
+  for (let i = 0; i < 12; i++) { const an = Math.PI * (0.62 + i / 11 * 0.76), f = flag(FC[i]); f.position.set(-13 + Math.cos(an) * 7.5, 0, -9 - Math.sin(an) * 7.5 + 7); f.rotation.y = -0.4; south.add(f); }
+  const mk = new THREE.Group(); for (let i = 0; i < 6; i++) { const s = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.3, 10), mat(i % 2 ? 0xffffff : 0xd23b2e)); s.position.y = 0.15 + i * 0.3; mk.add(s); }
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12), new THREE.MeshStandardMaterial({ color: 0xdfe6ee, metalness: 0.9, roughness: 0.15 })); ball.position.y = 2.1; mk.add(ball); mk.position.set(-13, 0, -2); south.add(shadowAll(mk));
+  const sled = (x, z, ry, c) => { const g = new THREE.Group(); g.add(box(2.6, 0.7, 1.1, c, 0, 0.75, 0)); g.add(box(1.0, 0.5, 0.9, 0x1d2430, -0.3, 1.3, 0)); g.add(box(0.9, 0.35, 0.05, 0xbfe3ff, 0.75, 1.3, 0)); g.add(box(3.0, 0.12, 0.28, 0x2a2f38, 0.2, 0.2, 0.5)); g.add(box(3.0, 0.12, 0.28, 0x2a2f38, 0.2, 0.2, -0.5)); g.position.set(x, 0, z); g.rotation.y = ry; south.add(shadowAll(g)); };
+  sled(13, -9, 0.6, 0xf2c94c); sled(17.5, -6, 1.1, 0xd23b2e);
+  for (const [x, z, s, c] of [[11, 7.5, 1.2, 0x8a6d3b], [12.4, 7.9, 1.0, 0x9a7a45], [11.6, 7.6, 0.9, 0x2f56d6], [-6, 9, 1.3, 0x8a6d3b]]) south.add(box(s, s, s, c, x, s / 2 + (c === 0x2f56d6 ? 1.2 : 0), z));
+  const RS = rng(77); for (let i = 0; i < 150; i++) { const an = RS() * 6.28, r = 16 + RS() * RS() * 420, b = box(3 + RS() * 9, 0.25 + RS() * 0.7, 0.8 + RS() * 1.6, 0xeef4fa, Math.cos(an) * r, 0.1, Math.sin(an) * r); b.rotation.y = 0.5 + (RS() - 0.5) * 0.4; b.rotation.z = (RS() - 0.5) * 0.12; south.add(b); }
+  for (let i = 0; i < 7; i++) { const c = cloud(R); c.position.set(-700 + i * 230 + R() * 80, 150 + R() * 90, -700 - R() * 200); c.scale.setScalar(4 + R() * 3); south.add(c); }
+}
+const watchers = []; { const RP = rng(5), spots = [[9.5, -4.6], [11, -3.4], [12.4, -5.2], [-2.5, -6.4], [-4.4, -5.6], [-5.6, 2.2], [-6.2, 0.4]], cols = [0xd23b2e, 0x2f56d6, 0xd23b2e, 0xf2c94c, 0x2bb673, 0xd23b2e, 0x9b59b6];
+  spots.forEach(([x, z], i) => { const p = person(RP, 'stand', { shirt: cols[i], sleeve: cols[i], pants: 0x20283a, shorts: false, shoe: 0x1a1a1a }); p.position.set(x, 0, z); p.rotation.y = Math.atan2(1.5 - x, -z); south.add(p); watchers.push(p); }); }
+const heroS = person(rng(9), 'walk', PARKA); heroS.scale.setScalar(1.05); south.add(heroS);
+
+// ---- North Pole (arrival, polar night)
+const north = new THREE.Scene(); north.fog = new THREE.Fog(0x0b1836, 120, 1300); north.add(skyDome(0x040818, 0x123062, 0x0b1836)); north.add(stars(R, 2600, 800));
+north.add(new THREE.HemisphereLight(0x6f8fd8, 0x1c2a50, 0.6)); const moonL = new THREE.DirectionalLight(0xc4d6ff, 0.75); moonL.position.set(50, 70, 40); moonL.castShadow = true; moonL.shadow.mapSize.set(4096, 4096);
+Object.assign(moonL.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 300 }); moonL.shadow.bias = -0.0006; moonL.shadow.normalBias = 0.05; north.add(moonL);
+const holeL = new THREE.PointLight(0xffc080, 70, 40, 1.6); holeL.position.set(4.5, 3.4, 4.5); north.add(holeL);
+north.add(snowGround(0xc9dcf2, 0.7)); north.add(holeParts(true));
+const auroras = []; { for (let k = 0; k < 4; k++) { const n = 70, pos = [], col = [], idx = [], L = 1500, z0 = -620 + k * 70, ph = k * 1.7;
+    for (let i = 0; i <= n; i++) { const x = -L / 2 + i / n * L, z = z0 + Math.sin(i * 0.19 + ph) * 60 + Math.sin(i * 0.07 + ph * 2) * 90, y0 = 190 + k * 45 + Math.sin(i * 0.11 + ph) * 25, hgt = 120 + Math.sin(i * 0.23 + ph) * 40, e = Math.sin(Math.PI * i / n);
+      pos.push(x, y0, z, x, y0 + hgt, z); col.push(0.1 * e, 0.6 * e, 0.3 * e, 0.12 * e * 0.2, 0.2 * e * 0.3, 0.7 * e * 0.25); if (i < n) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx);
+    const m = new THREE.Mesh(g, basic(0xffffff, { vertexColors: true, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, fog: false })); north.add(m); auroras.push(m); } }
+{ const moon = new THREE.Mesh(new THREE.SphereGeometry(26, 20, 14), basic(0xe9efff, { fog: false })); moon.position.set(330, 330, -640); north.add(moon);
+  const RN = rng(31); for (let k = 0; k < 9; k++) { const an = RN() * 6.28, r0 = 16 + RN() * 60, dir = RN() * 6.28, len = 8 + RN() * 26; for (let i = 0; i < len; i++) { const b = iceBlock(RN, 1.1 + RN() * 1.6, RN() < 0.5 ? 0xcfe2f6 : 0xa9c6e6); b.position.set(Math.cos(an) * r0 + Math.cos(dir) * i * 1.5 + (RN() - 0.5) * 2, 0.5 + RN() * 1.2, Math.sin(an) * r0 + Math.sin(dir) * i * 1.5 + (RN() - 0.5) * 2); if (Math.hypot(b.position.x, b.position.z) > 9) north.add(b); } }
+  for (let i = 0; i < 90; i++) { const an = RN() * 6.28, r = 90 + RN() * 600, b = iceBlock(RN, 3 + RN() * 7, 0xb9d0ea); b.position.set(Math.cos(an) * r, 1.5, Math.sin(an) * r); north.add(b); }
+  const tent = new THREE.Group(), cone = new THREE.Mesh(new THREE.ConeGeometry(3.4, 3.6, 4), mat(0xd23b2e)); cone.position.y = 1.8; cone.rotation.y = Math.PI / 4; tent.add(cone); tent.add(new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.5, 0.1), basic(0xffd27a)).translateY(0.8).translateZ(2.0).translateX(0.0)); tent.position.set(-9, 0, -9.5); tent.rotation.y = 0.75; north.add(shadowAll(tent));
+  const tl = new THREE.PointLight(0xffc070, 14, 22, 1.6); tl.position.set(-7.2, 1.4, -7.4); north.add(tl);
+  const f = flag(0xf2c94c, 5); f.position.set(-4.5, 0, -6.5); north.add(f);
+  const sl = new THREE.Group(); sl.add(box(3.2, 0.14, 0.2, 0x8a6d3b, 0, 0.25, 0.5)); sl.add(box(3.2, 0.14, 0.2, 0x8a6d3b, 0, 0.25, -0.5)); sl.add(box(2.6, 0.5, 1.0, 0x2f56d6, 0, 0.6, 0)); sl.add(box(1.2, 0.5, 0.9, 0xf2994a, -0.5, 1.1, 0)); sl.position.set(-12, 0, -3); sl.rotation.y = 0.5; north.add(shadowAll(sl));
+  // ladder on the rim (x side)
+  for (const z of [-0.36, 0.36]) north.add(box(0.09, 7.5, 0.09, 0xd8dde3, HOLE - 0.12, -2.4, z)); for (let i = 0; i < 16; i++) north.add(box(0.07, 0.07, 0.72, 0xd8dde3, HOLE - 0.12, -5.8 + i * 0.45, 0));
+  for (const z of [-0.36, 0.36]) { north.add(box(0.09, 0.09, 0.09, 0xd8dde3, HOLE + 0.4, 1.3, z)); north.add(box(1.1, 0.09, 0.09, 0xd8dde3, HOLE + 0.4, 1.34, z)); north.add(box(0.09, 1.3, 0.09, 0xd8dde3, HOLE + 0.95, 0.65, z)); } }
+const greeters = []; { const RP = rng(12); [[7.6, -3.4, 0x2f56d6], [8.6, -2.2, 0xf2c94c]].forEach(([x, z, c]) => { const p = person(RP, 'stand', { shirt: c, sleeve: c, pants: 0x20283a, shorts: false, shoe: 0x1a1a1a }); p.position.set(x, 0, z); p.rotation.y = Math.atan2(2 - x, -z); north.add(p); greeters.push(p); }); }
+const heroN = person(rng(9), 'stand', PARKA); heroN.scale.setScalar(1.05); north.add(heroN);
+
+// =====================================================  SHAFT (walls stream past; you stay in the middle of the frame)
+const shaft = new THREE.Scene(); shaft.fog = new THREE.Fog(0x05070d, 30, 150);
+const sHemi = new THREE.HemisphereLight(0xffffff, 0x404040, 0.9); shaft.add(sHemi); const sKey = new THREE.PointLight(0xfff0dc, 30, 14, 1.4); sKey.position.set(0.8, 3.2, 1.2); shaft.add(sKey);
+const RINGS = 44, SEGS = 16, SPAN = RINGS * 4, wallMat = new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), wall = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), wallMat, RINGS * SEGS), wInfo = [];
+{ const RW = rng(404), c = new THREE.Color(); for (let i = 0; i < RINGS; i++) { const off = RW() * 0.4; for (let j = 0; j < SEGS; j++) { const a = (j + off) / SEGS * Math.PI * 2 + (RW() - 0.5) * 0.12; wInfo.push({ a, r: 6.3 + RW() * 1.1, y: i * 4 + (RW() - 0.5) * 1.4, sx: 2.5 + RW() * 0.9, sy: 3.4 + RW() * 2.6, sz: 1.6 + RW() * 1.4, tw: (RW() - 0.5) * 0.3 }); const k = 0.62 + RW() * 0.38; c.setRGB(k, k, k); wall.setColorAt(i * SEGS + j, c); } } wall.instanceColor.needsUpdate = true; shaft.add(wall); }
+const sLights = []; for (let i = 0; i < 9; i++) { const l = new THREE.Mesh(new THREE.TorusGeometry(5.5, 0.06, 6, 48), basic(0xcfe6ff, { transparent: true })); l.rotation.x = Math.PI / 2; shaft.add(l); sLights.push(l); }
+const STN = 70, streak = new THREE.InstancedMesh(new THREE.BoxGeometry(0.045, 1, 0.045), basic(0xffffff, { transparent: true, opacity: 0.4, fog: false }), STN), stInfo = []; { const RW = rng(8); for (let i = 0; i < STN; i++) stInfo.push({ a: RW() * 6.28, r: 2.6 + RW() * 2.6, y: RW() * SPAN, k: 1.3 + RW() * 0.9 }); shaft.add(streak); }
+const farGlow = new THREE.Mesh(new THREE.CircleGeometry(6.2, 32), basic(0x000000, { fog: false })); farGlow.rotation.x = -Math.PI / 2; farGlow.position.y = -150; shaft.add(farGlow);
+const exitDot = new THREE.Mesh(new THREE.CircleGeometry(1, 24), basic(0x9fc4ff, { fog: false, transparent: true })); exitDot.rotation.x = -Math.PI / 2; exitDot.position.y = -149; shaft.add(exitDot);
+const heroF = person(rng(9), 'stand', PARKA); heroF.scale.setScalar(1.05); const heroPivot = new THREE.Group(); heroF.position.y = -0.95; heroPivot.add(heroF); shaft.add(heroPivot);
+// layer look by depth (km): wall colour, glow of the rock itself, name
+const LAYERS = [[0, 0x93a7ba, 0x000000, 0.0, 0x0a1220], [35, 0x8a5a46, 0x551400, 0.18, 0x1a0803], [660, 0xa8402a, 0xff3a10, 0.2, 0x5a1404], [2891, 0xf08a22, 0xff8a18, 0.55, 0xd07a1c], [5150, 0xffd070, 0xffc860, 0.62, 0xf0c060]];
+const layerAt = (d) => { let i = 0; while (i < LAYERS.length - 1 && d >= LAYERS[i + 1][0]) i++; const a = LAYERS[i], b = LAYERS[Math.min(i + 1, LAYERS.length - 1)], w = i === 0 ? 25 : (i === 1 ? 300 : 260), k = i < LAYERS.length - 1 ? smooth(seg(d, b[0] - w, b[0])) : 0;
+  return { col: new THREE.Color(a[1]).lerp(new THREE.Color(b[1]), k), em: new THREE.Color(a[2]).lerp(new THREE.Color(b[2]), k), ei: lerp(a[3], b[3], k), glow: new THREE.Color(a[4]).lerp(new THREE.Color(b[4]), k) }; };
+const layerName = (d) => d < 35 ? 'Crust' : (d < 2891 ? 'Mantle · solid rock' : (d < 5150 ? 'Outer core · liquid iron' : 'Inner core · solid iron'));
+
+// =====================================================  CUTAWAY (north is at the bottom: you start at the South Pole)
+const space = new THREE.Scene(); space.add(stars(R, 2400, 700)); space.add(new THREE.AmbientLight(0x8fa6d6, 0.55)); const sunSp = new THREE.DirectionalLight(0xffffff, 2.6); sunSp.position.set(-30, 18, 50); space.add(sunSp);
+const earth = new THREE.Group(); space.add(earth); const TILT = 0.42; earth.rotation.y = TILT;
+const gl = globe(10, 24); gl.userData.mesh.material.clippingPlanes = [new THREE.Plane(new THREE.Vector3(-Math.sin(TILT), 0, -Math.cos(TILT)), 0)]; gl.userData.mesh.material.side = THREE.DoubleSide; gl.userData.atm.material.uniforms.k.value = 0.8; earth.add(gl);
+const face = new THREE.Group(); face.position.z = 0.02; earth.add(face);
+{ const ringL = (r0, r1, colA, colB, segs, rs, jit) => { const g0 = new THREE.RingGeometry(r0, r1, segs, rs).toNonIndexed(), p = g0.attributes.position, col = new Float32Array(p.count * 3), a = new THREE.Color(colA), b = new THREE.Color(colB), c = new THREE.Color(), RJ = rng(Math.round(r1 * 100));
+    for (let i = 0; i < p.count; i += 3) { const r = (Math.hypot(p.getX(i), p.getY(i)) + Math.hypot(p.getX(i + 1), p.getY(i + 1)) + Math.hypot(p.getX(i + 2), p.getY(i + 2))) / 3, k = clamp((r - r0) / (r1 - r0)); c.copy(a).lerp(b, k).multiplyScalar(1 - jit + RJ() * jit * 2); for (let q = 0; q < 3; q++) { col[(i + q) * 3] = c.r; col[(i + q) * 3 + 1] = c.g; col[(i + q) * 3 + 2] = c.b; } }
+    g0.setAttribute('color', new THREE.BufferAttribute(col, 3)); const m = new THREE.Mesh(g0, basic(0xffffff, { vertexColors: true })); face.add(m); return m; };
+  ringL(0, 1.917, 0xfff8dc, 0xffe08a, 28, 3, 0.03);            // inner core: radius 1,221.5 km
+  ringL(1.917, 5.462, 0xffc040, 0xf08a1e, 44, 5, 0.06);        // outer core: to 3,480 km
+  ringL(5.462, 8.948, 0xd2482a, 0xa83224, 60, 6, 0.08);        // lower mantle: to 5,701 km
+  ringL(8.948, 9.93, 0x9a3a26, 0x7a3a2a, 72, 2, 0.08);         // upper mantle
+  ringL(9.93, 10.0, 0x5a4a3c, 0x5a4a3c, 96, 1, 0.0); }         // crust (drawn thicker than it is)
+const tun = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 20.1), basic(0x070a14)); tun.position.z = 0.03; face.add(tun);
+for (const x of [-0.15, 0.15]) { const e = new THREE.Mesh(new THREE.PlaneGeometry(0.035, 20.1), basic(0xdfeaff)); e.position.set(x, 0, 0.035); face.add(e); }
+const dot = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12), basic(0x8fe9ff)); face.add(dot); const dotHalo = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 32), basic(0xffffff, { transparent: true })); face.add(dotHalo);
+const gArrow = arrow(2.4, 0xffd64a, 0.11); gArrow.rotation.z = Math.PI; face.add(gArrow);
+const cArrows = []; for (let i = 0; i < 8; i++) { const a = arrow(1.9, 0x8fe9ff, 0.07); a.rotation.z = i / 8 * Math.PI * 2; a.position.z = 0.1; face.add(a); cArrows.push(a); }
+const poleS = new THREE.Object3D(); poleS.position.set(0, 10, 0); face.add(poleS); const poleNn = new THREE.Object3D(); poleNn.position.set(0, -10, 0); face.add(poleNn); const cen = new THREE.Object3D(); face.add(cen);
+const moonSp = new THREE.Mesh(new THREE.IcosahedronGeometry(1.4, 3), mat(0xb8b8b8)); moonSp.position.set(15, 25, -30); space.add(moonSp);
+
+const postS = makePost(renderer, south, cam, { bloom: 0.14, bloomThreshold: 0.96, sat: 1.12 }), postN = makePost(renderer, north, cam, { bloom: 0.4, bloomThreshold: 0.86, bloomRadius: 0.6, sat: 1.18 }),
+  postF = makePost(renderer, shaft, cam, { bloom: 0.3, bloomThreshold: 0.9, bloomRadius: 0.6, sat: 1.15 }), postSp = makePost(renderer, space, cam, { bloom: 0.4, bloomThreshold: 0.8, bloomRadius: 0.7, sat: 1.1 });
+
+const CAPS = /*CAPS*/[[3.5, 4.91, "You'd be <em>weightless</em><br>the whole way,"], [4.93, 6.55, "and arrive in<br><em>38 minutes</em>."], [7.2, 8.97, "Picture a tunnel<br>from pole to pole,"], [8.99, 10.12, "with <em>no air</em> inside."], [10.14, 10.98, "You step off."], [12.0, 13.48, "You fall faster and faster,"], [13.5, 14.64, "but you feel <em>no weight</em>."], [14.66, 15.61, "You're in free fall."], [16.6, 18.87, "Gravity stays strong<br>almost <em>halfway</em> down."], [18.89, 19.62, "Then it fades."], [20.6, 22.65, "At the centre, the Earth<br>pulls you equally"], [22.67, 23.79, "in every direction."], [23.81, 25.05, "Gravity is <em>zero</em>."], [25.07, 28.53, "But you're doing over<br><em>28,000 km/h</em>."], [29.4, 30.66, "So you fly<br>straight through,"], [30.68, 32.1, "and gravity<br><em>slows you down</em>."], [33.2, 35.05, "38 minutes after<br>you stepped off,"], [35.07, 36.49, "you rise out of<br>the far side,"], [36.51, 37.21, "and <em>stop</em>."], [38.2, 38.88, "Grab the edge,"], [38.9, 40.15, "or you fall<br><em>all the way back</em>."], [41.3, 42.47, "No one can dig it:"], [42.49, 44.03, "the deepest hole<br>ever drilled"], [44.05, 45.54, "is just <em>12 kilometres</em>."], [45.56, 46.92, "But the physics is real."]]/*END*/;
+const clock = (m) => { const s = Math.round(m * 60); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const km = (x) => Math.round(x).toLocaleString('en-US');
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const sceneAt = (t) => t < T.pole ? 'intro' : (t < T.shaft ? 'south' : (t < T.diag ? 'shaft' : (t < T.core ? 'diag' : (t < T.north ? 'shaft' : (t < T.kola ? 'north' : 'kola')))));
+let heroPix = [0, 0];
+
+function southFrame(t) {
+  const q = t - T.drop, wk = seg(t, T.pole + 0.3, T.drop - 0.25); let x = lerp(8.4, 2.05, wk), y = 0.59, mode = wk > 0 && wk < 1 ? 'walk' : 'stand';
+  if (q > 0) { x = 2.05 - Math.min(q, 0.5) * 1.3; y = 0.59 - 4.9 * q * q; mode = 'float'; }
+  heroS.position.set(x, y, 0); heroS.rotation.set(0, -Math.PI / 2, 0); heroS.userData.pose(mode === 'walk' ? t * 7.5 : t * 3, mode); heroS.rotation.z = q > 0 ? 0 : 0; heroS.visible = y > -34;
+  watchers.forEach((p, i) => { p.userData.pose(t * 1.3 + i, 'stand'); if (i % 2 === 0) { p.userData.aR.rotation.x = -2.6 + Math.sin(t * 6 + i) * 0.25; } });
+  if (t < T.drop) camPath([[T.pole, V(27, 13, 33), V(-5, 6.5, -8), 43], [T.drop, V(10.5, 3.3, 9.5), V(1.0, 2.3, -0.6), 45]], t);
+  else camPath([[T.drop, V(10.5, 3.3, 9.5), V(1.0, 2.3, -0.6), 45], [T.shaft, V(5.6, 6.2, 4.6), V(0.6, -5, 0), 58]], t);
+  renderer.toneMappingExposure = 1.0; postS.render(); heroPix = proj(V(heroS.position.x, heroS.position.y + 2.25, 0), cam);
+}
+function northFrame(t) {
+  let x = 2.0, y, mode = 'float', ry = Math.PI / 2, rz = 0;
+  if (t < T.apex) y = -0.25 - 2.05 * (T.apex - t) * (T.apex - t); else y = -0.25 - 0.22 * Math.pow(Math.min(t, T.grab) - T.apex, 2);
+  const g1 = smooth(seg(t, T.grab, T.grab + 0.55)), g2 = smooth(seg(t, T.grab + 0.75, T.grab + 2.0)), g3 = smooth(seg(t, T.grab + 2.0, T.grab + 2.7));
+  x = lerp(x, HOLE - 0.48, g1); y = lerp(y, -1.25, g1); y = lerp(y, 0.12, g2); x = lerp(x, HOLE + 1.75, g3); if (g3 > 0) y = lerp(y, 0.0, g3);
+  heroN.position.set(x, y, 0); heroN.rotation.set(0, ry, rz); const u = heroN.userData; u.pose(t * 2.2, g1 > 0.5 ? 'stand' : 'float');
+  if (g1 > 0) { const reach = g1 * (1 - g3); u.aL.rotation.x = lerp(u.aL.rotation.x, -2.5 + Math.sin(g2 * 9) * 0.35, reach); u.aR.rotation.x = lerp(u.aR.rotation.x, -2.5 - Math.sin(g2 * 9) * 0.35, reach); u.aL.rotation.z = u.aR.rotation.z = 0; u.lL.rotation.x = Math.sin(g2 * 9) * 0.5 * reach; u.lR.rotation.x = -Math.sin(g2 * 9) * 0.5 * reach; }
+  if (g3 >= 1) { u.aR.rotation.x = -2.7 + Math.sin(t * 9) * 0.2; }
+  greeters.forEach((p, i) => { p.userData.pose(t * 1.4 + i, 'stand'); if (t > T.apex - 0.6) { p.userData.aL.rotation.x = p.userData.aR.rotation.x = -2.7 + Math.sin(t * 8 + i * 2) * 0.3; } });
+  auroras.forEach((m, i) => { m.material.opacity = 0.5 + 0.2 * Math.sin(t * 0.9 + i * 1.9); m.position.x = Math.sin(t * 0.13 + i) * 30; });
+  camPath([[T.north, V(12.5, 2.6, 12.5), V(1.6, 3.4, 0), 54], [T.apex, V(10.2, 2.9, 10.4), V(1.8, 2.5, 0), 52], [T.kola, V(9.4, 3.2, 9.4), V(2.6, 1.9, 0), 50]], t);
+  renderer.toneMappingExposure = 1.0; postN.render(); heroPix = proj(V(x, y + 2.25, 0), cam);
+}
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3();
+function shaftFrame(t) {
+  const st = state(t), S = scrollAt(t), dkm = st.depth * RKM, L = layerAt(dkm);
+  wallMat.color.copy(L.col); wallMat.emissive.copy(L.em); wallMat.emissiveIntensity = L.ei; shaft.fog.color.copy(L.glow).multiplyScalar(0.55); farGlow.material.color.copy(L.glow);
+  sHemi.intensity = 0.55 + L.ei * 0.25;
+  for (let k = 0; k < wInfo.length; k++) { const w = wInfo[k], y = ((w.y + S) % SPAN + SPAN) % SPAN - (SPAN - 26); _e.set(0, -w.a + Math.PI / 2 + w.tw, w.tw); _q.setFromEuler(_e); _p.set(Math.cos(w.a) * w.r, y, Math.sin(w.a) * w.r); _s.set(w.sz, w.sy, w.sx); _m.compose(_p, _q, _s); wall.setMatrixAt(k, _m); } wall.instanceMatrix.needsUpdate = true;
+  sLights.forEach((l, i) => { l.position.y = ((i * 20 + S) % 180 + 180) % 180 - 154; l.material.opacity = 0.9 - L.ei * 0.6; });
+  const len = 1.5 + st.v * 16; for (let i = 0; i < STN; i++) { const w = stInfo[i], y = ((w.y + S * w.k) % SPAN + SPAN) % SPAN - (SPAN - 26); _q.identity(); _p.set(Math.cos(w.a) * w.r, y, Math.sin(w.a) * w.r); _s.set(1, len, 1); _m.compose(_p, _q, _s); streak.setMatrixAt(i, _m); } streak.instanceMatrix.needsUpdate = true; streak.material.opacity = 0.12 + st.v * 0.4;
+  const ex = st.second ? smooth(seg(t, T.thru + 1.2, T.north)) : 0; exitDot.visible = ex > 0; exitDot.scale.setScalar(0.4 + ex * 4.6); exitDot.material.opacity = ex;
+  // slow half-turn over the whole trip, so you leave the far side head first
+  heroPivot.rotation.set(Math.PI / 2 * (smooth(seg(st.m, 1.5, 6)) + smooth(seg(st.m, 31, 36.4))), t * 0.12, Math.sin(t * 0.8) * 0.08); heroPivot.position.set(Math.sin(t * 0.7) * 0.15, Math.sin(t * 1.1) * 0.12, 0); heroF.userData.pose(t * 2.4, 'float');
+  const k = 0.03 + st.v * 0.05; cam.position.set(0.3 + Math.sin(t * 31) * k, 6.4 + Math.sin(t * 47 + 1) * k, 3.6); cam.up.set(0, 0, -1); cam.fov = 62; cam.lookAt(V(0, -30, -7.5)); cam.updateProjectionMatrix();
+  renderer.toneMappingExposure = 0.95; postF.render(); heroPix = proj(V(0, 0, -1.6), cam);
+}
+const wp = new THREE.Vector3(); const pix = (obj) => { obj.updateWorldMatrix(true, false); wp.set(0, 0, 0); obj.localToWorld(wp); return proj(wp, cam); };
+function spaceFrame(t, sc) {
+  const st = state(t); let dy;
+  if (sc === 'intro') { const u = smooth(seg(t, 0.9, 6.3)), half = u < 0.5; const f = half ? tab(DEP, u * 2) : tab(DEP, (1 - u) * 2); dy = half ? 10 - f * 10 : -10 + f * 10; }
+  else dy = st.second ? -10 + st.depth * 10 : 10 - st.depth * 10;
+  dot.position.set(0, dy, 0.3); dotHalo.position.set(0, dy, 0.32); const pu = (t * 1.6) % 1; dotHalo.scale.setScalar(1 + pu * 1.6); dotHalo.material.opacity = (1 - pu) * 0.8; dot.visible = dotHalo.visible = sc !== 'kola';
+  const showG = sc === 'diag' && st.g > 0.04 && t < 22.5; gArrow.visible = showG; gArrow.position.set(0.62, dy, 0.3); gArrow.scale.set(1, Math.max(0.05, st.g), 1); gArrow.userData.mat.opacity = smooth(seg(t, T.diag + 0.3, T.diag + 0.8));
+  const ca = sc === 'diag' ? smooth(seg(t, 22.3, 23.1)) : 0; cArrows.forEach((a, i) => { a.visible = ca > 0; a.userData.mat.opacity = ca; a.scale.setScalar(0.4 + ca * 0.6); const an = i / 8 * Math.PI * 2 + Math.PI / 8; a.rotation.z = an; a.position.set(-Math.sin(an) * 0.55, dy + Math.cos(an) * 0.55, 0.3); });
+  earth.rotation.y = TILT; cam.up.set(0, 1, 0); cam.fov = 40;
+  if (sc === 'intro') { cam.position.set(0, 0, 82 - seg(t, 0, T.pole) * 4); cam.lookAt(V(0, 3.4, 0)); }
+  else if (sc === 'diag') { const z = smooth(seg(t, 20.2, 22.4)); cam.position.set(0, lerp(2, 0.6, z), lerp(64, 47, z) - seg(t, T.diag, T.core) * 2); cam.lookAt(V(0, lerp(-3.2, -2.9, z), 0)); }
+  else { const z = seg(t, T.kola, DUR); cam.position.set(0, 2, 66 - z * 4); cam.lookAt(V(0, -4.0, 0)); }
+  cam.updateProjectionMatrix(); renderer.toneMappingExposure = 1.1; postSp.render();
+}
+function overlayFrame(t, sc) {
+  const st = state(t), low = sc === 'diag' || sc === 'kola' || sc === 'shaft' || sc === 'intro';
+  const ta = t < 3.2 ? Math.min(seg(t, 0.12, 0.5), 1 - seg(t, 2.9, 3.2)) : 0; O.set(O.title, 'What if you fell<br><em>through</em><br>the Earth?'); O.show(O.title, ta); O.title.style.top = '330px'; O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.12, 0.8))) * 26}px)`;
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = '1420px';
+  // chip: where you are
+  let chip = '', cha = 1;
+  if (sc === 'south') { chip = 'South Pole'; cha = seg(t, T.pole + 0.2, T.pole + 0.6); } else if (sc === 'shaft') chip = layerName(st.depth * RKM); else if (sc === 'diag' || sc === 'kola') chip = 'Not to scale'; else if (sc === 'north') { chip = 'North Pole'; cha = seg(t, T.north + 0.2, T.north + 0.6); } else { chip = 'Not to scale'; cha = seg(t, 3.3, 3.8); }
+  O.set(O.chip, chip); O.show(O.chip, cha); O.chip.style.top = (sc === 'intro' && t < 3.2 ? 5000 : 330) + 'px';
+  // HUD: the clock since you stepped off
+  let ha = 1; const gp = Math.round(st.g * 100), dk = st.depth * RKM, dtxt = dk < 100 ? km(dk) : km(Math.round(dk / 10) * 10);
+  if (sc === 'intro') { O.hudSet('Trip time', '38 min', 'Pole to pole · about 12,700 km'); ha = seg(t, 3.5, 3.9); }
+  else if (t < T.drop) O.hudSet('Tunnel length', '12,700 km', 'About · pole to pole · no air inside\nImaginary: no one can build it');
+  else if (sc === 'kola') O.hudSet('Deepest hole drilled', '12 km', 'Kola Superdeep Borehole\n0.2% of the way to the centre');
+  else if (t >= T.apex) O.hudSet('Since you stepped off', '38:00', t < T.grab ? 'About 38 minutes\nSpeed: 0' : 'About 38 minutes\nYou made it');
+  else O.hudSet('Since you stepped off', clock(st.m), st.second ? `To the far side: ${dtxt} km\nPull of gravity: ${gp}% · slowing you` : (st.depth > 0.985 ? `Depth: ${dtxt} km · slow motion\nPull of gravity: ${gp}%` : `Depth: ${dtxt} km · time sped up\nPull of gravity: ${gp}%`));
+  if (t >= T.end) ha = 0; O.show(O.hud, ha); O.hud.style.top = (sc === 'intro' ? 470 : (low ? 1195 : 860)) + 'px';
+  const bright = sc === 'south' || sc === 'north', backed = bright || sc === 'shaft'; O.tint.style.background = sc === 'shaft' ? 'linear-gradient(180deg,rgba(10,6,4,0) 52%,rgba(10,6,4,.55) 72%,rgba(10,6,4,.7) 100%)' : sc === 'north' ? 'linear-gradient(180deg,rgba(4,8,26,0) 60%,rgba(4,8,26,.6) 100%)' : bright ? 'linear-gradient(180deg,rgba(8,16,44,.18) 0,rgba(8,16,44,0) 20%,rgba(8,16,44,0) 45%,rgba(8,16,44,.42) 66%,rgba(8,16,44,.58) 100%)' : 'none';
+  O.hud.style.background = backed ? 'linear-gradient(90deg,rgba(8,14,36,.6),rgba(8,14,36,.0))' : 'none'; O.hud.style.padding = backed ? '14px 60px 14px 22px' : '0 0 0 22px';
+  // labels
+  let lab = ''; const Lb = (x, y, a, html, al) => `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${clamp(a).toFixed(3)};${al || ''}">${html}</div>`;
+  if (sc === 'intro' || sc === 'diag' || sc === 'kola') { const ps = pix(poleS), pn = pix(poleNn), pd = pix(dot), pc = pix(cen), a0 = sc === 'intro' ? seg(t, 3.3, 3.8) : 1;
+    lab += Lb(ps[0] + 30, ps[1] + 16, a0 * (sc === 'diag' ? 1 - seg(t, 20.4, 21.0) : 1), 'South Pole'); lab += Lb(pn[0] + 30, pn[1] - 50, a0, 'North Pole');
+    if (sc !== 'kola') lab += Lb(pd[0] - 128, pd[1] - 18, a0 * (sc === 'diag' ? 1 - seg(t, 22.2, 22.6) : 1), 'You');
+    if (sc === 'diag') { lab += Lb(pd[0] + 70, pd[1] + 14, (1 - seg(t, 21.6, 22.2)) * seg(t, T.diag + 0.4, T.diag + 0.9), `Gravity<b>${gp}%</b>`);
+      lab += Lb(pc[0] + 150, pc[1] - 150, seg(t, 22.9, 23.4) * (1 - seg(t, 24.7, 25.0)), 'Pulled equally<br>every way<b>Gravity: 0</b>'); }
+    if (sc === 'kola') { lab += Lb(ps[0] - 400, ps[1] + 90, seg(t, T.kola + 1.6, T.kola + 2.1), 'Deepest hole ever drilled<b>12 km</b>'); lab += Lb(pc[0] + 238, pc[1] - 40, seg(t, T.kola + 2.9, T.kola + 3.4), 'To the centre<b>6,371 km</b>'); } }
+  if (sc === 'shaft' && t >= T.core + 1.6 && t < T.thru) lab += Lb(96, 985, seg(t, T.core + 1.6, T.core + 2.0), 'Your speed<b>over 28,000 km/h</b>', 'background:rgba(10,14,34,.62);padding:12px 22px 14px;border-radius:16px');
+  if ((sc === 'south' && t < T.drop + 0.5) || (sc === 'north' && t > T.north + 1.6)) { const p = heroPix, ok = (sc === 'south' || heroN.position.y > -1.1) && p[0] > 60 && p[0] < 880 && p[1] > 430 && (p[0] > 520 || p[1] < 830 || p[1] > 1090); lab += Lb(p[0] - 30, p[1] - 40, ok ? (sc === 'south' ? seg(t, T.pole + 0.8, T.pole + 1.2) : seg(t, T.north + 1.6, T.north + 2.0)) : 0, 'You'); }
+  if (O.labels._h !== lab) { O.labels._h = lab; O.labels.innerHTML = lab; }
+  let fl = 0; for (const [a, d, k] of [[T.pole, 0.35, 0.7], [T.shaft, 0.3, 0.55], [T.diag, 0.3, 0.6], [T.core, 0.4, 0.85], [T.north, 0.45, 0.85], [T.kola, 0.3, 0.6]]) if (t >= a - 0.06 && t < a + d) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + d)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { const sc = sceneAt(t); if (sc === 'south') southFrame(t); else if (sc === 'north') northFrame(t); else if (sc === 'shaft') shaftFrame(t); else spaceFrame(t, sc); overlayFrame(t, sc); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>
