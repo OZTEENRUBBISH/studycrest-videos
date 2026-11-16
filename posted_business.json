@@ -105,6 +105,13 @@
    "published_at": "2026-11-16T11:45:00+11:00",
    "permalink": null,
    "note": "publish_carousel returned error code 4 / subcode 2207051 on both attempts (11:45 and 11:54), but the account media_count rose 14->15->16, so the post appears to be live, probably twice. Permalink not returned. Needs a manual check and one duplicate deleted."
+  },
+  {
+   "file": "sb-reel-03-tips-first-year-habits",
+   "type": "reel",
+   "slot": "16:45",
+   "published_at": "2026-11-16T16:45:00+11:00",
+   "permalink": "https://www.instagram.com/reel/Dfyoq3mlAdj/"
   }
  ]
 }
