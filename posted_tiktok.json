@@ -96,6 +96,12 @@
    "kind": "sim",
    "due_at": "2026-11-18T18:00:00+11:00",
    "buffer_post_id": "6afb2e0a37f32fd42a3bb2a3"
+  },
+  {
+   "file": "sim-11-neutron",
+   "kind": "sim",
+   "due_at": "2026-11-19T00:00:00+11:00",
+   "buffer_post_id": "6afb3ec12561836c9112d679"
   }
  ]
 }
