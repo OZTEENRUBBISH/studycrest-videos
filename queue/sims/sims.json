@@ -130,6 +130,18 @@
     "https://hyperphysics.gsu.edu/hbase/Particles/muonatm.html",
     "https://livescience.com/physics-mathematics/how-many-cosmic-particles-are-passing-through-your-body-at-any-moment"
    ]
+  },
+  {
+   "file": "sim-11-neutron.mp4",
+   "title": "What if a teaspoon of neutron star appeared on your desk?",
+   "made": "2026-11-17",
+   "caption": "What if a teaspoon of neutron star appeared on your desk? It wouldn't crash through the floor. Without the star's gravity squeezing it, it would burst apart. 💥\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #neutronstar #space #studytok",
+   "science": "Neutron star: NASA (Imagine the Universe) describes 'an object with the mass of a sun squished down to the size of a city', 'about 20 kilometers (12.5 miles) across', and says 'one sugar cube of neutron star material would weigh about 1 trillion kilograms (or 1 billion tons) on Earth', about as much as a mountain. Astronomy magazine (answer by Valerie Mikles) gives the remnant as 'about 1.5 times the Sun's mass' and a tablespoon as 'more than 1 billion tons (900 billion kg)'. Arithmetic run: 1.4 solar masses (2.78e30 kg) in a 12 km radius sphere (7.24e12 m3) is a mean density of about 3.8e17 kg/m3, so a 5 mL teaspoon is about 1.9e12 kg, roughly 2 billion tonnes; NASA's sugar-cube figure scaled to 5 mL gives about 5 billion tonnes. Sources differ, so the film says only 'billions of tonnes' and 'as much as a mountain'. What happens: the same Astronomy answer says the matter is that dense only because of the star's gravity; brought to Earth, 'what's inside expands very rapidly' and it 'would cause a giant explosion, and it would probably vaporize a good chunk of our planet'. The film says 'a giant explosion, big enough to vaporise part of the planet' and gives no energy figure, because none could be verified from an official source (a comparison with the dinosaur-killing asteroid was dropped for that reason). Free neutron: Particle Data Group mean life 878.3 +/- 0.4 s = 14 min 38 s (shown on the clock, said as 'about fifteen minutes'); decay to proton + electron + antineutrino, about 100 percent. The idea's planned point ('it would blow apart') survived checking. Illustrative and labelled so: the blast over the town and on the globe ('Illustration, not to scale', slow motion, no timing shown); the city beside the star is at the same scale but its buildings are enlarged; the 'bursts in' countdown is a film device, not a measured time; pulsar beams and star surface are stylised; particle sizes in the decay shot are not to scale.",
+   "sources": [
+    "https://imagine.gsfc.nasa.gov/science/objects/pulsars1.html",
+    "https://www.astronomy.com/science/what-would-happen-if-tablespoonful-neutron-star-was-brought-to-earth/",
+    "https://pdglive.lbl.gov/Particle.action?node=S017"
+   ]
   }
  ]
 }
