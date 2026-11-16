@@ -25,3 +25,21 @@ What stands out: Buffer's numbers for this post were last refreshed before it we
 | sim-03-sun | simulation | 16 Nov 12:04am | 5 h | 0 | 0 | 0 | 0 | not judged yet |
 
 What stands out: the first simulation reached 19,486 views (average watch 8.9 s of 54 s), so the account is reaching viewers well beyond its followers. The two ads are far lower so far (121 and 71 views, average watch 1.3 s and 1.1 s), but neither has been live 24 hours and their numbers were last refreshed at 5:17pm on 15 Nov, so this is an early reading only. The zeros for sim-02 and sim-03 were recorded before those posts went out and are not real readings. Best of the week: sim-01-gravity (19,486). Worst cannot be named yet with only one judged post.
+
+## 2026-11-17 (checked 5:14am Sydney)
+
+**Overall: watch.** Of the five posts old enough to judge, two are "seen" and three are "slow"; none is "not travelling". No posts with status error. Four posts sent in the last 24 hours, as expected.
+
+| Post | Kind | Sent (Sydney) | Live for | Views | Likes | Comments | Shares | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| sim-01-gravity | simulation | 15 Nov 12:04am | 53 h | 43,512 | 231 | 4 | 2 | seen |
+| studycrest-06-physics | ad (spot) | 15 Nov 6:02am | 47 h | 121 | 2 | 0 | 0 | slow |
+| studycrest-09-test-predictor | ad (feature) | 15 Nov 12:01pm | 41 h | 71 | 1 | 0 | 0 | slow |
+| sim-02-chernobyl | simulation | 15 Nov 6:02pm | 35 h | 299 | 7 | 0 | 0 | slow |
+| sim-03-sun | simulation | 16 Nov 12:04am | 29 h | 317 | 6 | 0 | 0 | seen |
+| studycrest-07-chemistry | ad (spot) | 16 Nov 6:03am | 23 h | 115 | 3 | 0 | 0 | not judged yet |
+| studycrest-10-practice-questions | ad (feature) | 16 Nov 12:01pm | 17 h | 58 | 1 | 0 | 0 | not judged yet |
+| sim-04-titanic | simulation | 16 Nov 6:02pm | 11 h | 0 | 0 | 0 | 0 | not judged yet |
+| sim-05-spin | simulation | 17 Nov 12:06am | 5 h | 0 | 0 | 0 | 0 | not judged yet |
+
+What stands out: sim-01-gravity kept growing (19,486 to 43,512 views), but nothing posted since has passed about 300. sim-02 missed "seen" by one view. Simulations beat ads: judged simulations have 43,512, 317 and 299 views (average watch 6.5 to 10.1 s), judged ads 121 and 71 (average watch 1.1 to 1.3 s). Buffer's numbers are stale in places: most were last refreshed at 4:18pm on 16 Nov, the two 15 Nov ads not since 5:17pm on 15 Nov (so their real counts are probably higher), and the zeros for sim-04 and sim-05 were recorded before those posts went out and are not real readings. Best of the week: sim-01-gravity (43,512). Worst judged: studycrest-09-test-predictor (71).
