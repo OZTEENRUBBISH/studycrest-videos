@@ -115,6 +115,21 @@
     "https://www.nasa.gov/history/detailed-chronology-of-events-surrounding-the-apollo-13-accident/",
     "https://www.nasa.gov/missions/apollo/apollo-13-mission-details/"
    ]
+  },
+  {
+   "file": "sim-10-radiation.mp4",
+   "title": "What if you could see radiation?",
+   "made": "2026-11-17",
+   "caption": "What if you could see radiation? The first thing glowing would be you: around 7,000 atoms decay inside your body every second, and they always have. ☢️\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #radiation #chemistry #studytok",
+   "science": "Each flash stands for radioactive decays (ionising radiation); visible light is not what is meant. Human body (Health Physics Society, 70 kg adult): potassium-40 about 4,200 Bq (the same page also says 'about 5,000 Bq') and carbon-14 about 3,080 Bq; 4,200 + 3,080 = 7,280, said as 'around seven thousand' decays a second, and the HUD rounds carbon-14 to 'about 3,100'. Banana: 'about 15 Bq of K-40' (Ionactive); the banana is drawn at the true rate (14 sparks on a cycle of about one second), everything else is marked 'not to scale' because thousands of flashes a second cannot be drawn. Smoke alarm: 'one microcurie or less of americium-241' (US NRC); 1 microcurie = 3.7e10 x 1e-6 = 37,000 Bq by definition, said as 'up to thirty seven thousand'. Alpha particles 'only travel a few inches' and the source is sealed in foil and ceramic that stops them leaving the detector (NRC, EPA); the film says 'a few centimetres' and draws a 4 cm ring. Cosmic rays: about 1 muon per square centimetre per minute at sea level (HyperPhysics); 'roughly one or two pass through a hand each second' (Live Science; 100 cm2 x 1/60 = 1.7 a second). The six hand hits in the close-up are drawn at that rate; the wide shots say 'not every one is drawn'. 'You've been radioactive since before you were born' follows from potassium and carbon being part of every living cell. The idea's planned line about granite benchtops was dropped: no granite figure could be confirmed from a page that opened in this run, so the film does not mention granite. No dose figure is stated; the closing line 'what matters is the dose' is the general principle.",
+   "sources": [
+    "https://hps.org/ate_faq/faqradbods/",
+    "https://ionactive.co.uk/resource-hub/guidance/radioactive-bananas-banana-equivalent-dose",
+    "https://www.nrc.gov/reading-rm/doc-collections/fact-sheets/smoke-detectors",
+    "https://19january2025snapshot.epa.gov/radtown/americium-ionization-smoke-detectors",
+    "https://hyperphysics.gsu.edu/hbase/Particles/muonatm.html",
+    "https://livescience.com/physics-mathematics/how-many-cosmic-particles-are-passing-through-your-body-at-any-moment"
+   ]
   }
  ]
 }

@@ -1,0 +1,194 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// What if you could see radiation?  (a kitchen at dusk, then the street outside)
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, mat, box, shadowAll, person, palm, tower, lamp, stars, skyDome, overlay, capAt, makePost, proj } from './common.js';
+const W = 1080, H = 1920, DUR = 47.0;
+const O = overlay(); O.show(O.chip, 0); { const st = document.createElement('style'); st.textContent = '#cap{padding:26px 0;background:radial-gradient(ellipse 60% 70% at center,rgba(3,5,14,.55) 0,rgba(3,5,14,.32) 55%,rgba(3,5,14,0) 100%)}'; document.head.appendChild(st); }
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.05, 4000);
+const R = rng(20261117), V = (x, y, z) => new THREE.Vector3(x, y, z);
+const T = { kit: 2.6, vis: 4.3, you: 6.4, kc: 12.5, ban: 17.6, alarm: 21.1, macro: 26.6, out: 30.2, hand: 33.4, old: 37.2, fin: 40.8, end: 44.0 };
+const hr = (i, k) => { const s = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return s - Math.floor(s); };
+const cyl = (r1, r2, h, col, n = 16, opt) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, n), mat(col, opt)); m.castShadow = m.receiveShadow = true; return m; };
+const at = (m, x, y, z) => { m.position.set(x, y, z); return m; };
+const glowM = (r, g, b) => new THREE.MeshBasicMaterial({ color: new THREE.Color(r, g, b), toneMapped: false });
+
+// flashes: a pool of additive sparks; each one lives `life` seconds once per cycle at a point chosen by `sampler`
+function sparkSet(scene, n, col, size) {
+  const m = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color(...col), toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false }), n);
+  m.frustumCulled = false; m.renderOrder = 5; scene.add(m); const d = new THREE.Object3D();
+  m.userData.update = (t, sampler, on = 1, life = 0.24, cyc = 0.7, sz = size) => {
+    for (let i = 0; i < n; i++) { const c = cyc * (0.6 + 0.8 * hr(i, 1)), tt = t + hr(i, 2) * c + 50, k = Math.floor(tt / c), age = tt - k * c; let s = 0;
+      if (on > 0 && age < life && hr(i, (k % 977) * 7.13 + 3) < on) { sampler(i, k % 977, d.position); s = sz * (0.45 + hr(i, (k % 977) + 9)) * Math.sin(Math.PI * age / life); }
+      d.scale.setScalar(s || 1e-6); d.updateMatrix(); m.setMatrixAt(i, d.matrix); }
+    m.instanceMatrix.needsUpdate = true; };
+  return m;
+}
+const bodyPoint = (p, i, k, out) => { const y = 0.06 + hr(i, k + 20) * 1.7, w = y > 1.45 ? 0.12 : (y > 0.85 ? 0.3 : 0.2); out.set((hr(i, k + 21) - 0.5) * 2 * w, y, (hr(i, k + 22) - 0.5) * 0.24); out.multiplyScalar(p.scale.x); out.applyAxisAngle(V(0, 1, 0), p.rotation.y); out.add(p.position); return out; };
+
+// =====================================================  KITCHEN
+const ki = new THREE.Scene(); ki.background = new THREE.Color(0x0a0c16);
+const kHemi = new THREE.HemisphereLight(0xfff1dc, 0x6a5a4a, 0.5); ki.add(kHemi);
+const kKey = new THREE.SpotLight(0xffe2b0, 20, 30, 1.1, 0.7, 1.2); kKey.position.set(-0.4, 3.0, 1.2); kKey.castShadow = true; kKey.shadow.mapSize.set(2048, 2048); kKey.shadow.bias = -0.0006; ki.add(kKey); ki.add(kKey.target); kKey.target.position.set(0, 0.6, -1.4);
+const kWin = new THREE.PointLight(0x7f9cff, 6, 12, 1.4); kWin.position.set(-1.2, 1.9, -2.2); ki.add(kWin);
+const kFill = new THREE.PointLight(0x5a7cff, 0, 14, 1.3); kFill.position.set(1.5, 2.2, 2.5); ki.add(kFill);
+const windowGlow = glowM(0.32, 0.4, 0.95);
+{ // shell
+  for (let i = -5; i < 5; i++) for (let j = -4; j < 5; j++) ki.add(box(1, 0.1, 1, (i + j) & 1 ? 0xcdb38c : 0xe7d6b4, i + 0.5, -0.05, j + 0.5));
+  ki.add(box(10, 3.3, 0.2, 0xe9dcc6, 0, 1.65, -3.1)); ki.add(box(0.2, 3.3, 9, 0xdfd1ba, -5, 1.65, 1)); ki.add(box(0.2, 3.3, 9, 0xdfd1ba, 5, 1.65, 1)); ki.add(box(10, 0.2, 9, 0xf3efe6, 0, 3.2, 1));
+  ki.add(box(10, 0.75, 0.04, 0x9fc1b4, 0, 1.33, -2.99));                                         // splashback
+  // window
+  ki.add(at(new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.25), windowGlow), -1.2, 2.05, -2.985)); for (const [w, h, x, y] of [[2.1, 0.1, 0, 0.67], [2.1, 0.1, 0, -0.67], [0.1, 1.4, -1.0, 0], [0.1, 1.4, 1.0, 0], [0.06, 1.3, 0, 0], [1.95, 0.06, 0, 0]]) ki.add(box(w, h, 0.08, 0xfaf7f0, -1.2 + x, 2.05 + y, -2.96));
+  ki.add(box(2.2, 0.06, 0.22, 0xfaf7f0, -1.2, 1.36, -2.9));
+  // base units, benchtop, sink, stove
+  ki.add(box(6.2, 0.86, 0.66, 0x3f6688, -1.4, 0.43, -2.66)); ki.add(box(6.3, 0.07, 0.74, 0xeeeae2, -1.4, 0.9, -2.64)); ki.add(box(6.2, 0.1, 0.6, 0x2c2f36, -1.4, 0.05, -2.62));
+  for (let x = -4.2; x <= 1.4; x += 0.8) { ki.add(box(0.74, 0.7, 0.03, 0x4b7699, x, 0.47, -2.32)); ki.add(box(0.2, 0.03, 0.04, 0xd8d8d8, x, 0.76, -2.3)); }
+  ki.add(box(0.8, 0.02, 0.46, 0x9aa2a8, -1.2, 0.94, -2.66)); ki.add(box(0.05, 0.3, 0.05, 0xc9ced3, -1.2, 1.08, -2.9)); ki.add(box(0.05, 0.05, 0.22, 0xc9ced3, -1.2, 1.22, -2.8));
+  ki.add(box(0.72, 0.03, 0.6, 0x1b1d22, 0.75, 0.945, -2.66)); for (const [x, z] of [[-0.17, -0.14], [0.17, -0.14], [-0.17, 0.14], [0.17, 0.14]]) ki.add(at(cyl(0.1, 0.1, 0.02, 0x3a3d44), 0.75 + x, 0.965, -2.66 + z));
+  ki.add(box(0.7, 0.5, 0.03, 0x1b1d22, 0.75, 0.42, -2.31)); ki.add(box(0.56, 0.03, 0.05, 0xd8d8d8, 0.75, 0.72, -2.28));
+  const kettle = cyl(0.1, 0.13, 0.24, 0xd94f3d, 12); ki.add(at(kettle, 0.02, 1.06, -2.7)); ki.add(box(0.03, 0.18, 0.03, 0x222222, 0.18, 1.08, -2.7));
+  // wall units, hood, shelf
+  ki.add(box(2.1, 0.9, 0.4, 0x3f6688, -3.7, 2.3, -2.8)); ki.add(box(1.5, 0.9, 0.4, 0x3f6688, 0.75, 2.5, -2.8)); ki.add(box(0.9, 0.12, 0.5, 0xb8bec4, 0.75, 1.98, -2.75));
+  for (const x of [-4.2, -3.2]) ki.add(box(0.03, 0.2, 0.03, 0xd8d8d8, x + 0.42, 2.0, -2.58));
+  // fridge
+  ki.add(box(1.0, 2.1, 0.8, 0xdde2e6, 2.4, 1.05, -2.6, { metalness: 0.3, roughness: 0.5 })); ki.add(box(1.0, 0.02, 0.02, 0x9aa2a8, 2.4, 1.4, -2.19)); ki.add(box(0.04, 0.5, 0.05, 0x9aa2a8, 2.05, 1.75, -2.17)); ki.add(box(0.04, 0.7, 0.05, 0x9aa2a8, 2.05, 0.9, -2.17));
+  for (const [x, y, c] of [[2.5, 1.8, 0xf2c94c], [2.7, 1.62, 0xe2574c], [2.55, 1.55, 0x2bb673]]) ki.add(box(0.1, 0.1, 0.02, c, x, y, -2.19));
+  // shelf with jars, clock, plant
+  ki.add(box(1.6, 0.05, 0.25, 0x8a6d3b, 3.9, 1.9, -2.9)); for (let k = 0; k < 4; k++) ki.add(at(cyl(0.08, 0.08, 0.2 + (k % 2) * 0.08, [0xf2994a, 0xe6e6e6, 0x9b59b6, 0x2bb673][k], 10), 3.35 + k * 0.36, 2.03 + (k % 2) * 0.04, -2.9));
+  ki.add(at(cyl(0.26, 0.26, 0.04, 0xfaf7f0, 20), 3.9, 2.6, -2.98).rotateX(Math.PI / 2)); ki.add(box(0.02, 0.18, 0.02, 0x222222, 3.9, 2.66, -2.95)); ki.add(box(0.13, 0.02, 0.02, 0x222222, 3.95, 2.6, -2.95));
+  ki.add(at(cyl(0.12, 0.09, 0.2, 0xc9794a, 10), -3.3, 1.03, -2.7)); for (let k = 0; k < 6; k++) { const l = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.4, 4), mat(0x3fa35a)); l.position.set(-3.3 + Math.cos(k) * 0.07, 1.3, -2.7 + Math.sin(k) * 0.07); l.rotation.set(Math.sin(k) * 0.4, 0, Math.cos(k) * 0.4); ki.add(l); }
+  // table, chairs, mug, rug, pendant
+  ki.add(at(cyl(1.7, 1.7, 0.02, 0x6c8fb3, 28), -2.6, 0.012, 0.9));
+  ki.add(box(1.5, 0.07, 0.95, 0xa9824f, -2.6, 0.76, 0.9)); for (const [x, z] of [[-0.66, -0.38], [0.66, -0.38], [-0.66, 0.38], [0.66, 0.38]]) ki.add(box(0.08, 0.74, 0.08, 0x8a6d3b, -2.6 + x, 0.37, 0.9 + z));
+  for (const [x, z, ry] of [[-2.6, 0.05, 0], [-1.55, 0.95, -1.57]]) { const c = new THREE.Group(); c.add(box(0.44, 0.05, 0.44, 0xe6e0d4, 0, 0.46, 0)); c.add(box(0.44, 0.5, 0.05, 0xe6e0d4, 0, 0.74, -0.2)); for (const [a, b] of [[-0.19, -0.19], [0.19, -0.19], [-0.19, 0.19], [0.19, 0.19]]) c.add(box(0.05, 0.46, 0.05, 0x8a6d3b, a, 0.23, b)); c.position.set(x, 0, z); c.rotation.y = ry; ki.add(c); }
+  ki.add(at(cyl(0.05, 0.045, 0.1, 0xf5f5f5, 10), -2.3, 0.85, 1.0)); ki.add(box(0.3, 0.02, 0.22, 0x2f56d6, -2.85, 0.81, 0.8));
+  ki.add(box(0.02, 0.9, 0.02, 0x222222, -2.6, 2.65, 0.9)); const shade = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.3, 14, 1, true), mat(0xf2c94c, { side: THREE.DoubleSide })); shade.position.set(-2.6, 2.1, 0.9); ki.add(shade);
+  shadowAll(ki); }
+const bulb = at(new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), glowM(1.6, 1.3, 0.8)), -2.6, 2.02, 0.9); ki.add(bulb);
+// fruit bowl with the banana
+const BAN = V(-2.35, 1.0, -2.55);
+{ const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.13, 0.11, 14, 1, true), mat(0xf5f5f5, { side: THREE.DoubleSide })); bowl.position.set(BAN.x, 0.99, BAN.z); bowl.castShadow = true; ki.add(bowl); ki.add(at(cyl(0.13, 0.13, 0.015, 0xf5f5f5, 14), BAN.x, 0.94, BAN.z));
+  ki.add(at(new THREE.Mesh(new THREE.IcosahedronGeometry(0.075, 1), mat(0xd9382c)), BAN.x - 0.1, 1.03, BAN.z - 0.06)); ki.add(at(new THREE.Mesh(new THREE.IcosahedronGeometry(0.08, 1), mat(0xf2994a)), BAN.x + 0.1, 1.03, BAN.z - 0.07));
+  for (let k = 0; k < 6; k++) { const a = (k - 2.5) * 0.3, s = box(0.062, 0.05, 0.05, k === 0 || k === 5 ? 0x7a5a2a : 0xf7d038, BAN.x + Math.sin(a) * 0.19, 1.085 + (1 - Math.cos(a)) * 0.16, BAN.z + 0.05); s.rotation.z = a; ki.add(s); } }
+// smoke alarm on the ceiling
+const AL = V(1.15, 3.06, -0.7);
+{ ki.add(at(cyl(0.11, 0.115, 0.05, 0xfbfbfb, 20), AL.x, AL.y, AL.z)); ki.add(at(cyl(0.085, 0.085, 0.012, 0xdcdcdc, 20), AL.x, AL.y - 0.03, AL.z)); for (let k = 0; k < 6; k++) ki.add(box(0.012, 0.014, 0.1, 0x9aa2a8, AL.x - 0.05 + k * 0.02, AL.y - 0.035, AL.z)); }
+const led = at(new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 5), glowM(3, 0.3, 0.2)), AL.x + 0.07, AL.y - 0.03, AL.z + 0.05); ki.add(led);
+// cat
+const cat = new THREE.Group(); { const C = 0x55514c; cat.add(box(0.22, 0.26, 0.36, C, 0, 0.2, 0)); cat.add(box(0.2, 0.18, 0.18, C, 0, 0.42, 0.14)); cat.add(box(0.05, 0.08, 0.04, C, -0.07, 0.54, 0.14)); cat.add(box(0.05, 0.08, 0.04, C, 0.07, 0.54, 0.14)); cat.add(box(0.05, 0.05, 0.4, C, 0.1, 0.06, -0.3)); cat.add(box(0.03, 0.03, 0.01, 0xf2c94c, -0.05, 0.44, 0.235)); cat.add(box(0.03, 0.03, 0.01, 0xf2c94c, 0.05, 0.44, 0.235)); cat.add(box(0.07, 0.14, 0.07, 0xf3f3f3, -0.06, 0.07, 0.14)); cat.add(box(0.07, 0.14, 0.07, 0xf3f3f3, 0.06, 0.07, 0.14)); } cat.position.set(2.2, 0, -0.5); cat.rotation.y = -0.7; shadowAll(cat); ki.add(cat);
+// hero (indoors)
+const HC = { skin: 0xe0ac7e, shirt: 0xf2853a, pants: 0x2c3e50, hair: 0x2b1b12, shorts: false, shoe: 0xf3f3f3 };
+const hero = person(rng(5), 'stand', HC); hero.scale.setScalar(1.05); hero.position.set(0.55, 0, -0.9); hero.rotation.y = 0.25; ki.add(hero);
+const spBody = sparkSet(ki, 190, [0.45, 2.3, 1.15], 0.016), spCat = sparkSet(ki, 30, [0.35, 1.9, 0.95], 0.011), spBan = sparkSet(ki, 14, [2.4, 1.8, 0.4], 0.009), spAl = sparkSet(ki, 150, [2.4, 0.6, 2.0], 0.008), spFood = sparkSet(ki, 60, [2.4, 1.8, 0.4], 0.009);
+const ring = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.0012, 6, 48), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, depthTest: false })); ring.position.set(AL.x, AL.y - 0.05, AL.z); ki.add(ring);
+
+// =====================================================  STREET
+const st = new THREE.Scene(); st.fog = new THREE.Fog(0x2a2548, 60, 420);
+st.add(skyDome(0x060a22, 0x3a2f6e, 0xe07a4e)); st.add(stars(rng(8), 1600, 800));
+st.add(new THREE.HemisphereLight(0x6f7fd0, 0x3a3040, 0.95)); const sSun = new THREE.DirectionalLight(0xffa56a, 1.5); sSun.position.set(-60, 30, -90); sSun.castShadow = true; sSun.shadow.mapSize.set(4096, 4096); Object.assign(sSun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 400 }); sSun.shadow.bias = -0.0008; st.add(sSun); st.add(sSun.target);
+const sFill = new THREE.PointLight(0xffd9a0, 30, 22, 1.3); sFill.position.set(1.2, 4.5, 6.5); st.add(sFill); const sHand = new THREE.PointLight(0xffe2c0, 14, 9, 1.2); sHand.position.set(4.0, 2.2, 8.8); st.add(sHand);
+const walkers = [];
+{ const Rs = rng(31);
+  st.add(box(600, 0.2, 800, 0x2c2e36, 0, -0.1, -200)); for (const sx of [-1, 1]) { st.add(box(5, 0.16, 800, 0x8f8a84, sx * 7.5, 0.08, -200)); st.add(box(0.3, 0.2, 800, 0xb8b2aa, sx * 4.9, 0.1, -200)); }
+  for (let z = 20; z > -320; z -= 7) st.add(box(0.22, 0.02, 3.2, 0xe8e2c8, 0, 0.012, z));
+  for (const sx of [-1, 1]) { let z = 26; while (z > -330) { const w = 11 + Rs() * 9, d = 12 + Rs() * 12, h = 14 + Rs() * (z < -60 ? 80 : 34); const t = tower(Rs, w, h, d, { night: true }); t.position.set(sx * (10.4 + w / 2), 0, z - d / 2); st.add(t); z -= d + 1.5 + Rs() * 3; } }
+  for (let z = 14; z > -220; z -= 22) for (const sx of [-1, 1]) { const l = lamp(); l.position.set(sx * 5.6, 0.16, z); l.rotation.y = sx > 0 ? Math.PI : 0; st.add(l); st.add(at(new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.06, 0.22), glowM(3, 2.3, 1.2)), sx * (5.6 - 0.95), 5.0, z)); }
+  for (const [x, z] of [[7.6, -6], [-8.4, 2], [8.6, -34], [-7.8, -28], [-8.2, -60], [8.2, -70]]) { const p = palm(Rs); p.position.set(x, 0.16, z); st.add(p); }
+  for (const [x, z, c] of [[3.6, -8, 0xd94f3d], [-3.6, -2, 0x2f56d6], [3.6, -30, 0xe6e6e6], [-3.6, -44, 0xf2c94c], [3.6, -58, 0x2bb673]]) { const g = new THREE.Group(); g.add(box(1.8, 0.6, 4.2, c, 0, 0.6, 0, { metalness: 0.4, roughness: 0.4 })); g.add(box(1.6, 0.55, 2.2, 0x20242c, 0, 1.15, -0.1)); for (const [a, b] of [[-0.9, 1.3], [0.9, 1.3], [-0.9, -1.3], [0.9, -1.3]]) g.add(at(cyl(0.34, 0.34, 0.2, 0x111111, 12), a, 0.34, b).rotateZ(Math.PI / 2)); g.add(at(new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 0.05), glowM(2.5, 0.3, 0.2)), 0, 0.7, 2.11)); g.position.set(x, 0, z); shadowAll(g); st.add(g); }
+  for (let i = 0; i < 12; i++) { const p = person(Rs, 'walk'); const sx = i % 2 ? 1 : -1; p.userData.x = sx * (6.6 + Rs() * 2.2); p.userData.z0 = 2 - i * 6.5 - Rs() * 4; p.userData.dir = Rs() < 0.5 ? 1 : -1; p.userData.sp = 1.0 + Rs() * 0.5; st.add(p); walkers.push(p); } }
+const hero2 = person(rng(5), 'stand', HC); hero2.scale.setScalar(1.05); hero2.position.set(5.2, 0.16, 6.5); st.add(hero2);
+const handW = () => hero2.userData.aR.localToWorld(V(0, -0.62, 0));
+const spBody2 = sparkSet(st, 160, [0.35, 1.9, 0.95], 0.013), spCrowd = sparkSet(st, 420, [0.35, 1.9, 0.95], 0.03), spHit = sparkSet(st, 6, [1.6, 2.2, 3.4], 0.03);
+// cosmic-ray streaks: thin vertical-ish lines that flash from sky to ground
+const NR = 520, rays = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 1.5, 2.6), toneMapped: false, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }), NR + 8); rays.frustumCulled = false; st.add(rays);
+const HITS = [33.75, 34.4, 34.85, 35.6, 36.05, 36.75, 37.5, 38.3];             // the ones that go through the hand: about 1.5 a second
+const rd = new THREE.Object3D();
+function setRay(i, base, tiltX, tiltZ, len, w) { rd.position.copy(base); rd.rotation.set(tiltX, 0, tiltZ); rd.scale.set(w, len, w); rd.updateMatrix(); rays.setMatrixAt(i, rd.matrix); }
+function rayFrame(t, cx, cz, spread, wNear, on) {
+  const z0 = V(0, -500, 0);
+  for (let i = 0; i < NR; i++) { const c = 0.5 + hr(i, 1) * 0.9, tt = t + hr(i, 2) * c + 50, k = Math.floor(tt / c) % 977, age = tt - Math.floor(tt / c) * c, life = 0.16;
+    if (age < life && hr(i, k + 5) < on) { const x = cx + (hr(i, k + 3) - 0.5) * spread, z = cz - Math.pow(hr(i, k + 4), 1.6) * spread * 2.2 + spread * 0.25, dist = Math.hypot(x - cam.position.x, z - cam.position.z);
+      setRay(i, V(x, -0.2, z), (hr(i, k + 6) - 0.5) * 0.7, (hr(i, k + 7) - 0.5) * 0.7, 140 * easeOut(age / 0.07), wNear * Math.max(1, dist / 14) * (1 - age / life)); }
+    else setRay(i, z0, 0, 0, 1, 0.0001); }
+  const hw = handW();
+  HITS.forEach((h, j) => { const age = t - h; if (age >= 0 && age < 0.3) { const tx = (hr(j, 11) - 0.5) * 0.6, tz = (hr(j, 12) - 0.5) * 0.6, dir = V(0, 1, 0).applyEuler(new THREE.Euler(tx, 0, tz)), p = hw.clone().add(V((hr(j, 13) - 0.5) * 0.06, 0, (hr(j, 14) - 0.5) * 0.06)).addScaledVector(dir, -3); setRay(NR + j, p, tx, tz, 140 * easeOut(age / 0.07), 0.013 * (1 - age / 0.3)); } else setRay(NR + j, z0, 0, 0, 1, 0.0001); });
+  rays.instanceMatrix.needsUpdate = true;
+}
+
+const postK = makePost(renderer, ki, cam, { ao: false, bloom: 0.42, bloomThreshold: 0.9, bloomRadius: 0.5, sat: 1.12, con: 1.06, warm: 0.02 }), postS = makePost(renderer, st, cam, { ao: false, bloom: 0.38, bloomThreshold: 0.9, bloomRadius: 0.5, sat: 1.14, con: 1.08 });
+const CAPS = /*CAPS*/[[2.6, 3.49, "You're in<br>your kitchen."], [3.51, 4.98, "Every time<br>an atom decays,"], [5.0, 5.87, "you see a <em>flash</em>."], [6.4, 7.5, "The first thing glowing"], [7.52, 8.21, "is <em>you</em>."], [8.23, 10.19, "Around <em>seven thousand</em><br>atoms decay"], [10.21, 11.18, "inside your body,"], [11.2, 12.03, "every second."], [12.5, 14.42, "It's mostly<br><em>potassium</em> and <em>carbon</em>."], [14.44, 15.73, "You've been radioactive"], [15.75, 17.12, "since before<br>you were born."], [17.6, 19.02, "The <em>banana</em><br>sparkles too."], [19.04, 20.64, "About fifteen flashes<br>a second."], [21.1, 22.41, "The brightest thing<br>in the room"], [22.43, 23.64, "is the <em>smoke alarm</em>."], [23.66, 26.59, "Up to thirty-seven thousand<br>flashes a second."], [26.61, 28.41, "But its particles only travel"], [28.43, 29.64, "a <em>few centimetres</em>."], [30.2, 31.37, "Now step outside."], [31.39, 33.07, "Streaks rain down<br>from the sky."], [33.09, 34.17, "<em>Cosmic rays</em>."], [34.19, 35.79, "One or two pass<br>through your hand,"], [35.81, 36.72, "every second."], [37.2, 38.23, "None of this is new."], [38.25, 40.3, "Life has always lived<br>inside this <em>glow</em>."], [40.8, 42.13, "Radiation isn't rare."], [42.15, 43.52, "What matters<br>is the <em>dose</em>."]]/*END*/;
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const outside = (t) => t >= T.out;
+function kitchenFrame(t) {
+  const v = smooth(seg(t, T.vis, T.vis + 0.5));                                      // radiation vision: the room dims, the flashes show
+  kHemi.intensity = lerp(0.5, 0.13, v); kHemi.color.set(v > 0.5 ? 0x8a9cff : 0xfff1dc); kKey.intensity = lerp(20, 4, v); kWin.intensity = lerp(6, 7, v); kFill.intensity = 7 * v; bulb.material.color.setRGB(lerp(1.6, 0.6, v), lerp(1.3, 0.5, v), lerp(0.8, 0.3, v));
+  const u = hero.userData; u.pose(t * 1.2, 'stand'); const look = smooth(seg(t, T.vis + 0.6, T.you + 0.6)) * (1 - smooth(seg(t, T.ban - 0.6, T.ban)));
+  u.aL.rotation.x = -1.25 * look + Math.sin(t * 1.3) * 0.05 * look; u.aR.rotation.x = -1.05 * look + Math.cos(t * 1.1) * 0.05 * look; u.aL.rotation.z = 0.25 * look; u.aR.rotation.z = -0.25 * look; u.hips.rotation.x = 0.1 * look;
+  const up = smooth(seg(t, T.alarm - 0.2, T.alarm + 0.6)); u.hips.rotation.x -= 0.22 * up; u.aR.rotation.x -= 2.4 * up * (1 - smooth(seg(t, T.macro - 0.5, T.macro))); hero.rotation.y = 0.25 + 0.5 * up;
+  spBody.userData.update(t, (i, k, o) => bodyPoint(hero, i, k, o), v, 0.26, 0.62, t >= T.kc && t < T.ban ? 0.01 : 0.016);
+  spCat.userData.update(t, (i, k, o) => o.set((hr(i, k + 1) - 0.5) * 0.24, 0.08 + hr(i, k + 2) * 0.42, (hr(i, k + 3) - 0.5) * 0.4).applyAxisAngle(V(0, 1, 0), cat.rotation.y).add(cat.position), v, 0.26, 1.0);
+  spBan.userData.update(t, (i, k, o) => { const a = (hr(i, k + 1) - 0.5) * 1.6; return o.set(BAN.x + Math.sin(a) * 0.19, 1.085 + (1 - Math.cos(a)) * 0.16 + (hr(i, k + 2) - 0.5) * 0.03, BAN.z + 0.05 + (hr(i, k + 3) - 0.5) * 0.03); }, v, 0.22, 0.95, t >= T.ban && t < T.alarm ? 0.0045 : 0.009);   // 14 sparks, 0.95 s cycle: about 15 a second
+  spFood.userData.update(t, (i, k, o) => { const j = i % 4; return j === 0 ? o.set(2.4 + (hr(i, k + 1) - 0.5) * 0.8, 0.3 + hr(i, k + 2) * 1.6, -2.6 + (hr(i, k + 3) - 0.5) * 0.6) : (j === 1 ? o.set(3.35 + Math.floor(hr(i, k + 1) * 4) * 0.36, 2.0 + hr(i, k + 2) * 0.2, -2.9) : (j === 2 ? o.set(-3.3 + (hr(i, k + 1) - 0.5) * 0.3, 1.0 + hr(i, k + 2) * 0.5, -2.7) : o.set(BAN.x + (hr(i, k + 1) - 0.5) * 0.3, (t >= T.ban && t < T.alarm ? -9 : 1.02) + hr(i, k + 2) * 0.05, BAN.z - 0.06))); }, v * 0.8, 0.24, 1.6);
+  const mac = t >= T.macro; spAl.userData.update(t, (i, k, o) => { const a = hr(i, k + 1) * 6.283, r = Math.sqrt(hr(i, k + 2)) * 0.036, y = hr(i, k + 3) * 0.035; return o.set(AL.x + Math.cos(a) * r, AL.y - 0.035 - y, AL.z + Math.sin(a) * r); }, v, 0.16, 0.2, mac ? 0.002 : 0.008);
+  ring.visible = mac; ring.lookAt(cam.position);
+  const hh = hero.position.clone().add(V(0, 1.1, 0));
+  if (t < T.kit) camPath([[0, V(0.4, 1.9, 6.6), V(-0.2, 1.3, -2), 52], [T.kit, V(0.3, 1.8, 5.6), V(-0.2, 1.25, -2), 52]], t);
+  else if (t < T.you) camPath([[T.kit, V(-1.6, 1.6, 3.6), V(0.2, 1.15, -1.4), 50], [T.you, V(-1.2, 1.55, 3.0), V(0.3, 1.15, -1.4), 50]], t);
+  else if (t < T.kc) camPath([[T.you, V(0.0, 1.3, 2.9), hh.clone().add(V(-0.3, -0.1, 0)), 46], [T.kc, V(0.1, 1.3, 2.5), hh.clone().add(V(-0.3, -0.1, 0)), 45]], t);
+  else if (t < T.ban) camPath([[T.kc, V(-0.6, 1.5, 1.5), hh.clone().add(V(-0.15, 0.1, 0)), 40], [T.ban, V(-0.2, 1.45, 1.6), hh.clone().add(V(-0.15, 0.1, 0)), 40]], t);
+  else if (t < T.alarm) camPath([[T.ban, V(-2.05, 1.32, -1.5), BAN.clone().add(V(-0.1, -0.08, 0)), 40], [T.alarm, V(-2.1, 1.3, -1.62), BAN.clone().add(V(-0.1, -0.08, 0)), 38]], t);
+  else if (t < T.macro) camPath([[T.alarm, V(0.0, 1.05, 2.3), V(0.8, 2.25, -0.75), 50], [T.macro, V(0.25, 1.0, 1.9), V(0.85, 2.3, -0.75), 48]], t);
+  else camPath([[T.macro, V(AL.x - 0.1, AL.y - 0.52, AL.z + 0.42), AL.clone().add(V(-0.035, -0.09, 0)), 34], [T.out, V(AL.x - 0.08, AL.y - 0.46, AL.z + 0.36), AL.clone().add(V(-0.035, -0.09, 0)), 33]], t);
+  renderer.toneMappingExposure = 1.05; postK.render();
+}
+function streetFrame(t) {
+  const u = hero2.userData; u.pose(t * 1.2, 'stand'); hero2.rotation.y = lerp(-0.3, -1.25, smooth(seg(t, T.out + 0.8, T.hand - 0.3))); const raise = smooth(seg(t, T.out + 1.4, T.hand - 0.2)); u.aR.rotation.x = -1.45 * raise; u.aR.rotation.z = -0.1 * raise; u.hips.rotation.x = -0.12 * smooth(seg(t, T.out + 0.4, T.out + 1.4)) * (1 - raise * 0.6);
+  walkers.forEach((p) => { const d = p.userData; p.position.set(d.x, 0.16, d.z0 + d.dir * (t - T.out) * d.sp); p.rotation.y = d.dir > 0 ? 0 : Math.PI; d.pose(t * 5 * d.sp + d.seed, 'walk'); });
+  spBody2.userData.update(t, (i, k, o) => bodyPoint(hero2, i, k, o), 1, 0.26, 0.62, t >= T.hand && t < T.old ? 0.008 : 0.016);
+  spCrowd.userData.update(t, (i, k, o) => bodyPoint(walkers[i % walkers.length], i, k, o), 1, 0.26, 0.8, t >= T.fin ? 0.05 : 0.03);
+  const hw = handW(); spHit.userData.update(0, (i, k, o) => o, 0); { const d = new THREE.Object3D(); HITS.forEach((h, j) => { if (j >= 6) return; const age = t - h; d.position.copy(hw); d.scale.setScalar(age >= 0 && age < 0.32 ? 0.032 * Math.sin(Math.PI * age / 0.32) : 1e-6); d.updateMatrix(); spHit.setMatrixAt(j, d.matrix); }); spHit.instanceMatrix.needsUpdate = true; }
+  if (t < T.hand) camPath([[T.out, V(2.5, 1.8, 16.5), V(7, 6.5, -8), 58], [T.hand, V(2.5, 1.7, 15.0), V(7, 4.6, -8), 56]], t);
+  else if (t < T.old) camPath([[T.hand, hw.clone().add(V(0.2, 0.2, 2.7)), hw.clone().add(V(0.17, -0.25, 0)), 44], [T.old, hw.clone().add(V(0.2, 0.2, 2.5)), hw.clone().add(V(0.17, -0.25, 0)), 44]], t);
+  else if (t < T.fin) camPath([[T.old, V(-1.5, 3.2, 20), V(2.5, 5.5, -14), 56], [T.fin, V(-2.2, 5.0, 23), V(2.2, 7, -14), 56]], t);
+  else camPath([[T.fin, V(-2.2, 9, 26), V(1.5, 11, -20), 58], [DUR, V(-2.8, 22, 34), V(1, 17, -20), 60]], t);
+  const close = t >= T.hand && t < T.old;
+  rayFrame(t, cam.position.x + 3, cam.position.z - 2, close ? 9 : (t >= T.fin ? 130 : 70), close ? 0.006 : 0.022, (close ? 0.35 : 0.5) * smooth(seg(t, T.out + 0.5, T.out + 1.3)));
+  sSun.target.position.set(0, 0, -10); renderer.toneMappingExposure = 1.1; postS.render();
+}
+function overlayFrame(t) {
+  const ta = t < 2.6 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 2.2, 2.6)) : 0; O.set(O.title, 'What if you<br>could <em>see</em><br><em>radiation</em>?'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`;
+  const [chh, ca] = capAt(CAPS, t); if (chh) O.set(O.cap, chh); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  let ha = 1;
+  if (t < T.kit + 0.2) ha = 0;
+  else if (t < T.vis) { O.hudSet('Your kitchen', 'Lights on', 'Nothing unusual to see'); ha = seg(t, T.kit + 0.2, T.kit + 0.6); }
+  else if (t < T.you) O.hudSet('Radiation vision', 'On', 'Each flash: atoms decaying\nSlowed down · not to scale');
+  else if (t < T.kc) O.hudSet('Inside your body', '≈ 7,000 / s', 'Atoms decaying every second\nin a 70 kg adult · not to scale');
+  else if (t < T.ban) O.hudSet('Inside your body', '≈ 7,000 / s', 'Potassium-40: about 4,200 a second\nCarbon-14: about 3,100 a second');
+  else if (t < T.alarm) O.hudSet('One banana', '≈ 15 / s', 'Potassium-40 in the fruit\nShown at the true rate');
+  else if (t < T.macro) O.hudSet('Smoke alarm', '≤ 37,000 / s', 'A speck of americium-241\n1 microcurie or less');
+  else if (t < T.out) O.hudSet('Alpha particles', 'A few cm', 'They stop in a few centimetres\nof air · sealed inside the alarm');
+  else if (t < T.hand) O.hudSet('Cosmic rays', 'From space', 'Muons made high in the air\nNot every one is drawn');
+  else if (t < T.old) O.hudSet('Through your hand', '1 or 2 / s', 'About 1 muon per square\ncentimetre, every minute');
+  else if (t < T.fin) O.hudSet('Natural background', 'Always on', 'Rocks, food, air, space\nand every living thing');
+  else if (t < T.end) O.hudSet('Radiation', 'Everywhere', 'It is not rare\nWhat matters is the dose');
+  else ha = 1 - seg(t, T.end, T.end + 0.3);
+  O.hud.style.background = 'rgba(6,10,26,.42)'; O.hud.style.boxShadow = '0 0 0 14px rgba(6,10,26,.42)'; O.hud.style.borderRadius = '4px'; O.show(O.hud, ha); O.hud.style.top = '850px';
+  let h = ''; const L = (x, y, a, small, big, col) => a > 0.01 ? `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${a}${col ? ';color:' + col : ''}">${small}${big ? '<b style="font-size:40px">' + big + '</b>' : ''}</div>` : '';
+  const fade = (a, b) => Math.min(seg(t, a + 0.3, a + 0.7), 1 - seg(t, b - 0.3, b));
+  if (t >= T.you && t < T.kc) h += L(64, 300, fade(T.you + 1.2, T.kc), 'The first thing glowing', 'You are radioactive', '#a8ffcf');
+  if (t >= T.kc && t < T.ban) h += L(64, 300, fade(T.kc, T.ban), 'Natural, and lifelong', 'Potassium and carbon', '#a8ffcf');
+  if (t >= T.ban && t < T.alarm) h += L(64, 300, fade(T.ban, T.alarm), 'Fruit bowl', 'About 15 flashes a second', '#ffe08a');
+  if (t >= T.alarm && t < T.macro) h += L(64, 300, fade(T.alarm, T.macro), 'On the ceiling', 'The brightest thing here', '#ffb0ec');
+  if (t >= T.macro && t < T.out) h += L(64, 300, fade(T.macro, T.out), 'Ring: 4 cm from the source', 'None of it reaches you', '#ffb0ec');
+  if (t >= T.hand && t < T.old) h += L(64, 300, fade(T.hand, T.old), 'Real speed, real rate', 'Straight through your hand', '#bcd4ff');
+  if (O.labels._h !== h) { O.labels._h = h; O.labels.innerHTML = h; }
+  let fl = 0; for (const [a, dd, k] of [[T.vis, 0.35, 0.75], [T.out, 0.4, 0.8], [T.fin, 0.4, 0.5]]) if (t >= a - 0.06 && t < a + dd) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + dd)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { if (outside(t)) streetFrame(t); else kitchenFrame(t); overlayFrame(t); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>

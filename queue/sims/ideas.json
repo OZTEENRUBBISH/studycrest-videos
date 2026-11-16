@@ -63,8 +63,9 @@
    "setting": "An ordinary kitchen and street",
    "hook": "What if you could see radiation?",
    "the surprising true point": "Everything glows a little: bananas, granite benchtops, and your own body",
-   "status": "making",
-   "claimed_at": "2026-11-17T01:20:00+11:00"
+   "status": "made",
+   "claimed_at": "2026-11-17T01:20:00+11:00",
+   "file": "sim-10-radiation.mp4"
   },
   {
    "title": "Apollo 13, second by second",
@@ -227,6 +228,30 @@
    "setting": "The suspension bridge over Puget Sound, Washington State, 7 November 1940",
    "hook": "The bridge that twisted itself apart, minute by minute",
    "the surprising true point": "It was not a storm and not simple resonance: a steady wind fed a twisting motion that kept growing, and no person died",
+   "status": "planned"
+  },
+  {
+   "title": "What if the Earth had rings like Saturn?",
+   "kind": "what-if",
+   "setting": "The night sky seen from the equator, from a mid-latitude city and from near the pole",
+   "hook": "What if the Earth had rings like Saturn?",
+   "the surprising true point": "They would look different from every place on Earth: a thin bright line overhead at the equator, a huge arch across the sky further away, and their shadow would darken the winter half of the planet",
+   "status": "planned"
+  },
+  {
+   "title": "The Carrington Event, hour by hour",
+   "kind": "second-by-second",
+   "setting": "An observatory near London and telegraph offices, 1 to 2 September 1859",
+   "hook": "The day the Sun set telegraph offices on fire",
+   "the surprising true point": "A solar storm drove currents through telegraph wires strong enough to spark and to run lines with the batteries unplugged, and auroras were seen far closer to the equator than normal",
+   "status": "planned"
+  },
+  {
+   "title": "What if you drank only seawater?",
+   "kind": "what-if",
+   "setting": "A life raft on the open ocean, with a cutaway of a kidney",
+   "hook": "What if you drank only seawater?",
+   "the surprising true point": "Seawater is saltier than the saltiest urine your kidneys can make, so every mouthful costs you more water than it gives",
    "status": "planned"
   }
  ]
