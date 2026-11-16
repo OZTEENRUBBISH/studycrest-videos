@@ -1,0 +1,232 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// Apollo 13, second by second  (13 April 1970, about 320,000 km from Earth). 1 unit = 1 metre for the spacecraft; Earth and Moon not to scale.
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, mat, box, shadowAll, person, cloud, stars, globe, skyDome, overlay, capAt, makePost, proj } from './common.js';
+const W = 1080, H = 1920, DUR = 52.0;
+const O = overlay(); O.show(O.chip, 0); { const st = document.createElement('style'); st.textContent = '#cap{padding:26px 0;background:radial-gradient(ellipse 60% 70% at center,rgba(3,5,14,.55) 0,rgba(3,5,14,.32) 55%,rgba(3,5,14,0) 100%)}'; document.head.appendChild(st); }
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.05, 6000);
+const R = rng(19700413), V = (x, y, z) => new THREE.Vector3(x, y, z);
+const T = { sp: 2.9, mc: 11.8, fans: 15.0, tank: 16.4, climb: 20.9, bang: 25.1, leak: 28.2, lm: 33.9, moon: 40.3, splash: 42.3, fin: 44.8, end: 49.0 };
+const hr = (i, k) => { const s = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return s - Math.floor(s); };
+const GET = (h, m, s) => h * 3600 + m * 60 + s, fmt = (x) => { x = Math.floor(x); const p = (n, w = 2) => String(n).padStart(w, '0'); return p(Math.floor(x / 3600), 3) + ':' + p(Math.floor(x / 60) % 60) + ':' + p(x % 60); };
+// mission clock (ground elapsed time) shown on the HUD
+const clockAt = (t) => t < T.mc ? lerp(GET(55, 51, 30), GET(55, 52, 58), t / T.mc) : t < T.fans ? lerp(GET(55, 52, 58), GET(55, 53, 20), seg(t, T.mc, T.fans)) : t < T.climb ? lerp(GET(55, 53, 20), GET(55, 53, 38), seg(t, T.fans, T.climb)) : t < T.bang ? lerp(GET(55, 53, 38), GET(55, 54, 53), seg(t, T.climb, T.bang)) : t < T.leak ? lerp(GET(55, 54, 53), GET(55, 55, 35), seg(t, T.bang, T.leak)) : lerp(GET(55, 55, 35), GET(55, 58, 0), seg(t, T.leak, T.lm));
+const cyl = (r1, r2, h, col, n = 16, opt) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, n), mat(col, opt)); m.castShadow = m.receiveShadow = true; return m; };
+const at = (m, x, y, z) => { m.position.set(x, y, z); return m; };
+const glowM = (r, g, b) => new THREE.MeshBasicMaterial({ color: new THREE.Color(r, g, b), toneMapped: false });
+function sparkSet(scene, n, col, size, additive = true) {
+  const m = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshBasicMaterial({ color: new THREE.Color(...col), toneMapped: false, transparent: true, opacity: additive ? 1 : 0.15, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: false }), n);
+  m.frustumCulled = false; m.renderOrder = 5; scene.add(m); const d = new THREE.Object3D();
+  m.userData.update = (t, sampler, on = 1, life = 0.24, cyc = 0.7, sz = size) => {
+    for (let i = 0; i < n; i++) { const c = cyc * (0.6 + 0.8 * hr(i, 1)), tt = t + hr(i, 2) * c + 50, k = Math.floor(tt / c), age = tt - k * c; let s = 0;
+      if (on > 0 && age < life && hr(i, (k % 977) * 7.13 + 3) < on) { const g = sampler(i, k % 977, d.position, age); s = sz * (0.45 + hr(i, (k % 977) + 9)) * Math.sin(Math.PI * Math.pow(age / life, 0.6)) * (typeof g === 'number' ? g : 1); }
+      d.scale.setScalar(s || 1e-6); d.updateMatrix(); m.setMatrixAt(i, d.matrix); }
+    m.instanceMatrix.needsUpdate = true; };
+  return m;
+}
+
+// =====================================================  SPACE
+const sp = new THREE.Scene(); sp.background = new THREE.Color(0x02030a); sp.add(stars(rng(7), 3400, 3000));
+sp.add(new THREE.HemisphereLight(0x1a2440, 0x0a0c14, 1.0));
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.7); sun.position.set(40, 50, 80); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); Object.assign(sun.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 300 }); sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.04; sp.add(sun); sp.add(sun.target);
+const fill = new THREE.DirectionalLight(0x6f8fd0, 0.5); fill.position.set(-60, -20, 30); sp.add(fill);
+const earth = globe(60, 14); sp.add(earth);
+const moon = (() => { const rad = 110, geo = new THREE.IcosahedronGeometry(rad, 14).toNonIndexed(), pos = geo.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color();
+  for (let i = 0; i < pos.count; i += 3) { const x = (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3 / rad, y = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3 / rad, z = (pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3 / rad;
+    const n = fbm(x * 2.1 + 9, y * 2.1 + 4, z * 2.1 + 2, 4), cr = fbm(x * 7 + 1, y * 7 + 3, z * 7 + 8, 2); c.set(n < 0.46 ? 0x6b6d73 : 0xa6a7ab); if (cr > 0.62) c.set(0x8a8b90); if (cr < 0.3) c.set(0xc2c3c6); c.multiplyScalar(0.85 + hr(i, 3) * 0.2);
+    for (let k = 0; k < 3; k++) { col[(i + k) * 3] = c.r; col[(i + k) * 3 + 1] = c.g; col[(i + k) * 3 + 2] = c.b; } }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.computeVertexNormals(); return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })); })(); sp.add(moon);
+const M = (c, o = {}) => mat(c, { metalness: 0.35, roughness: 0.5, ...o });
+const ship = new THREE.Group(); sp.add(ship);
+const csm = new THREE.Group(); ship.add(csm); csm.rotation.z = -Math.PI / 2;                          // local +y = world +x (towards the lander)
+const SMR = 1.95, SML = 7.4, GAP = 1.05;                                                         // the bay 4 panel covers GAP radians
+{ const body = new THREE.Mesh(new THREE.CylinderGeometry(SMR, SMR, SML, 40, 1, true, GAP / 2, Math.PI * 2 - GAP), M(0xc4c9d0, { side: THREE.DoubleSide })); body.position.y = -SML / 2; csm.add(body);
+  for (const y of [-0.02, -SML + 0.02]) { const c = new THREE.Mesh(new THREE.CircleGeometry(SMR, 40), M(0xb9bec6, { side: THREE.DoubleSide })); c.rotation.x = Math.PI / 2; c.position.y = y; csm.add(c); }
+  csm.add(at(cyl(1.25, 1.25, SML - 0.1, 0x23262d, 20), 0, -SML / 2, 0));                                 // dark core seen through the open bay
+  for (const a of [GAP / 2, -GAP / 2]) { const w = box(0.04, SML, SMR - 1.2, 0x3a3f47, Math.sin(a) * (SMR + 1.2) / 2, -SML / 2, Math.cos(a) * (SMR + 1.2) / 2); w.rotation.y = a; csm.add(w); }
+  for (const y of [-0.9, -2.2, -3.6, -5.0, -6.4]) { const r = new THREE.Mesh(new THREE.TorusGeometry(SMR + 0.012, 0.022, 6, 48, Math.PI * 2 - GAP), M(0x9aa1ab)); r.rotation.x = Math.PI / 2; r.rotation.z = Math.PI / 2 - GAP / 2 - (Math.PI * 2 - GAP); r.position.y = y; csm.add(r); }
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + 0.95, q = new THREE.Group(); q.add(box(0.5, 0.5, 0.16, 0xc9ced3)); for (const [x, y] of [[0.32, 0], [-0.32, 0], [0, 0.32], [0, -0.32]]) { const n = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.26, 8), M(0x6d747e)); n.position.set(x, y, 0.1); n.rotation.z = x ? (x > 0 ? Math.PI / 2 : -Math.PI / 2) : (y > 0 ? Math.PI : 0); q.add(n); } q.position.set(Math.sin(a) * (SMR + 0.08), -1.6, Math.cos(a) * (SMR + 0.08)); q.rotation.y = a; csm.add(q); }
+  for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + 0.7; if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < GAP / 2 + 0.1) continue; csm.add(at(box(0.5, 2.6, 0.02, 0xf4f6f8), Math.sin(a) * (SMR + 0.015), -5.6, Math.cos(a) * (SMR + 0.015)).rotateY(a)); }
+  const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 1.25, 2.7, 20, 1, true), M(0x4a4f58, { side: THREE.DoubleSide, metalness: 0.7, roughness: 0.35 })); bell.position.y = -SML - 1.3; csm.add(bell); csm.add(at(cyl(0.9, 0.5, 0.5, 0x6d747e, 16), 0, -SML - 0.2, 0));
+  // high-gain antenna
+  const hga = new THREE.Group(); hga.add(box(0.08, 0.08, 2.4, 0x9aa1ab, 0, 0, 1.2)); for (const [x, y] of [[0.45, 0.45], [-0.45, 0.45], [0.45, -0.45], [-0.45, -0.45]]) { const d = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.22, 12, 1, true), M(0xf0f0f0, { side: THREE.DoubleSide })); d.position.set(x, y, 2.5); d.rotation.x = -Math.PI / 2; hga.add(d); } hga.position.set(-1.0, -SML + 0.3, -0.3); hga.rotation.set(0.5, Math.PI + 0.5, 0); csm.add(hga);
+  // command module
+  const cm = new THREE.Mesh(new THREE.CylinderGeometry(0.42, SMR, 3.2, 40), M(0xc8ccd2, { metalness: 0.75, roughness: 0.28 })); cm.position.y = 1.6; csm.add(cm); csm.add(at(cyl(0.42, 0.42, 0.35, 0x8c929c, 16), 0, 3.3, 0)); csm.add(at(cyl(SMR + 0.02, SMR + 0.02, 0.12, 0x8c929c, 40), 0, 0.04, 0));
+  shadowAll(csm); }
+const cmWinM = glowM(1.3, 1.1, 0.7); for (const a of [0.42, -0.42, 1.25]) { const w = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.3), cmWinM); const y = 1.9, r = lerp(SMR, 0.42, y / 3.2) + 0.012; w.position.set(Math.sin(a) * r, y, Math.cos(a) * r); w.rotation.set(0, a, 0); w.rotateX(-0.44); csm.add(w); }
+// bay 4: two oxygen tanks, three fuel cells, hydrogen tanks (seen when the panel has gone)
+const tank2Glow = glowM(0.9, 0.9, 0.95);
+{ for (const [y, col, m] of [[-3.1, 0xcfd3d8, null], [-4.2, 0xcfd3d8, tank2Glow]]) { const s = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 2), m || M(col, { metalness: 0.8, roughness: 0.25 })); s.position.set(0.0, y, 1.5); csm.add(s); }
+  for (const x of [-0.42, 0, 0.42]) csm.add(at(cyl(0.2, 0.2, 1.0, 0xb08d4a, 12, { metalness: 0.6, roughness: 0.4 }), x * 0.9, -1.5, 1.48));
+  for (const y of [-5.5, -6.3]) { const s = new THREE.Mesh(new THREE.IcosahedronGeometry(0.36, 2), M(0x9fb3c4, { metalness: 0.7, roughness: 0.3 })); s.position.set(0, y, 1.5); csm.add(s); }
+  for (const y of [-2.3, -4.85]) csm.add(box(1.5, 0.05, 0.7, 0x4a4f58, 0, y, 1.5)); }
+const panel = new THREE.Group(); { const p = new THREE.Mesh(new THREE.CylinderGeometry(SMR + 0.005, SMR + 0.005, SML - 0.06, 12, 1, true, -GAP / 2, GAP), M(0xcdd2d8, { side: THREE.DoubleSide })); p.castShadow = true; p.position.z = -SMR; panel.add(p); } csm.add(panel);
+// lunar module (local +y = its "up"; docked with its top against the command module's nose)
+const lm = new THREE.Group(); ship.add(lm); const lmWinM = glowM(0.25, 0.3, 0.4);
+{ const GOLD = { metalness: 0.75, roughness: 0.38 }, des = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.1, 1.65, 8), mat(0xc79a2e, GOLD)); des.rotation.y = Math.PI / 8; des.position.y = -1.4; lm.add(des); lm.add(at(cyl(2.14, 2.14, 0.12, 0x2a2c30, 8), 0, -0.55, 0).rotateY(Math.PI / 8));
+  const eb = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.85, 1.0, 14, 1, true), M(0x4a4f58, { side: THREE.DoubleSide })); eb.position.y = -2.7; lm.add(eb);
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2, g = new THREE.Group(); const s1 = box(0.1, 3.3, 0.1, 0xc79a2e, 1.05, -0.9, 0, GOLD); s1.rotation.z = 0.62; g.add(s1); const s2 = box(0.08, 2.1, 0.08, 0xd9dde3, 1.1, -2.0, 0); s2.rotation.z = -0.95; g.add(s2); g.add(at(cyl(0.5, 0.5, 0.1, 0xc79a2e, 12, GOLD), 2.0, -2.25, 0)); g.position.set(Math.cos(a) * 1.9, -1.2, Math.sin(a) * 1.9); g.rotation.y = -a; lm.add(g); }
+  lm.add(box(2.5, 2.1, 2.3, 0xbfc4cc, 0, 0.75, 0.05, { metalness: 0.5, roughness: 0.45 })); lm.add(box(1.7, 1.5, 1.2, 0xb0b5bd, 0, 0.75, 1.45, { metalness: 0.5, roughness: 0.45 })); lm.add(box(1.3, 1.3, 1.5, 0x2d3036, -1.75, 0.6, -0.3)); lm.add(box(1.3, 1.3, 1.5, 0x2d3036, 1.75, 0.6, -0.3)); lm.add(box(1.4, 1.2, 1.1, 0x8c929c, 0, 0.5, -1.6));
+  lm.add(at(cyl(0.48, 0.48, 0.5, 0x8c929c, 16), 0, 2.05, 0)); lm.add(box(0.7, 0.7, 0.06, 0x2a2c30, 0, 0.25, 2.06));
+  for (const sx of [-1, 1]) { const w = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.42), lmWinM); w.position.set(sx * 0.52, 1.05, 2.065); lm.add(w); for (const [x, y, rz] of [[sx * 1.6, 1.95, 0.6 * sx], [sx * 1.9, 1.5, -0.4 * sx]]) { const n = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.26, 8), M(0x6d747e)); n.position.set(x, y, 0.4); n.rotation.z = rz; lm.add(n); } }
+  const dish = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.22, 12, 1, true), M(0xf0f0f0, { side: THREE.DoubleSide })); dish.position.set(1.3, 2.5, 0.2); dish.rotation.z = -0.6; lm.add(dish); lm.add(box(0.06, 0.8, 0.06, 0x888888, 1.2, 2.1, 0.2));
+  shadowAll(lm); lm.rotation.set(0, 0, Math.PI / 2); lm.rotateY(-0.9); lm.position.x = 3.5 + 2.3; }
+const lmL = new THREE.PointLight(0xffc27a, 0, 9, 1.4); lmL.position.set(7.2, 0.4, 2.6); sp.add(lmL);
+const gas = sparkSet(sp, 520, [0.85, 0.92, 1.0], 0.09, false), burst = sparkSet(sp, 160, [1.4, 1.3, 1.1], 0.5, true), debris = []; for (let i = 0; i < 26; i++) { const d = box(0.08 + hr(i, 1) * 0.22, 0.02, 0.06 + hr(i, 2) * 0.2, i % 3 ? 0xdfe3e8 : 0xc79a2e, 0, 0, 0, { metalness: 0.6, roughness: 0.4 }); sp.add(d); debris.push(d); }
+const VENT = V(-4.0, 0, 1.6);                                                                         // world position of oxygen tank 2 in the open bay
+
+// =====================================================  MISSION CONTROL, HOUSTON
+const mc = new THREE.Scene(); mc.background = new THREE.Color(0x05070d); mc.fog = new THREE.Fog(0x05070d, 22, 60);
+mc.add(new THREE.HemisphereLight(0x8fa4d0, 0x1a1c24, 1.4)); const mcKey = new THREE.SpotLight(0xfff0d8, 80, 30, 0.6, 0.7, 1.3); mcKey.position.set(1.8, 7.5, 2.5); mcKey.castShadow = true; mcKey.shadow.mapSize.set(2048, 2048); mc.add(mcKey); mc.add(mcKey.target); mcKey.target.position.set(1.5, 1.2, -1.0);
+const mcScr = new THREE.PointLight(0x5f8fff, 40, 30, 1.3); mcScr.position.set(0, 5, -9); mc.add(mcScr);
+const capcom = person(rng(3), 'sit', { skin: 0xf1c9a5, shirt: 0xf5f5f5, pants: 0x1c2430, hair: 0x5a3825, shorts: false, sleeve: 0xf5f5f5, shoe: 0x111111 });
+{ const Rm = rng(44); mc.add(box(30, 0.2, 30, 0x2a2f3a, 0, -0.1, 0)); mc.add(box(30, 9, 0.3, 0x12151d, 0, 4.5, -12)); mc.add(box(0.3, 9, 30, 0x161a24, -11, 4.5, 0)); mc.add(box(0.3, 9, 30, 0x161a24, 11, 4.5, 0)); mc.add(box(30, 0.3, 30, 0x0d0f15, 0, 8, 0));
+  // big displays at the front
+  const scr = (w, h, x, y, col) => { mc.add(at(new THREE.Mesh(new THREE.PlaneGeometry(w, h), glowM(...col)), x, y, -11.82)); mc.add(box(w + 0.3, h + 0.3, 0.1, 0x2a2f3a, x, y, -11.9)); };
+  scr(8.2, 4.6, 0, 4.6, [0.03, 0.07, 0.2]); scr(4.2, 2.9, -7.2, 4.9, [0.02, 0.12, 0.1]); scr(4.2, 2.9, 7.2, 4.9, [0.14, 0.09, 0.02]);
+  mc.add(at(new THREE.Mesh(new THREE.CircleGeometry(0.75, 20), glowM(0.15, 0.5, 1.0)), -2.9, 4.0, -11.8)); mc.add(at(new THREE.Mesh(new THREE.CircleGeometry(0.34, 16), glowM(0.9, 0.9, 0.95)), 3.0, 5.6, -11.8));
+  for (let k = 0; k <= 26; k++) { const u = k / 26, x = lerp(-2.3, 2.7, u), y = 4.0 + 1.6 * u + Math.sin(u * Math.PI) * 0.7; mc.add(at(new THREE.Mesh(new THREE.CircleGeometry(k === 21 ? 0.13 : 0.045, 8), glowM(...(k === 21 ? [2.6, 2.2, 0.6] : [0.3, 1.5, 0.6]))), x, y, -11.79)); }
+  for (let k = 0; k < 7; k++) mc.add(at(new THREE.Mesh(new THREE.PlaneGeometry(2.8 - (k % 3) * 0.6, 0.12), glowM(0.15, 1.0, 0.5)), -7.6 + (k % 3) * 0.15, 5.9 - k * 0.32, -11.8)); for (let k = 0; k < 6; k++) mc.add(at(new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.4 + Rm() * 1.5), glowM(1.3, 0.8, 0.15)), 5.8 + k * 0.56, 4.2 + 0.3, -11.8));
+  // rows of consoles, rising towards the back
+  for (let r = 0; r < 4; r++) { const z = -5.2 + r * 3.1, y0 = r * 0.35; mc.add(box(19, y0 + 0.02, 3.1, 0x323846, 0, y0 / 2, z + 0.8));
+    for (let c = 0; c < 6; c++) { const x = -7.5 + c * 3.0, g = new THREE.Group(); g.add(box(2.7, 1.0, 0.9, 0x6f7f76, 0, 0.5, 0)); const top = box(2.7, 0.7, 0.5, 0x5d6c64, 0, 1.3, -0.25); top.rotation.x = -0.25; g.add(top); g.add(box(2.7, 0.06, 0.6, 0x9aa79f, 0, 0.98, 0.55));
+      for (let k = 0; k < 2; k++) { const s = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 0.5), glowM(...(Rm() < 0.5 ? [0.1, 0.6, 0.3] : [0.15, 0.35, 0.8]))); s.position.set(-0.6 + k * 1.2, 1.32, 0.02); s.rotation.x = -0.25; g.add(s); } for (let k = 0; k < 8; k++) g.add(at(new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.07), glowM(...[[2, 0.4, 0.3], [2, 1.6, 0.3], [0.3, 1.8, 0.5], [1.5, 1.5, 1.5]][Math.floor(Rm() * 4)])), -1.1 + k * 0.31, 1.03, 0.6).rotateX(-Math.PI / 2));
+      g.position.set(x, y0, z); mc.add(shadowAll(g));
+      const isCap = r === 1 && c === 3, p = isCap ? capcom : person(Rm, 'sit', { shirt: [0xf5f5f5, 0xf5f5f5, 0xdfe6f2, 0xf2ead8][Math.floor(Rm() * 4)], pants: 0x1c2430, shorts: false, sleeve: 0xf5f5f5, shoe: 0x111111 }); if (!isCap && Rm() < 0.18) continue;
+      p.position.set(x + (Rm() - 0.5) * 0.5, y0 + 0.36, z + 1.25); p.rotation.y = Math.PI + (Rm() - 0.5) * 0.4; p.userData.pose(0, 'sit'); mc.add(p); mc.add(box(0.5, 0.08, 0.5, 0x23262d, p.position.x, y0 + 0.5, z + 1.3)); mc.add(box(0.5, 0.6, 0.08, 0x23262d, p.position.x, y0 + 0.85, z + 1.56)); if (isCap) { p.userData.hips.add(box(0.3, 0.05, 0.05, 0x111111, 0, 0.99, 0)); p.userData.hips.add(box(0.05, 0.16, 0.05, 0x111111, 0.16, 0.9, 0)); p.userData.hips.add(box(0.04, 0.04, 0.16, 0x111111, 0.16, 0.8, 0.08)); } } } }
+
+// =====================================================  INSIDE OXYGEN TANK 2 (cutaway; tank drawn 1.5 m wide for clarity)
+const tk = new THREE.Scene(); tk.background = new THREE.Color(0x070910);
+tk.add(new THREE.HemisphereLight(0xaab8d8, 0x1a1c24, 0.8)); const tkKey = new THREE.DirectionalLight(0xfff2e0, 1.6); tkKey.position.set(3, 5, 6); tk.add(tkKey);
+const fire = new THREE.PointLight(0xff7a20, 0, 6, 1.2); fire.position.set(0.15, 0.1, 0.2); tk.add(fire);
+const shellM = new THREE.MeshStandardMaterial({ color: 0xc9ced6, metalness: 0.8, roughness: 0.3, flatShading: true, side: THREE.DoubleSide, emissive: 0xff5a10, emissiveIntensity: 0 }), fans = [];
+{ const half = (r, m) => { const s = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 18, Math.PI, Math.PI), m); return s; };          // back half only: we look into the tank
+  const T2 = new THREE.Group(); T2.add(half(0.75, shellM)); T2.add(half(0.7, new THREE.MeshStandardMaterial({ color: 0x8fa0b4, metalness: 0.6, roughness: 0.4, flatShading: true, side: THREE.DoubleSide })));
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.725, 0.028, 8, 48), mat(0xe8ebef, { metalness: 0.6, roughness: 0.3 })); T2.add(rim);
+  T2.add(at(cyl(0.035, 0.035, 1.3, 0xd9dde3, 10, { metalness: 0.7, roughness: 0.3 }), -0.16, 0, 0.05));                             // quantity probe
+  T2.add(at(cyl(0.06, 0.06, 1.05, 0xb9925a, 12, { metalness: 0.7, roughness: 0.35 }), 0.15, 0, 0.05));                             // heater tube
+  for (const y of [0.6, -0.6]) { T2.add(at(cyl(0.085, 0.085, 0.16, 0x4a4f58, 12, { metalness: 0.6, roughness: 0.4 }), 0.15, y, 0.05)); const f = new THREE.Group(); for (let k = 0; k < 4; k++) { const b = box(0.2, 0.012, 0.06, 0xe8ebef, 0.1, 0, 0); const h = new THREE.Group(); h.add(b); h.rotation.y = k * Math.PI / 2; b.rotation.x = 0.5; f.add(h); } f.position.set(0.15, y + Math.sign(y) * 0.1, 0.05); T2.add(f); fans.push(f); }
+  for (const [x, c] of [[0.215, 0xf5f5f5], [0.235, 0xe2574c], [0.085, 0xf5f5f5]]) T2.add(box(0.012, 1.25, 0.012, c, x, 0, 0.11));  // fan motor wires in Teflon
+  T2.add(at(cyl(0.05, 0.05, 0.5, 0x9aa1ab, 10), 0, 0.98, 0)); T2.add(box(0.5, 0.06, 0.3, 0x6d747e, 0, 1.24, 0)); tk.add(T2);
+  // the neighbours on the shelf
+  const T1 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.75, 3), mat(0xc9ced6, { metalness: 0.8, roughness: 0.3 })); T1.position.set(-1.9, 0, -0.1); tk.add(T1); tk.add(at(cyl(0.05, 0.05, 0.5, 0x9aa1ab, 10), -1.9, 0.98, -0.1));
+  tk.add(box(6.5, 0.12, 2.2, 0x3a3f47, -0.6, -0.86, -0.2)); tk.add(box(6.5, 0.12, 2.2, 0x3a3f47, -0.6, 1.33, -0.2)); tk.add(box(6.5, 5, 0.1, 0x1b1e26, -0.6, 0.3, -1.3));
+  for (const x of [-2.2, -1.2, -0.2]) tk.add(at(cyl(0.36, 0.36, 1.5, 0xb08d4a, 14, { metalness: 0.6, roughness: 0.4 }), x * 1.0 - 0.1, 2.2, -0.3));
+  for (const x of [-1.9, 0]) { const s = new THREE.Mesh(new THREE.IcosahedronGeometry(0.62, 2), mat(0x9fb3c4, { metalness: 0.7, roughness: 0.3 })); s.position.set(x, -1.62, -0.2); tk.add(s); }
+  for (const x of [-3.2, 1.4]) tk.add(box(0.1, 5, 2.2, 0x2a2f3a, x, 0.3, -0.2)); for (let k = 0; k < 5; k++) tk.add(at(cyl(0.025, 0.025, 2.4, [0xd9a35c, 0x9aa1ab][k % 2], 6), -2.9 + k * 0.9, 1.0, -1.1).rotateZ(0.3 * (k % 2 ? 1 : -1))); }
+const spk = sparkSet(tk, 40, [3.4, 2.8, 1.4], 0.02), flame = sparkSet(tk, 150, [2.2, 0.8, 0.18], 0.03);
+
+// =====================================================  SPLASHDOWN, PACIFIC OCEAN
+const oc = new THREE.Scene(); oc.fog = new THREE.Fog(0xbfd9ee, 300, 2200); oc.add(skyDome(0x2f7fd6, 0xa9d3f2, 0xdfeefa));
+oc.add(new THREE.HemisphereLight(0xdcecff, 0x3a6a8a, 1.3)); const oSun = new THREE.DirectionalLight(0xfff0d0, 2.0); oSun.position.set(-80, 90, 60); oc.add(oSun);
+const capsule = new THREE.Group(), chutes = [];
+{ const g = new THREE.PlaneGeometry(4000, 4000, 110, 110); g.rotateX(-Math.PI / 2); const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setY(i, (fbm(p.getX(i) * 0.02, 1, p.getZ(i) * 0.02, 3) - 0.5) * 3.2); g.computeVertexNormals(); oc.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x1f6fb0, flatShading: true, roughness: 0.55, metalness: 0.1 })));
+  const Rc = rng(5); for (let i = 0; i < 12; i++) { const c = cloud(Rc); c.scale.setScalar(3 + Rc() * 3); c.position.set(-900 + i * 170 + Rc() * 80, 220 + Rc() * 160, -700 - Rc() * 500); oc.add(c); }
+  capsule.add(at(cyl(0.42, 1.95, 3.2, 0xb9bec6, 24, { metalness: 0.7, roughness: 0.3 }), 0, 1.6, 0)); capsule.add(at(cyl(1.95, 1.7, 0.4, 0x4a3a2c, 24), 0, -0.2, 0));
+  for (let k = 0; k < 3; k++) { const a = k * 2.094 + 0.4, c = new THREE.Group(); for (let j = 0; j < 12; j++) { const gore = new THREE.Mesh(new THREE.SphereGeometry(6.4, 3, 8, j * Math.PI / 6, Math.PI / 6, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: j % 2 ? 0xf2f2f2 : 0xf26a1b, side: THREE.DoubleSide, flatShading: true })); gore.scale.y = 0.62; c.add(gore); }
+    c.position.set(Math.cos(a) * 6.6, 22, Math.sin(a) * 6.6); c.rotation.set(Math.sin(a) * 0.28, 0, -Math.cos(a) * 0.28); capsule.add(c); chutes.push(c);
+    for (let j = 0; j < 6; j++) { const b = j * Math.PI / 3, top = V(Math.cos(a) * 6.6 + Math.cos(b) * 6.2, 22.2, Math.sin(a) * 6.6 + Math.sin(b) * 6.2), bot = V(0, 3.5, 0), l = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 1), mat(0xf5f5f5)); l.scale.z = top.distanceTo(bot); l.position.copy(top).lerp(bot, 0.5); l.lookAt(bot); c.userData.lines = c.userData.lines || []; c.userData.lines.push(l); capsule.add(l); } }
+  oc.add(capsule);
+  const sh = new THREE.Group(); sh.add(box(180, 14, 26, 0x7d8894, 0, 7, 0)); sh.add(box(184, 1.2, 32, 0x59626e, 0, 14.6, 0)); sh.add(box(22, 14, 7, 0x8a95a1, 10, 22, -10)); sh.add(box(3, 12, 3, 0x6d747e, 12, 35, -10)); sh.add(box(40, 0.3, 1, 0xf5f5f5, -30, 15.3, 0)); sh.position.set(-260, -2, -520); sh.rotation.y = 0.5; oc.add(sh); }
+const spray = sparkSet(oc, 80, [1.2, 1.25, 1.3], 1.2, false);
+
+const postS = makePost(renderer, sp, cam, { ao: false, bloom: 0.32, bloomThreshold: 0.92, bloomRadius: 0.6, sat: 1.14, con: 1.08 }), postM = makePost(renderer, mc, cam, { ao: false, bloom: 0.3, bloomThreshold: 0.9, bloomRadius: 0.5, sat: 1.05, con: 1.06, warm: 0.02 }),
+  postT = makePost(renderer, tk, cam, { ao: false, bloom: 0.38, bloomThreshold: 0.9, bloomRadius: 0.55, sat: 1.1, con: 1.08 }), postO = makePost(renderer, oc, cam, { ao: false, bloom: 0.15, bloomThreshold: 0.95, sat: 1.15, con: 1.05 });
+const CAPS = /*CAPS*/[[2.9, 4.85, "April, <em>1970</em>."], [4.87, 6.04, "Three astronauts are"], [6.06, 8.84, "<em>320,000 kilometres</em><br>from Earth."], [8.86, 10.09, "One routine switch"], [10.11, 11.22, "will nearly <em>kill</em> them."], [11.8, 13.11, "Mission control asks them"], [13.13, 14.52, "to <em>stir</em> the oxygen tanks."], [15.0, 16.09, "The fans switch on."], [16.11, 17.3, "Inside tank two,"], [17.32, 18.71, "damaged wires <em>spark</em>."], [18.73, 20.42, "The insulation<br>starts to <em>burn</em>."], [20.9, 22.14, "For <em>ninety-three seconds</em>,"], [22.16, 23.01, "nobody knows."], [23.03, 24.0, "The pressure climbs."], [24.6, 25.32, "Then, a <em>bang</em>."], [25.34, 26.19, "The tank bursts."], [26.21, 27.64, "“Houston, we've had<br>a problem.”"], [28.2, 30.46, "Their <em>oxygen</em> is leaking<br>into space."], [30.48, 31.93, "Without it, the fuel cells"], [31.95, 33.36, "that power the ship<br>will die."], [33.9, 35.72, "So they move into<br>the <em>lunar lander</em>."], [35.74, 37.53, "Built for two men,<br>for two days."], [37.55, 38.95, "It has to keep<br><em>three</em> alive,"], [38.97, 39.74, "for <em>four</em>."], [40.3, 41.47, "They swing around<br>the Moon."], [41.49, 42.86, "And on April seventeenth,"], [42.88, 44.23, "they splash down, <em>safe</em>."], [44.8, 46.13, "They never walked<br>on the Moon."], [46.15, 47.58, "The lander that<br>never landed"], [47.6, 48.55, "kept them <em>alive</em>."]]/*END*/;
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const sceneAt = (t) => t < T.mc ? 'sp' : t < T.fans ? 'mc' : t < T.bang ? 'tk' : t < T.splash ? 'sp' : t < T.fin ? 'oc' : 'sp';
+function spaceFrame(t) {
+  const blown = t >= T.bang, a = t - T.bang, fin = t >= T.fin, around = t >= T.moon && t < T.splash;
+  // Earth behind, Moon ahead (both far too big and too close: not to scale)
+  if (fin) { earth.position.set(-150, -40, -260); earth.scale.setScalar(1.5); moon.position.set(2600, 300, -900); }
+  else if (around) { moon.position.set(0, -150, -380); earth.position.set(-330, 330, -1900); earth.scale.setScalar(0.8); }
+  else { earth.position.set(-1100, 60, -900); earth.scale.setScalar(1.6); moon.position.set(1100, 250, -1000); }
+  earth.rotation.set(0.4, 1.9 + t * 0.004, 0.2); moon.rotation.set(0.3, 2.2, 0);
+  const shake = blown && a < 1.6 ? (1 - a / 1.6) ** 2 * 0.35 : 0; ship.position.set(Math.sin(t * 70) * shake, Math.cos(t * 83) * shake, Math.sin(t * 61) * shake * 0.6);
+  ship.rotation.set(0.05 * Math.sin(t * 0.2) + (blown ? 0.12 * smooth(seg(a, 0, 3)) : 0), 0.1 * Math.sin(t * 0.13), 0.04 * Math.sin(t * 0.17) + (blown ? 0.1 * Math.sin(a * 0.5) : 0));
+  csm.visible = !fin; panel.visible = !fin && a < 9;
+  if (blown) { panel.position.set(0.3 * a, -0.5 * a, SMR + a * (5.5 + a * 0.4)); panel.rotation.set(a * 1.3, a * 0.5, a * 0.9); } else { panel.position.set(0, -SML / 2, SMR); panel.rotation.set(0, 0, 0); }
+  panel.children[0].position.z = -SMR;
+  tank2Glow.color.setRGB(blown ? 0.12 : 0.9, blown ? 0.12 : 0.9, blown ? 0.13 : 0.95);
+  const dark = smooth(seg(t, T.lm + 0.4, T.lm + 2.0)); cmWinM.color.setRGB(lerp(1.3, 0.03, dark), lerp(1.1, 0.03, dark), lerp(0.7, 0.04, dark)); const warm = fin ? 0.25 : smooth(seg(t, T.lm + 1.2, T.lm + 2.6)); lmWinM.color.setRGB(lerp(0.25, 2.6, warm), lerp(0.3, 2.0, warm), lerp(0.4, 1.0, warm)); lmL.intensity = 2.2 * warm;
+  const vw = ship.localToWorld(VENT.clone()), out = V(0, 0.05, 1).applyQuaternion(ship.quaternion).normalize();
+  gas.userData.update(t, (i, k, o, age) => { o.copy(vw).addScaledVector(out, 0.3 + age * (2.2 + hr(i, k + 1) * 2.6)).add(V((hr(i, k + 2) - 0.5) * age * 1.6 - age * 0.5, (hr(i, k + 3) - 0.5) * age * 1.6, 0)); return 0.35 + age * 0.55; }, blown && !fin && a > 0.25 ? lerp(1, 0.55, seg(t, T.leak, T.lm + 2)) * (t < T.moon ? 1 : 0.35) : 0, 2.4, 2.6);
+  burst.userData.update(t, (i, k, o, age) => { const d = V(hr(i, 5) - 0.5, hr(i, 6) - 0.5, 0.25 + hr(i, 7)).normalize(); o.copy(vw).addScaledVector(d, a * (3 + hr(i, 8) * 9)); return 0.4 + a * 1.2; }, blown && a < 1.3 ? 0.6 : 0, 9, 9, 0.09 * (1 - seg(a, 0.2, 1.3)));
+  debris.forEach((d, i) => { d.visible = blown && a < 9 && !fin; if (d.visible) { const dir = V(hr(i, 5) - 0.5, hr(i, 6) - 0.5, 0.3 + hr(i, 7)).normalize(); d.position.copy(vw).addScaledVector(dir, a * (1.5 + hr(i, 8) * 5)); d.rotation.set(a * (1 + hr(i, 9) * 4), a * hr(i, 10) * 4, i); } });
+  lm.visible = true;
+  if (t < T.sp) camPath([[0, V(-27, 3, 25), V(18, 10, -16), 50], [T.sp, V(-23, 3, 22), V(18, 9.5, -16), 50]], t);
+  else if (t < 8.85) camPath([[T.sp, V(24, 6, 22), V(-6, -3.6, -4), 50], [8.85, V(20, 5, 19), V(-6, -3.6, -4), 50]], t);
+  else if (t < T.mc) camPath([[8.85, V(-7.5, 2.2, 12.5), V(-3.2, -0.4, 0), 44], [T.mc, V(-6.2, 1.6, 10), V(-3.4, -0.4, 0), 42]], t);
+  else if (t < T.leak) camPath([[T.bang, V(-8, 2.5, 15), V(-2.5, 0, 1.5), 48], [T.leak, V(-10, 4, 22), V(-1.5, 0, 2), 50]], t);
+  else if (t < T.lm) camPath([[T.leak, V(-9.5, 1.5, 12), V(-3.6, -0.2, 2.2), 46], [T.lm, V(-8.5, 2.4, 11.5), V(-3.4, -0.2, 2.4), 44]], t);
+  else if (t < T.moon) camPath([[T.lm, V(16, 3.5, 18), V(3.6, -1.6, 0), 46], [T.moon, V(14.5, 3.0, 16), V(4.2, -1.6, 0), 45]], t);
+  else if (around) camPath([[T.moon, V(-3, 10, 46), V(0, -30, -100), 52], [T.splash, V(3, 10, 44), V(0, -30, -100), 52]], t);
+  else camPath([[T.fin, V(10.5, 2.6, 15), V(5.8, -0.4, 0), 46], [T.end + 3, V(13, 4, 20), V(5.8, -0.2, 0), 46]], t);
+  if (around) ship.position.set(lerp(-14, 12, seg(t, T.moon, T.splash)), 0, 0);
+  if (fin) { lm.rotation.set(0.2 * (t - T.fin) * 0.2, 0, Math.PI / 2); lm.rotateY(-0.9 + (t - T.fin) * 0.05); }
+  sun.target.position.copy(ship.position); sun.position.copy(ship.position).add(V(40, 50, 80)); renderer.toneMappingExposure = 1.05; postS.render();
+}
+function mcFrame(t) {
+  const u = capcom.userData; u.pose(0, 'sit'); u.aR.rotation.x = -1.9; u.aR.rotation.z = -0.5; u.hips.rotation.x = -0.12 + 0.03 * Math.sin(t * 3);
+  camPath([[T.mc, V(6.2, 5.0, 10.5), V(0.2, 2.6, -8), 54], [T.fans, V(5.0, 4.6, 9.0), V(0.4, 2.5, -8), 52]], t); renderer.toneMappingExposure = 1.1; postM.render();
+}
+function tankFrame(t) {
+  const on = t >= T.fans + 0.9, lit = seg(t, T.tank + 1.6, T.bang), climb = seg(t, T.climb, T.bang);
+  fans.forEach((f, i) => { f.rotation.y = on ? (t - T.fans - 0.9) * 26 * (i ? -1 : 1) : 0; });
+  spk.userData.update(t, (i, k, o) => o.set(0.225 + (hr(i, k + 1) - 0.5) * 0.12, -0.25 + (hr(i, k + 2) - 0.5) * 0.14, 0.13 + hr(i, k + 3) * 0.1), t >= T.tank + 0.9 && t < T.climb + 1 ? 1 : 0, 0.09, 0.22);
+  flame.userData.update(t, (i, k, o, age) => { const reach = 0.08 + lit * 0.62, y = -0.25 + (hr(i, k + 1) - 0.5) * 2 * reach; o.set(0.19 + (hr(i, k + 2) - 0.5) * (0.1 + lit * 0.34), clamp(y, -0.55, 0.5) + age * 0.2, 0.1 + hr(i, k + 3) * (0.08 + lit * 0.2)); return 0.5 + lit * 1.0; }, t >= T.tank + 1.7 ? 0.35 + 0.65 * lit : 0, 0.5, 0.6);
+  fire.intensity = (t >= T.tank + 1.7 ? 0.5 + lit * 6 : 0) * (0.85 + 0.15 * Math.sin(t * 31)); shellM.emissiveIntensity = climb * climb * 0.35;
+  if (t < T.tank) camPath([[T.fans, V(-1.2, 0.7, 6.4), V(-0.8, 0.25, 0), 46], [T.tank, V(-0.5, 0.4, 4.6), V(-0.35, 0.1, 0), 44]], t);
+  else if (t < T.climb) camPath([[T.tank, V(0.5, 0.15, 2.5), V(0.02, -0.12, 0), 40], [T.climb, V(0.42, 0.05, 2.15), V(0.02, -0.12, 0), 40]], t);
+  else { camPath([[T.climb, V(-0.5, 0.4, 3.6), V(-0.3, 0.0, 0), 44], [T.bang, V(-0.9, 0.7, 5.6), V(-0.75, 0.2, 0), 46]], t); const s = climb * climb * 0.012; cam.position.x += Math.sin(t * 90) * s; cam.position.y += Math.cos(t * 77) * s; }
+  renderer.toneMappingExposure = 1.05; postT.render();
+}
+function oceanFrame(t) {
+  const u = seg(t, T.splash, T.fin - 0.8), y = lerp(46, 0.4, u), down = t >= T.fin - 0.8, b = down ? Math.sin((t - T.fin + 0.8) * 5) * 0.25 * Math.exp(-(t - T.fin + 0.8) * 1.2) : 0;
+  capsule.position.set(0, y + b, 0); capsule.rotation.set(Math.sin(t * 1.3) * 0.07 * (down ? 0.6 : 1), 0, Math.cos(t * 1.1) * 0.07 * (down ? 0.6 : 1));
+  spray.userData.update(t, (i, k, o, age) => { const a2 = hr(i, 1) * 6.283, r = 2.2 + age * (3 + hr(i, 2) * 5); o.set(Math.cos(a2) * r, 0.6 + age * (5 + hr(i, 3) * 6) - age * age * 7, Math.sin(a2) * r); return 0.6 + age; }, down && t < T.fin - 0.8 + 0.9 ? 1 : 0, 0.9, 30);
+  { const d = new THREE.Object3D(); for (let i = 0; i < 80; i++) { const age = t - (T.fin - 0.8); if (age >= 0 && age < 1.1) { const a2 = hr(i, 1) * 6.283, r = 2.2 + age * (3 + hr(i, 2) * 6); d.position.set(Math.cos(a2) * r, Math.max(0.2, 0.6 + age * (6 + hr(i, 3) * 7) - age * age * 9), Math.sin(a2) * r); d.scale.setScalar((0.5 + hr(i, 4)) * 0.9 * (1 - age / 1.1) + 0.05); } else d.scale.setScalar(1e-6); d.updateMatrix(); spray.setMatrixAt(i, d.matrix); } spray.instanceMatrix.needsUpdate = true; }
+  camPath([[T.splash, V(30, 9, 62), V(0, 30, 0), 52], [T.fin, V(26, 7, 54), V(0, 13, 0), 50]], t); renderer.toneMappingExposure = 1.0; postO.render();
+}
+function overlayFrame(t) {
+  const s = sceneAt(t);
+  const ta = t < 2.8 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 2.4, 2.8)) : 0; O.set(O.title, '<em>Apollo 13</em>,<br>second<br>by second'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`;
+  const [chh, ca] = capAt(CAPS, t); if (chh) O.set(O.cap, chh); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  let ha = 1; const ck = fmt(clockAt(t));
+  if (t < T.sp + 0.2) ha = 0;
+  else if (t < 8.85) { O.hudSet('Mission clock', ck, '13 April 1970 · day 3 of the flight\nEarth and Moon not to scale'); ha = seg(t, T.sp + 0.2, T.sp + 0.6); }
+  else if (t < T.mc) O.hudSet('Mission clock', ck, 'About 320,000 km from Earth\nAbout 9 pm in Houston');
+  else if (t < T.fans) O.hudSet('Mission clock', ck, 'Mission Control, Houston\nA routine request');
+  else if (t < T.tank) O.hudSet('Mission clock', ck, 'Service module, bay 4\nFans on in oxygen tank 2');
+  else if (t < T.climb) O.hudSet('Mission clock', ck, 'Inside oxygen tank 2 · cutaway\nWire insulation damaged before launch');
+  else if (t < T.bang) O.hudSet('Mission clock', ck, 'Tank 2 pressure climbing\nto a peak of 1,008 psi');
+  else if (t < T.leak) O.hudSet('Mission clock', t < T.bang + 0.9 ? '055:54:53' : ck, 'Oxygen tank 2 bursts\nA panel blows off the service module');
+  else if (t < T.lm) O.hudSet('Mission clock', ck, 'Tank 1 is leaking too\nTwo of three fuel cells lost');
+  else if (t < T.moon) O.hudSet('Lunar module', 'Aquarius', 'Built for 2 men for 2 days\nNeeded: 3 men for about 4 days');
+  else if (t < T.splash) O.hudSet('The way home', 'Round the Moon', 'Its gravity swings them\nback towards Earth · not to scale');
+  else if (t < T.fin) O.hudSet('Splashdown', '17 April 1970', 'Pacific Ocean · all three safe\nFlight time 5 d 22 h 54 min');
+  else if (t < T.end) { O.hudSet('Apollo 13', 'All home', 'Jim Lovell · Jack Swigert\nFred Haise'); ha = seg(t, T.fin + 0.2, T.fin + 0.6); }
+  else ha = 1 - seg(t, T.end, T.end + 0.3);
+  O.hud.style.background = 'rgba(6,10,26,.42)'; O.hud.style.boxShadow = '0 0 0 14px rgba(6,10,26,.42)'; O.hud.style.borderRadius = '4px'; O.show(O.hud, ha); O.hud.style.top = '850px';
+  let h = ''; const L = (x, y, a, small, big, col) => a > 0.01 ? `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${a}${col ? ';color:' + col : ''}">${small}${big ? '<b style="font-size:40px">' + big + '</b>' : ''}</div>` : '';
+  const fade = (a, b) => Math.min(seg(t, a + 0.3, a + 0.7), 1 - seg(t, b - 0.3, b));
+  if (t >= 8.85 && t < T.mc) h += L(64, 300, fade(8.85, T.mc), 'Service module', 'One switch away', '#ffd98a');
+  if (s === 'mc') h += L(64, 300, fade(T.mc, T.fans), 'Capcom Jack Lousma, 55:52:58', '“…stir up the cryo tanks.”', '#bcd4ff');
+  if (t >= T.fans && t < T.tank) h += L(64, 300, fade(T.fans, T.tank), 'Fans stir the oxygen', 'A routine job', '#bcd4ff');
+  if (t >= T.tank && t < T.climb) h += L(64, 300, fade(T.tank, T.climb), 'A short circuit, in pure oxygen', 'The wires catch fire', '#ffb38a');
+  if (t >= T.climb && t < T.bang) h += L(64, 300, fade(T.climb, T.bang), 'Fans on to bang', '93 seconds', '#ffd98a');
+  if (t >= T.bang + 0.9 && t < T.leak) h += L(64, 300, fade(T.bang + 0.7, T.leak), 'Jack Swigert, 55:55:20', '“Houston, we’ve had<br>a problem here.”', '#ffd98a');
+  if (t >= T.leak && t < T.lm) h += L(64, 300, fade(T.leak, T.lm), 'No oxygen, no fuel cells', 'No power, no water', '#bcd4ff');
+  if (t >= T.lm && t < T.moon) h += L(64, 300, fade(T.lm, T.moon), 'Command module shut down', 'The lander is the lifeboat', '#ffd98a');
+  if (O.labels._h !== h) { O.labels._h = h; O.labels.innerHTML = h; }
+  let fl = 0; for (const [a, dd, k] of [[T.mc, 0.3, 0.5], [T.fans, 0.3, 0.5], [T.bang, 0.35, 1.0], [T.lm, 0.3, 0.4], [T.splash, 0.4, 0.7], [T.fin, 0.4, 0.6]]) if (t >= a - 0.06 && t < a + dd) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + dd)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { const s = sceneAt(t); if (s === 'mc') mcFrame(t); else if (s === 'tk') tankFrame(t); else if (s === 'oc') oceanFrame(t); else spaceFrame(t); overlayFrame(t); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>

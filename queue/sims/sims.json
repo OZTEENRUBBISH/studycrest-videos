@@ -103,6 +103,18 @@
     "https://www.hko.gov.hk/en/education/earth-science/general/00342-how-deep-is-the-earth-and-what-is-at-its-centre.html",
     "https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html"
    ]
+  },
+  {
+   "file": "sim-09-apollo13.mp4",
+   "title": "Apollo 13, second by second",
+   "made": "2026-11-17",
+   "caption": "Apollo 13, second by second. A routine request to stir the oxygen tanks set off the explosion 93 seconds later, 320,000 km from Earth. The lander that never landed kept all three alive. 🚀\n\nFollow for a new simulation every day.\n\n#apollo13 #simulation #science #history #space #nasa #studytok",
+   "science": "Times are ground elapsed time (GET) from NASA's detailed chronology of the accident. Launch 11 April 1970, 19:13 UT (1:13 pm CST). 55:52:58 Capcom Jack Lousma: '13, we've got one more item for you, when you get a chance. We'd like you to stir up the cryo tanks.' 55:53:18 oxygen tank 1 fans on; 55:53:20 oxygen tank 2 fans on, with electrical disturbances from 55:53:20 to 55:53:41; tank 2 pressure rises, reaching its maximum of 1,008.3 psia at 55:54:45; 55:54:53 the 'bang', telemetry lost for about 2 seconds; 55:55:20 Swigert: 'Okay, Houston, we've had a problem here.'; 55:55:35 Lovell: 'Houston, we've had a problem. We've had a main B bus undervolt.' Fans on to bang: 55:54:53 - 55:53:20 = 93 s (arithmetic run). 55:52:00 GET = 10:05 pm EST 13 April, so the bang was about 9:08 pm in Houston (CST), as NASA's mission page says. Distance: NASA gives 'about 200,000 miles from Earth' = 321,869 km, said as 'three hundred and twenty thousand kilometres' and shown as 'about 320,000 km'. Cause (NASA mission page, review board findings): heater thermostatic switches not upgraded from 28 to 65 volts were probably welded shut during a ground test, wiring near the heaters reached about 1,000 F, which severely degrades Teflon insulation; the film says 'damaged wires spark' and 'the insulation starts to burn' and shows no temperature. Tank 2 blew up 'causing the No. 1 tank to also fail'; two of three fuel cells were lost, and losing all oxygen meant the last fuel cell would die. Lunar module Aquarius: 'designed to support two men for two days' and asked 'to care for three men for about four days'. Splashdown 17 April 1970 in the Pacific; mission duration 5 days 22 h 54 min 41 s. Crew: James Lovell, Jack Swigert, Fred Haise. The chronology does not say which crew member operated the fan switch, so the film says only 'the fans switch on'. Not to scale and labelled so: Earth and Moon sizes and distances; the tank is drawn as a cutaway about 1.5 m wide for clarity; the spark, flame and gas cloud are illustrative; the mission clock on screen runs faster or slower than real time between the verified time marks. The lunar module was cast off before re-entry; the last shot of it alone is illustrative.",
+   "sources": [
+    "https://nssdc.gsfc.nasa.gov/planetary/lunar/ap13chrono.html",
+    "https://www.nasa.gov/history/detailed-chronology-of-events-surrounding-the-apollo-13-accident/",
+    "https://www.nasa.gov/missions/apollo/apollo-13-mission-details/"
+   ]
   }
  ]
 }

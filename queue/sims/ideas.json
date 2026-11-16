@@ -72,8 +72,9 @@
    "setting": "The spacecraft, 300,000 km from Earth, 1970",
    "hook": "Apollo 13, second by second",
    "the surprising true point": "One oxygen tank failed, and the crew survived by using the lunar lander as a lifeboat",
-   "status": "making",
-   "claimed_at": "2026-11-17T01:20:00+11:00"
+   "status": "made",
+   "claimed_at": "2026-11-17T01:20:00+11:00",
+   "file": "sim-09-apollo13.mp4"
   },
   {
    "title": "What if a teaspoon of neutron star appeared on your desk?",
