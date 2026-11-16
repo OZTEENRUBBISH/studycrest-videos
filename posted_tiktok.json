@@ -84,6 +84,12 @@
    "kind": "spot",
    "due_at": "2026-11-18T12:00:00+11:00",
    "buffer_post_id": "6afb0fdd25e0ca60eeff6c38"
+  },
+  {
+   "file": "sim-09-apollo13",
+   "kind": "sim",
+   "due_at": "2026-11-18T06:00:00+11:00",
+   "buffer_post_id": "6afb2b270c8c027c57359ef9"
   }
  ]
 }
