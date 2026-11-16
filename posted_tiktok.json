@@ -78,6 +78,12 @@
    "kind": "sim",
    "due_at": "2026-11-18T00:00:00+11:00",
    "buffer_post_id": "6af9e8beb9a106584cc247ad"
+  },
+  {
+   "file": "studycrest-02-maths-product-rule",
+   "kind": "spot",
+   "due_at": "2026-11-18T12:00:00+11:00",
+   "buffer_post_id": "6afb0fdd25e0ca60eeff6c38"
   }
  ]
 }
