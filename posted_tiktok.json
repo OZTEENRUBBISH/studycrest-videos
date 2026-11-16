@@ -90,6 +90,12 @@
    "kind": "sim",
    "due_at": "2026-11-18T06:00:00+11:00",
    "buffer_post_id": "6afb2b270c8c027c57359ef9"
+  },
+  {
+   "file": "sim-10-radiation",
+   "kind": "sim",
+   "due_at": "2026-11-18T18:00:00+11:00",
+   "buffer_post_id": "6afb2e0a37f32fd42a3bb2a3"
   }
  ]
 }
