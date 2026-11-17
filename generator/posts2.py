@@ -142,6 +142,14 @@ POSTS = {
     shot_slide("ink", "Your question in, a new one out", "pq.png", None, "Same topic and skills. New situation, new numbers.", 1, n, stack=[(30, 30, 736, 208), (832, 30, 1538, 208)]),
     steps_slide("ink", "Make them your way", [("Add questions you've done", "Photos, a PDF, or type them in"), ("Pick how many", "3, 5 or 8 at a time"), ("Pick the difficulty", "Easier, the same, or harder")], 2, n),
     cta_slide("ink", 3, n)],
+ "G-5-ways-to-take-better-notes": lambda n=7: [
+    cover("blue", "✏️", "5 ways to take", "Notes you'll actually use when exams come.", 0, n, accent="better notes"),
+    point("blue", 1, "💬", "Write it in your own words", "Don't copy the slide. Put it the way you'd explain it to a friend.", 1, n),
+    point("blue", 2, "❓", "Turn headings into questions", "Write the question each section answers, then cover the notes and answer it.", 2, n),
+    point("blue", 3, "⭐", "Mark what you didn't get", "Star anything unclear and ask about it the same day.", 3, n),
+    point("blue", 4, "🖊️", "Sum it up the same day", "Three lines on what the class covered, while it's still fresh.", 4, n),
+    point("blue", 5, "✅", "Do your working in StudyCrest", "It checks every line as you write: a tick, a flag or a hint.", 5, n, tag="Free for 30 days"),
+    cta_slide("blue", 6, n)],
 }
 
 if __name__ == "__main__":
