@@ -1,0 +1,239 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// What if you removed all the empty space from your atoms?  Room and stadium (1 unit = 1 m), cafe table, globe, and the micro world (cells, lattice, one atom).
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, mat, box, shadowAll, person, cloud, stars, globe, skyDome, arrow, overlay, capAt, makePost, proj, tower } from './common.js';
+const W = 1080, H = 1920, DUR = 46.0;
+const O = overlay(); O.show(O.chip, 0); { const st = document.createElement('style'); st.textContent = '#cap{padding:26px 0;background:radial-gradient(ellipse 60% 70% at center,rgba(3,5,14,.55) 0,rgba(3,5,14,.32) 55%,rgba(3,5,14,0) 100%)}'; document.head.appendChild(st); }
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.05, 6000);
+const R = rng(20261118), V = (x, y, z) => new THREE.Vector3(x, y, z);
+// timeline
+const T = { shrink: 3.3, hand: 8.3, cells: 9.6, lat: 11.0, stad: 12.5, dive: 15.7, globe: 20.2, cafe: 22.7, atom: 25.6, pair: 32.6, press: 35.3, rows: 36.1, fin: 38.8, end: 43.2 };
+const basic = (c, o = {}) => new THREE.MeshBasicMaterial({ color: c, ...o });
+const glowMat = (r, g, b, pw = 2.4, k = 1) => new THREE.ShaderMaterial({ side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { k: { value: k }, c: { value: new THREE.Vector3(r, g, b) } },
+  vertexShader: 'varying vec3 n; varying vec3 v; void main(){ n = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); v = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+  fragmentShader: `varying vec3 n; varying vec3 v; uniform float k; uniform vec3 c; void main(){ float f = pow(clamp(-dot(n, v), 0.0, 1.0), ${pw.toFixed(1)}); gl_FragColor = vec4(c * f * k, 1.0); }` });
+const dotTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.35, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+// an electron cloud: two shells of soft points turning against each other, densest near the middle
+function eCloud(n, rad, color, seed, size = 0.5, op = 0.5, add = true) {
+  const g = new THREE.Group(), r = rng(seed), mats = [];
+  for (let h = 0; h < 2; h++) { const p = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const u = r() * 2 - 1, a = r() * 6.2832, s = Math.sqrt(1 - u * u), d = rad * Math.pow(r(), 0.72) * (1 + (r() - 0.5) * 0.16); p[i * 3] = d * s * Math.cos(a); p[i * 3 + 1] = d * u; p[i * 3 + 2] = d * s * Math.sin(a); }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(p, 3)); const m = new THREE.PointsMaterial({ color, size, map: dotTex, transparent: true, opacity: op, depthWrite: false, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, sizeAttenuation: true, fog: false });
+    const pts = new THREE.Points(geo, m); pts.frustumCulled = false; g.add(pts); mats.push(m); }
+  g.userData = { mats, op, spin(t) { g.children[0].rotation.set(t * 0.31, t * 0.47, 0); g.children[1].rotation.set(-t * 0.37, 0.4, -t * 0.29); }, alpha(a) { for (const m of mats) m.opacity = op * a; } }; return g;
+}
+
+// =====================================================  ROOM (day): you, standing on a bathroom scale
+const room = new THREE.Scene(); room.background = new THREE.Color(0xcfe3f2);
+room.add(new THREE.HemisphereLight(0xeaf2ff, 0x8a7460, 1.25));
+const rSun = new THREE.DirectionalLight(0xfff0d0, 2.4); rSun.position.set(3.2, 4.2, 2.6); rSun.castShadow = true; rSun.shadow.mapSize.set(2048, 2048); Object.assign(rSun.shadow.camera, { left: -3.5, right: 3.5, top: 3.5, bottom: -3.5, near: 0.5, far: 14 }); rSun.shadow.bias = -0.0006; room.add(rSun);
+const rg = new THREE.Group(); room.add(rg); const RA = (m) => { rg.add(m); return m; };
+RA(box(7, 0.1, 7, 0xb98f62, 0, -0.05, 0.6)); for (let i = 0; i < 15; i++) { const p = box(0.012, 0.004, 7, 0x9a7146, -3.5 + i * 0.5, 0.002, 0.6); p.castShadow = false; RA(p); }
+RA(box(7, 3.0, 0.1, 0xe9dfcc, 0, 1.5, -1.6)); RA(box(0.1, 3.0, 7, 0xdfd3bd, -2.6, 1.5, 0.6)); RA(box(7, 0.14, 0.04, 0xffffff, 0, 0.07, -1.54)); RA(box(0.04, 0.14, 7, 0xffffff, -2.54, 0.07, 0.6));
+RA(box(2.4, 0.02, 1.7, 0x2f56d6, 0, 0.012, 0.1)); RA(box(2.1, 0.022, 1.4, 0x5b86ff, 0, 0.014, 0.1));
+// window with sky
+{ const c = document.createElement('canvas'); c.width = 256; c.height = 256; const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, '#4f9ae6'); g.addColorStop(1, '#cfe9fb'); x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+  x.fillStyle = '#fff'; for (const [a, b, r2] of [[60, 70, 26], [92, 62, 32], [128, 74, 24], [180, 140, 22], [208, 132, 28]]) { x.beginPath(); x.arc(a, b, r2, 0, 7); x.fill(); } x.fillStyle = '#5d9a52'; x.fillRect(0, 214, 256, 42); x.fillStyle = '#3f7f45'; for (let i = 0; i < 7; i++) { x.beginPath(); x.arc(i * 42 + 10, 214, 22 + R() * 10, 0, 7); x.fill(); }
+  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; const wm = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.3), new THREE.MeshBasicMaterial({ map: tx })); wm.position.set(1.15, 1.7, -1.545); RA(wm);
+  for (const [w, h, X, Y] of [[1.44, 0.07, 1.15, 2.38], [1.44, 0.07, 1.15, 1.02], [0.07, 1.44, 0.46, 1.7], [0.07, 1.44, 1.84, 1.7], [0.04, 1.3, 1.15, 1.7], [1.3, 0.04, 1.15, 1.7]]) RA(box(w, h, 0.06, 0xffffff, X, Y, -1.53)); RA(box(1.56, 0.05, 0.16, 0xffffff, 1.15, 0.98, -1.48)); }
+// shelf, books, pictures, plant, sofa, side table
+RA(box(1.3, 0.04, 0.24, 0x9a7146, -1.1, 1.85, -1.45)); { let x = -1.68; const BC = [0xe2574c, 0x2f56d6, 0xf2c94c, 0x2bb673, 0xf2994a, 0x9b59b6, 0xe6e6e6, 0x1abc9c]; for (let i = 0; i < 16; i++) { const w = 0.04 + R() * 0.04, h = 0.22 + R() * 0.1; RA(box(w, h, 0.17, BC[Math.floor(R() * 8)], x + w / 2, 1.87 + h / 2, -1.46)); x += w + 0.005; if (x > -0.75) break; } RA(box(0.14, 0.16, 0.14, 0x6fb7a0, -0.6, 1.95, -1.45)); RA(box(0.07, 0.14, 0.07, 0x2e8b4a, -0.6, 2.1, -1.45)); }
+RA(box(0.7, 0.9, 0.03, 0x1a2448, -1.1, 1.2, -1.54)); { const a = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.012, 6, 32), basic(0x9cc0ff)); a.position.set(-1.1, 1.25, -1.52); a.scale.y = 0.45; RA(a); const b = a.clone(); b.rotation.z = 1.05; RA(b); const c = a.clone(); c.rotation.z = -1.05; RA(c); const n = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), basic(0xffd64a)); n.position.set(-1.1, 1.25, -1.52); RA(n); }
+{ const p = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.36, 10), mat(0xc96f4a)); p.position.set(2.1, 0.18, -1.1); p.castShadow = true; RA(p); for (let i = 0; i < 8; i++) { const l = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.9, 4), mat(i % 2 ? 0x2e8b4a : 0x3fa35a)); l.position.set(2.1 + Math.cos(i) * 0.12, 0.75, -1.1 + Math.sin(i) * 0.12); l.rotation.set(Math.sin(i) * 0.5, 0, -Math.cos(i) * 0.5); l.castShadow = true; RA(l); } }
+RA(box(0.85, 0.36, 1.9, 0x4f79c9, -2.05, 0.2, 0.3)); RA(box(0.25, 0.75, 1.9, 0x4470bd, -2.38, 0.42, 0.3)); RA(box(0.85, 0.5, 0.2, 0x4470bd, -2.05, 0.3, -0.72)); RA(box(0.85, 0.5, 0.2, 0x4470bd, -2.05, 0.3, 1.32)); RA(box(0.45, 0.14, 0.45, 0xf2c94c, -1.98, 0.46, -0.3)); RA(box(0.45, 0.14, 0.45, 0xe2574c, -1.98, 0.46, 0.75));
+const TBL = V(1.45, 0.72, -0.35); RA(box(0.8, 0.04, 0.6, 0xa67c4b, TBL.x, TBL.y - 0.02, TBL.z)); for (const [x, z] of [[-0.35, -0.25], [0.35, -0.25], [-0.35, 0.25], [0.35, 0.25]]) RA(box(0.05, 0.7, 0.05, 0x8b6539, TBL.x + x, 0.35, TBL.z + z));
+{ const m = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.1, 14), mat(0xf5f1e6)); m.position.set(TBL.x + 0.24, TBL.y + 0.05, TBL.z - 0.14); m.castShadow = true; RA(m); for (const [w, h, d, c, y, ry] of [[0.26, 0.035, 0.19, 0xe2574c, 0.018, 0.2], [0.24, 0.03, 0.17, 0x2bb673, 0.05, -0.1]]) { const b = box(w, h, d, c, TBL.x - 0.22, TBL.y + y, TBL.z - 0.12); b.rotation.y = ry; RA(b); } }
+// the bathroom scale with a display
+const SC = V(0, 0.045, 0.1); RA(box(0.36, 0.045, 0.34, 0xf3f4f6, SC.x, 0.0225, SC.z)); RA(box(0.3, 0.004, 0.28, 0x2a2f3a, SC.x, 0.046, SC.z));
+{ const c = document.createElement('canvas'); c.width = 256; c.height = 96; const x = c.getContext('2d'); x.fillStyle = '#0c1a12'; x.fillRect(0, 0, 256, 96); x.fillStyle = '#7dffa0'; x.font = '700 62px Inter, Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('70.0 kg', 128, 52);
+  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; const d = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.075).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: tx })); d.position.set(SC.x, 0.0492, SC.z + 0.085); RA(d); }
+const you = person(rng(5), 'stand', { shirt: 0xf2c94c, pants: 0x1e3aa8, shorts: false, skin: 0xe0ac7e, hair: 0x2b1b12 }); you.scale.setScalar(1.0); you.position.set(SC.x, SC.y + 0.005, SC.z - 0.02); RA(you);
+const speck = new THREE.Mesh(new THREE.SphereGeometry(0.0028, 12, 8), basic(0xffffff)); speck.material.color.setRGB(2.0, 1.8, 1.2); speck.position.set(SC.x, SC.y + 0.01, SC.z - 0.02); room.add(speck);
+const speckH = new THREE.Mesh(new THREE.SphereGeometry(0.03, 24, 16), glowMat(1.0, 0.8, 0.35, 3.0, 1.0)); speckH.position.copy(speck.position); speckH.material.depthTest = false; speckH.renderOrder = 5; room.add(speckH);
+// a hand (palm towards the camera, or flat on the table)
+const handG = new THREE.Group(); { const sk = 0xe0ac7e, sk2 = 0xd39a6a; handG.add(box(0.088, 0.1, 0.028, sk, 0, 0, 0)); for (let i = 0; i < 4; i++) { const f = box(0.019, [0.07, 0.082, 0.076, 0.06][i], 0.021, sk, -0.034 + i * 0.0225, 0.05 + [0.07, 0.082, 0.076, 0.06][i] / 2, 0); handG.add(f); handG.add(box(0.0195, 0.002, 0.0215, sk2, -0.034 + i * 0.0225, 0.05 + [0.07, 0.082, 0.076, 0.06][i] * 0.5, 0.0005)); }
+  const th = box(0.022, 0.07, 0.022, sk, -0.062, 0.0, 0); th.rotation.z = 0.7; handG.add(th); handG.add(box(0.07, 0.24, 0.032, 0xf2c94c, 0, -0.17, 0)); handG.add(box(0.074, 0.02, 0.036, 0xd9b23f, 0, -0.06, 0)); for (const [x, y, w] of [[-0.012, 0.012, 0.05], [0.004, -0.012, 0.06], [-0.004, -0.03, 0.04]]) { const l = box(w, 0.0016, 0.001, sk2, x, y, 0.0146); l.rotation.z = 0.25; l.castShadow = false; handG.add(l); } shadowAll(handG); } room.add(handG);
+
+// =====================================================  MICRO WORLD: cells, a lattice of atoms, one atom, two atoms, finger and table
+const micro = new THREE.Scene(); micro.background = new THREE.Color(0x05070f); micro.add(new THREE.HemisphereLight(0xcfe0ff, 0x30182a, 1.3)); const mDir = new THREE.DirectionalLight(0xffffff, 1.8); mDir.position.set(-6, 9, 14); micro.add(mDir);
+const cellsG = new THREE.Group(); micro.add(cellsG); { const r2 = rng(61), cg = new THREE.IcosahedronGeometry(1, 2), ng = new THREE.IcosahedronGeometry(0.32, 1), CC = [0xe58a9a, 0xd9778c, 0xf0a3ad, 0xe79aa6];
+  for (let i = -5; i <= 5; i++) for (let j = -9; j <= 9; j++) { const x = i * 2.25 + (j % 2 ? 1.1 : 0) + (r2() - 0.5) * 0.4, y = j * 1.95 + (r2() - 0.5) * 0.4, s = 1.02 + r2() * 0.2; const c = new THREE.Mesh(cg, new THREE.MeshLambertMaterial({ color: CC[Math.floor(r2() * 4)], flatShading: true, emissive: 0x4a1220, emissiveIntensity: 0.5 })); c.position.set(x, y, (r2() - 0.5) * 0.5); c.scale.set(s, s * (0.9 + r2() * 0.2), 0.5); c.rotation.z = r2() * 3; cellsG.add(c);
+    const n = new THREE.Mesh(ng, new THREE.MeshLambertMaterial({ color: 0x8a3a7a, flatShading: true, emissive: 0x3a1040, emissiveIntensity: 0.6 })); n.position.set(x + (r2() - 0.5) * 0.4, y + (r2() - 0.5) * 0.4, 0.42); n.scale.z = 0.6; cellsG.add(n); }
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), basic(0x5a1f33)); back.position.z = -1.2; cellsG.add(back); }
+const latG = new THREE.Group(); micro.add(latG); { const sg = new THREE.IcosahedronGeometry(0.62, 2), AC = [[0x5b8cff, 0x1d3fb0], [0xe2574c, 0x7a1c14], [0xeeeeee, 0x666a78]], S = 2.6, bm = new THREE.MeshLambertMaterial({ color: 0x9aa7c2, emissive: 0x2a3350, emissiveIntensity: 0.6 }), bg = new THREE.CylinderGeometry(0.1, 0.1, S, 6);
+  for (let k = 0; k < 3; k++) for (let i = -4; i <= 4; i++) for (let j = -7; j <= 7; j++) { const [c, e] = AC[(i + j + k * 2 + 60) % 3], a = new THREE.Mesh(sg, new THREE.MeshLambertMaterial({ color: c, flatShading: true, emissive: e, emissiveIntensity: 0.7 })); a.position.set(i * S, j * S, -k * S); latG.add(a);
+    if (i < 4) { const b = new THREE.Mesh(bg, bm); b.rotation.z = Math.PI / 2; b.position.set(i * S + S / 2, j * S, -k * S); latG.add(b); } if (j < 7) { const b = new THREE.Mesh(bg, bm); b.position.set(i * S, j * S + S / 2, -k * S); latG.add(b); } if (k < 2) { const b = new THREE.Mesh(bg, bm); b.rotation.x = Math.PI / 2; b.position.set(i * S, j * S, -k * S - S / 2); latG.add(b); } } }
+// one atom: nucleus (enlarged), the old "orbits" picture, and the cloud
+const atomG = new THREE.Group(); micro.add(atomG); const nucG = new THREE.Group(); atomG.add(nucG);
+{ const r2 = rng(9), g = new THREE.IcosahedronGeometry(0.2, 1); for (let i = 0; i < 12; i++) { const u = r2() * 2 - 1, a = r2() * 6.28, s = Math.sqrt(1 - u * u), d = 0.3 * Math.pow(r2(), 0.4), p = i % 2 === 0, m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: p ? 0xff5a4a : 0xb9c2d6, flatShading: true, roughness: 0.5, emissive: p ? 0xd0382a : 0x55607c, emissiveIntensity: 0.6 })); m.position.set(d * s * Math.cos(a), d * u, d * s * Math.sin(a)); nucG.add(m); } }
+const nucH = new THREE.Mesh(new THREE.SphereGeometry(1.2, 24, 16), glowMat(1.0, 0.6, 0.35, 3.0, 0.9)); atomG.add(nucH);
+const orbG = new THREE.Group(); atomG.add(orbG); const orbE = []; for (const [r, tx, tz, n] of [[2.6, 1.25, 0.2, 2], [4.6, 1.05, -0.5, 4]]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.022, 6, 120), basic(0x9cc0ff, { transparent: true, opacity: 0.7 })); const h = new THREE.Group(); h.rotation.set(tx, 0, tz); h.add(ring); orbG.add(h); for (let i = 0; i < n; i++) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), basic(0x6fc0ff, { transparent: true })); h.add(e); orbE.push([e, r, i / n * 6.2832, r < 3 ? 2.2 : 1.5]); } }
+const cloudA = eCloud(5200, 5.2, 0x5aa0ff, 3, 0.42, 0.42); atomG.add(cloudA); const cloudHalo = new THREE.Mesh(new THREE.SphereGeometry(5.9, 40, 24), glowMat(0.25, 0.5, 1.0, 1.4, 0.35)); atomG.add(cloudHalo);
+const sqA = []; for (let i = 0; i < 2; i++) { const a = arrow(2.0, 0xffd64a, 0.12), th = i * Math.PI; a.userData.th = th; a.rotation.z = th + Math.PI / 2; micro.add(a); sqA.push(a); }
+// two atoms meeting
+const pairG = new THREE.Group(); micro.add(pairG); const pA = new THREE.Group(), pB = new THREE.Group(); pairG.add(pA); pairG.add(pB);
+const pcA = eCloud(2600, 3.0, 0xffa560, 21, 0.4, 0.45), pcB = eCloud(2600, 3.0, 0x5aa0ff, 22, 0.4, 0.45); pA.add(pcA); pB.add(pcB); for (const [g, c] of [[pA, 0xffe0b0], [pB, 0xd6e6ff]]) { const n = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), basic(c)); g.add(n); }
+const spark = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: dotTex, color: 0xfff2c0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); micro.add(spark);
+const pushA = [arrow(1.7, 0xffd64a, 0.1), arrow(1.7, 0xffd64a, 0.1)]; pushA[1].rotation.z = Math.PI; for (const a of pushA) micro.add(a);
+// finger atoms above, table atoms below
+const rowsG = new THREE.Group(); micro.add(rowsG); const fingG = new THREE.Group(), tabG = new THREE.Group(); rowsG.add(fingG); rowsG.add(tabG); const rowC = [];
+for (let l = 0; l < 2; l++) for (let i = 0; i < 5; i++) { const x = (i - 2) * 3.1 + (l ? 1.55 : 0); for (const [g, c, nc, y, sd] of [[fingG, 0xffa560, 0xffe0b0, 1.75 + l * 2.7, 40], [tabG, 0x5aa0ff, 0xd6e6ff, -1.75 - l * 2.7, 70]]) { const cl = eCloud(520, 1.62, c, sd + l * 10 + i, 0.36, 0.5); cl.position.set(x, y, 0); g.add(cl); rowC.push(cl); const n = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), basic(nc)); n.position.set(x, y, 0); g.add(n); } }
+const bar = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: dotTex, color: 0xfff2c0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); rowsG.add(bar);
+
+// =====================================================  STADIUM (day): the atom at stadium size, a pea on the centre spot
+const stad = new THREE.Scene(); stad.fog = new THREE.Fog(0xcfe3f2, 900, 4200); stad.add(skyDome(0x2a78d8, 0xcfe7f8, 0xbfd6e6)); stad.add(new THREE.HemisphereLight(0xe2efff, 0x7f9a6a, 1.25));
+const sSun = new THREE.DirectionalLight(0xfff0d4, 2.7); sSun.position.set(-260, 420, 240); sSun.castShadow = true; sSun.shadow.mapSize.set(4096, 4096); Object.assign(sSun.shadow.camera, { left: -260, right: 260, top: 260, bottom: -260, near: 50, far: 1200 }); sSun.shadow.bias = -0.0008; stad.add(sSun);
+{ const r3 = rng(88); const g = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000).rotateX(-Math.PI / 2), mat(0x8fa27a)); g.position.y = -0.3; g.receiveShadow = true; stad.add(g);
+  const apron = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.3, 64), mat(0x9aa3ad)); apron.scale.set(170, 1, 140); apron.position.y = -0.2; apron.receiveShadow = true; stad.add(apron);
+  // pitch: stripes and lines
+  for (let i = 0; i < 14; i++) { const s = box(7.5, 0.04, 68, i % 2 ? 0x3f9a45 : 0x4cab50, -48.75 + i * 7.5, -0.02, 0); s.castShadow = false; stad.add(s); } const surr = box(125, 0.03, 88, 0x3a8a40, 0, -0.04, 0); surr.castShadow = false; stad.add(surr);
+  const line = (w, d, x, z) => { const l = new THREE.Mesh(new THREE.BoxGeometry(w, 0.002, d), basic(0xf4f7f2)); l.position.set(x, 0.002, z); stad.add(l); };
+  line(105, 0.12, 0, -34); line(105, 0.12, 0, 34); line(0.12, 68, -52.5, 0); line(0.12, 68, 52.5, 0); line(0.12, 68, 0, 0); for (const s of [-1, 1]) { line(0.25, 40.3, s * 36, 0); line(16.5, 0.25, s * 44.25, -20.15); line(16.5, 0.25, s * 44.25, 20.15); line(0.25, 18.3, s * 47, 0); line(5.5, 0.25, s * 49.75, -9.15); line(5.5, 0.25, s * 49.75, 9.15);
+    const gl = new THREE.Group(); gl.add(box(0.15, 2.44, 0.15, 0xffffff, 0, 1.22, -3.66)); gl.add(box(0.15, 2.44, 0.15, 0xffffff, 0, 1.22, 3.66)); gl.add(box(0.15, 0.15, 7.47, 0xffffff, 0, 2.44, 0)); gl.position.x = s * 52.5; stad.add(gl); }
+  const cc = new THREE.Mesh(new THREE.RingGeometry(9.03, 9.28, 72).rotateX(-Math.PI / 2), basic(0xf4f7f2)); cc.position.y = 0.0035; stad.add(cc); const cs = new THREE.Mesh(new THREE.CircleGeometry(0.11, 24).rotateX(-Math.PI / 2), basic(0xf4f7f2)); cs.position.y = 0.0036; stad.add(cs);
+  // stands: tiers round an oval, with a crowd texture, roof and floodlights
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const x = cv.getContext('2d'); x.fillStyle = '#2f56d6'; x.fillRect(0, 0, 256, 64); const PC = ['#f1c9a5', '#e2574c', '#f2c94c', '#ffffff', '#2bb673', '#1a1a2a', '#f2994a', '#9b59b6', '#c68642', '#e6e6e6'];
+  for (let i = 0; i < 64; i++) for (let j = 0; j < 16; j++) if (r3() < 0.86) { x.fillStyle = PC[Math.floor(r3() * PC.length)]; x.fillRect(i * 4 + 0.5, j * 4 + 0.5, 3, 3); }
+  const ctx = new THREE.CanvasTexture(cv); ctx.colorSpace = THREE.SRGBColorSpace; ctx.magFilter = THREE.NearestFilter; const crowd = new THREE.MeshLambertMaterial({ map: ctx }), conc = mat(0xc9ccd2), roofM = mat(0xf4f6fa), NS = 56;
+  for (let s = 0; s < NS; s++) { const a = (s + 0.5) / NS * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+    for (let k = 0; k < 7; k++) { const rx = 72 + k * 7.2, rz = 52 + k * 7.2, px = ca * rx, pz = sa * rz, len = Math.hypot(rx * Math.sin(a), rz * Math.cos(a)) * (Math.PI * 2 / NS) * 1.04, h = 2.2 + k * 3.3;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(len, h, 7.4), [crowd, crowd, crowd, conc, crowd, crowd]); m.position.set(px, h / 2 - 0.2, pz); m.rotation.y = Math.atan2(-rx * Math.sin(a), rz * Math.cos(a)) + Math.PI; m.rotation.y = -Math.atan2(rz * Math.cos(a), -rx * Math.sin(a)); m.castShadow = true; m.receiveShadow = true; stad.add(m);
+      if (k === 6) { const rf = new THREE.Mesh(new THREE.BoxGeometry(len * 1.03, 0.8, 30), roofM); rf.position.set(ca * (rx - 9), h + 9, sa * (rz - 9)); rf.rotation.y = m.rotation.y; rf.rotation.x = 0; rf.castShadow = true; stad.add(rf); const w = new THREE.Mesh(new THREE.BoxGeometry(len, h + 9, 1.2), mat(s % 2 ? 0xdfe3ea : 0xcfd5de)); w.position.set(ca * (rx + 4.4), (h + 9) / 2, sa * (rz + 4.4)); w.rotation.y = m.rotation.y; w.castShadow = true; stad.add(w); } } }
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const f = new THREE.Group(); f.add(box(1.6, 62, 1.6, 0xb9c0ca, 0, 31, 0)); const hd = box(12, 7, 1.2, 0x8a93a0, 0, 64, 0); f.add(hd); const lt = new THREE.Mesh(new THREE.PlaneGeometry(11, 6), basic(0xfffbe6)); lt.position.set(0, 64, 0.7); f.add(lt); f.position.set(sx * 118, 0, sz * 98); f.lookAt(0, 0, 0); shadowAll(f); stad.add(f); }
+  // the city round it
+  for (let i = 0; i < 90; i++) { const a = r3() * 6.2832, d = 290 + r3() * 900, w = 26 + r3() * 26, h = 24 + r3() * (d < 700 ? 130 : 70), t = tower(r3, w, h, 26 + r3() * 26); t.position.set(Math.cos(a) * d * 1.1, 0, Math.sin(a) * d - 150); if (Math.hypot(t.position.x / 1.25, t.position.z) < 235) continue; if (t.position.z > 330 && Math.abs(t.position.x) < 260) continue; stad.add(t); }
+  for (let i = 0; i < 120; i++) { const a = r3() * 6.2832, d = 180 + r3() * 190, s = 5 + r3() * 6, tr = new THREE.Mesh(new THREE.ConeGeometry(s * 0.55, s * 1.7, 5), mat(r3() < 0.5 ? 0x2f7a43 : 0x3c8f4f)); tr.position.set(Math.cos(a) * d * 1.2, s * 0.85, Math.sin(a) * d); tr.castShadow = true; stad.add(tr); }
+  for (let i = 0; i < 60; i++) { const c = box(4.4, 1.5, 2, [0xe2574c, 0xffffff, 0x2f56d6, 0x444444, 0xf2c94c, 0xc0c4cc][Math.floor(r3() * 6)], -110 + (i % 20) * 6.2 + 55, 0.6, 172 + Math.floor(i / 20) * 9); stad.add(c); } const park = box(150, 0.1, 40, 0x6f7480, 0, -0.1, 180); park.castShadow = false; stad.add(park);
+  for (let i = 0; i < 11; i++) { const c = cloud(r3); c.position.set(-1800 + r3() * 3600, 520 + r3() * 300, -1500 - r3() * 1200); c.scale.setScalar(5 + r3() * 5); stad.add(c); }
+  // grass blades for the close-up
+  for (let i = 0; i < 260; i++) { const a = r3() * 6.2832, d = 0.13 + Math.pow(r3(), 0.7) * 1.1, hh = 0.012 + r3() * 0.016, b = new THREE.Mesh(new THREE.ConeGeometry(0.0022, hh, 3), mat(r3() < 0.5 ? 0x3f9a45 : 0x57b85a)); b.position.set(Math.cos(a) * d, hh / 2, Math.sin(a) * d); b.rotation.set((r3() - 0.5) * 0.5, r3() * 3, (r3() - 0.5) * 0.5); stad.add(b); } }
+const dome = new THREE.Mesh(new THREE.SphereGeometry(126, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x4f8cff, transparent: true, opacity: 0.13, depthWrite: false, side: THREE.DoubleSide })); dome.scale.set(1, 1, 0.84); stad.add(dome);
+const domeC = eCloud(2600, 124, 0xbfd8ff, 51, 4.2, 0.85, false); domeC.scale.set(1, 1, 0.84); stad.add(domeC);
+const pea = new THREE.Mesh(new THREE.IcosahedronGeometry(0.005, 3), new THREE.MeshStandardMaterial({ color: 0x7ac943, roughness: 0.55, emissive: 0x2a5a12, emissiveIntensity: 0.35 })); pea.position.set(0, 0.0087, 0); stad.add(pea);
+const peaS = new THREE.Mesh(new THREE.CircleGeometry(0.0075, 20).rotateX(-Math.PI / 2), basic(0x000000, { transparent: true, opacity: 0.28 })); peaS.position.set(0.003, 0.0039, 0.002); stad.add(peaS);
+const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 150, 12, 1, true), basic(0xffd64a, { transparent: true, opacity: 0.75, depthWrite: false })); beam.position.y = 75; stad.add(beam);
+const beamR = new THREE.Mesh(new THREE.RingGeometry(3.2, 4.2, 40).rotateX(-Math.PI / 2), basic(0xffd64a, { transparent: true, opacity: 0.9, depthWrite: false })); beamR.position.y = 0.05; stad.add(beamR);
+
+// =====================================================  SPACE: everyone on Earth, drawn to one point
+const space = new THREE.Scene(); space.background = new THREE.Color(0x04050c); const starPts = stars(rng(7)); space.add(starPts); space.add(new THREE.HemisphereLight(0x8fb4ff, 0x10131f, 0.7)); const spSun = new THREE.DirectionalLight(0xffffff, 2.6); spSun.position.set(-30, 22, 40); space.add(spSun);
+const earthG = new THREE.Group(); space.add(earthG); const G = globe(10, 24); earthG.add(G); earthG.position.set(0, 7.5, 0); earthG.rotation.set(0.3, -0.6, 0);
+const NP = 2600, pplBase = new Float32Array(NP * 3), pplDel = new Float32Array(NP), pplGeo = new THREE.BufferGeometry(); { const r5 = rng(33); for (let i = 0; i < NP; i++) { let x, y, z; for (let k = 0; k < 30; k++) { const u = r5() * 2 - 1, a = r5() * 6.2832, s = Math.sqrt(1 - u * u); x = s * Math.cos(a); y = u; z = s * Math.sin(a); if (fbm(x * 1.7 + 3.1, y * 1.7 + 1.7, z * 1.7 + 5.3, 5) > 0.53 && Math.abs(y) < 0.85) break; } const p = V(x, y, z).multiplyScalar(10.12).applyEuler(earthG.rotation).add(earthG.position); pplBase.set([p.x, p.y, p.z], i * 3); pplDel[i] = r5(); } pplGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NP * 3), 3)); }
+const ppl = new THREE.Points(pplGeo, new THREE.PointsMaterial({ color: 0xffe2a0, size: 0.55, map: dotTex, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending })); ppl.frustumCulled = false; space.add(ppl);
+const SINK = V(0, -9.5, 22); const sinkB = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 12), basic(0xffe2a0)); sinkB.position.copy(SINK); space.add(sinkB); const sinkH = new THREE.Mesh(new THREE.SphereGeometry(2.6, 24, 16), glowMat(1.0, 0.85, 0.5, 2.6, 1.0)); sinkH.position.copy(SINK); space.add(sinkH);
+
+// =====================================================  CAFE TABLE: one sugar cube
+const cafe = new THREE.Scene(); cafe.background = new THREE.Color(0xd9c3a3); cafe.add(new THREE.HemisphereLight(0xfff2de, 0x8a6a4a, 1.3)); const cSun = new THREE.DirectionalLight(0xfff0d8, 2.2); cSun.position.set(-0.6, 0.9, 0.5); cSun.castShadow = true; cSun.shadow.mapSize.set(2048, 2048); Object.assign(cSun.shadow.camera, { left: -0.4, right: 0.4, top: 0.4, bottom: -0.4, near: 0.1, far: 3 }); cSun.shadow.bias = -0.0004; cafe.add(cSun);
+{ const top = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.03, 48), mat(0xa9764a)); top.position.y = -0.015; top.receiveShadow = true; cafe.add(top); for (let i = -6; i <= 6; i++) { const p = box(0.003, 0.001, 0.84, 0x8b5f38, i * 0.065, 0.0006, 0); p.castShadow = false; cafe.add(p); }
+  const cyl = (r1, r2, h, c, x, y, z, o) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, 28), mat(c, o)); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; cafe.add(m); return m; };
+  cyl(0.075, 0.05, 0.008, 0xf7f3ea, -0.15, 0.004, -0.15); cyl(0.042, 0.032, 0.062, 0xf7f3ea, -0.15, 0.039, -0.15); cyl(0.037, 0.037, 0.003, 0x4a2a14, -0.15, 0.069, -0.15); const hd = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.005, 8, 16), mat(0xf7f3ea)); hd.position.set(-0.101, 0.04, -0.15); hd.castShadow = true; cafe.add(hd);
+  cyl(0.045, 0.03, 0.006, 0x2f56d6, 0.0, 0.003, 0.0); const sp = box(0.007, 0.003, 0.11, 0xd9dde4, 0.085, 0.002, -0.02, { metalness: 0.9, roughness: 0.3 }); sp.rotation.y = 0.5; cafe.add(sp);
+  cyl(0.03, 0.026, 0.05, 0xf7f3ea, 0.13, 0.025, -0.14); for (let i = 0; i < 5; i++) { const s = box(0.0125, 0.0125, 0.0125, 0xffffff, 0.13 + Math.cos(i * 1.3) * 0.012, 0.052 + (i % 2) * 0.008, -0.14 + Math.sin(i * 1.3) * 0.012); s.rotation.set(i, i * 2, 0); cafe.add(s); }
+  // the cafe behind: window light, chairs, a plant, people
+  const wall = box(6, 3, 0.1, 0xe7d3b4, 0, 1.0, -2.4); cafe.add(wall); for (let i = -2; i <= 2; i++) { const w = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.3), basic(0xdff1ff)); w.position.set(i * 1.1, 0.75, -2.34); cafe.add(w); cafe.add(box(0.86, 0.05, 0.06, 0x7a5a3c, i * 1.1, 0.08, -2.33)); cafe.add(box(0.04, 1.3, 0.05, 0x7a5a3c, i * 1.1, 0.75, -2.33)); }
+  const fl = box(8, 0.05, 8, 0x8a6a4a, 0, -0.75, -1); cafe.add(fl); for (const [x, z] of [[-0.9, -1.3], [0.85, -1.5], [0.1, -1.9]]) { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.03, 24), mat(0xa9764a)); t.position.set(x, -0.02, z); cafe.add(t); cafe.add(box(0.05, 0.72, 0.05, 0x3a3f47, x, -0.39, z)); }
+  const r6 = rng(12); for (const [x, z, ry] of [[-1.25, -1.25, 1.3], [-0.55, -1.4, -1.2], [1.2, -1.55, -1.4], [0.45, -1.6, 1.2], [0.1, -2.2, 0]]) { const p = person(r6, 'sit'); p.position.set(x, -0.6, z); p.rotation.y = ry; cafe.add(p); cafe.add(box(0.4, 0.04, 0.4, 0x34495e, x, -0.32, z)); } }
+const cube = new THREE.Mesh(new THREE.BoxGeometry(0.0125, 0.0125, 0.0125), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, emissive: 0xffe9b0, emissiveIntensity: 0.0 })); cube.position.set(0, 0.0125, 0); cube.rotation.y = 0.5; cube.castShadow = true; cafe.add(cube);
+const cubeH = new THREE.Mesh(new THREE.SphereGeometry(0.035, 24, 16), glowMat(1.0, 0.85, 0.5, 3.0, 1.0)); cubeH.position.copy(cube.position); cafe.add(cubeH);
+const rain = eCloud(500, 0.02, 0xffe2a0, 77, 0.006, 0.9); cafe.add(rain);
+
+const postRoom = makePost(renderer, room, cam, { ao: false, aoRadius: 0.3, aoIntensity: 0.8, bloom: 0.3, bloomThreshold: 0.95, bloomRadius: 0.6, warm: 0.03, sat: 1.14 }), postMicro = makePost(renderer, micro, cam, { ao: false, bloom: 0.55, bloomThreshold: 0.7, bloomRadius: 0.75, sat: 1.12 }),
+  postStad = makePost(renderer, stad, cam, { ao: false, bloom: 0.2, bloomThreshold: 0.94, warm: 0.03, sat: 1.16 }), postSpace = makePost(renderer, space, cam, { ao: false, bloom: 0.5, bloomThreshold: 0.72, bloomRadius: 0.75, sat: 1.1 }), postCafe = makePost(renderer, cafe, cam, { ao: false, aoRadius: 0.05, aoIntensity: 0.7, bloom: 0.3, bloomThreshold: 0.93, warm: 0.04, sat: 1.14 });
+const CAPS = /*CAPS*/[[3.5, 4.64, "You'd shrink to a speck"], [4.66, 6.27, "smaller than<br>a <em>grain of dust</em>."], [6.29, 7.88, "And you'd weigh<br><em>exactly the same</em>."], [8.5, 9.47, "Zoom into your hand."], [9.49, 10.59, "Past skin and cells,"], [10.61, 11.8, "down to a <em>single atom</em>."], [12.7, 14.09, "If its nucleus were a <em>pea</em>,"], [14.11, 16.16, "the atom would be as wide<br>as a <em>stadium</em>."], [16.8, 18.69, "Nearly all of your <em>mass</em><br>sits in that pea."], [18.71, 19.76, "The rest is <em>space</em>."], [20.4, 22.09, "Squeeze the space<br>out of everyone,"], [22.11, 23.45, "and the whole human race"], [23.47, 25.1, "would fit inside<br>a <em>sugar cube</em>."], [25.8, 26.84, "But here's the catch."], [26.86, 28.62, "That space isn't<br>really <em>empty</em>."], [28.64, 30.43, "Electrons fill it<br>like a <em>cloud</em>,"], [30.45, 32.11, "and they refuse<br>to be <em>squeezed</em>."], [32.8, 34.18, "They push other<br>atoms away."], [34.2, 35.63, "So when you touch a table,"], [35.65, 38.03, "what you feel is electrons<br><em>pushing back</em>."], [39.0, 40.58, "You are mostly<br><em>empty space</em>."], [40.6, 42.55, "And that space is what<br>makes you <em>solid</em>."]]/*END*/;
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const sceneAt = (t) => t < T.hand ? 'room' : (t < T.cells ? 'hand' : (t < T.lat ? 'cells' : (t < T.stad ? 'lat' : (t < T.globe ? 'stad' : (t < T.cafe ? 'globe' : (t < T.atom ? 'cafe' : (t < T.pair ? 'atom' : (t < T.press ? 'pair' : (t < T.rows ? 'press' : (t < T.fin ? 'rows' : 'fin'))))))))));
+// your size while the space is squeezed out: 1.70 m down to 8 thousandths of a millimetre (log scale)
+const shrinkU = (t) => easeIO(seg(t, T.shrink + 0.5, T.shrink + 2.9));
+const sizeTxt = (u) => { const m = Math.exp(lerp(Math.log(1.7), Math.log(8e-6), u)); if (u >= 0.999) return '0.008 mm'; if (m >= 1) return m.toFixed(2) + ' m'; if (m >= 0.01) return (m * 100).toFixed(1) + ' cm'; if (m >= 0.0001) return (m * 1000).toFixed(2) + ' mm'; return (m * 1000).toFixed(3) + ' mm'; };
+function roomFrame(t, sc) {
+  cam.near = 0.03; cam.far = 60; renderer.toneMappingExposure = 1.0; const P = you.userData;
+  if (sc === 'room' || sc === 'fin') {
+    handG.visible = false; const u = sc === 'fin' ? 0 : shrinkU(t), s = Math.max(0.0001, Math.pow(1 - u, 2.2)); you.visible = s > 0.004; you.scale.setScalar(s); P.pose(t * 1.3);
+    if (sc === 'room') { const lift = smooth(seg(t, 0.5, 1.4)) * (1 - smooth(seg(t, T.shrink + 0.2, T.shrink + 0.7))); P.aR.rotation.x = -1.75 * lift; P.aR.rotation.z = 0.25 * lift; } else { const lift = smooth(seg(t, T.fin + 0.4, T.fin + 1.3)); P.aR.rotation.x = -1.75 * lift; P.aR.rotation.z = 0.25 * lift; }
+    const sv = u > 0.6; speck.visible = speckH.visible = sv; const pl = 1 + Math.sin(t * 8) * 0.08; speckH.scale.setScalar(pl * smooth(seg(u, 0.6, 1))); speckH.material.uniforms.k.value = 1.1 * pl;
+    if (sc === 'room') { if (t < T.shrink) camPath([[0, V(1.0, 1.55, 5.9), V(0.0, 1.5, 0.1), 40], [T.shrink, V(0.8, 1.5, 5.4), V(0.0, 1.45, 0.1), 40]], t);
+      else camPath([[T.shrink, V(1.6, 1.7, 5.6), V(0.0, 1.4, 0.1), 40], [T.shrink + 0.9, V(1.5, 1.6, 5.3), V(0.0, 1.3, 0.1), 40], [T.shrink + 3.1, V(0.36, 0.72, 1.14), V(0.0, -0.02, 0.1), 40], [T.hand, V(0.32, 0.66, 1.04), V(0.0, -0.02, 0.1), 40]], t); }
+    else camPath([[T.fin, V(0.7, 1.5, 5.0), V(0.0, 1.45, 0.1), 40], [T.end + 1, V(1.5, 1.8, 6.4), V(0.0, 1.4, 0.1), 40]], t);
+  } else if (sc === 'hand') { you.visible = false; speck.visible = speckH.visible = false; handG.visible = true; handG.rotation.set(0, 0.25, 0.08); handG.position.set(0.3, 1.3, 1.3); const u = seg(t, T.hand, T.cells), k = easeIn(u);
+    cam.fov = 40; cam.position.set(lerp(0.52, 0.305, k), lerp(1.36, 1.302, k), lerp(1.95, 1.335, k)); cam.up.set(0, 1, 0); cam.lookAt(V(0.3, lerp(1.33, 1.3, k), 1.3)); cam.near = 0.005; cam.updateProjectionMatrix();
+  } else { you.visible = false; speck.visible = speckH.visible = false; handG.visible = true; const u = seg(t, T.press, T.rows), d = 0.07 * (1 - easeOut(seg(u, 0.0, 0.55))); handG.rotation.set(-Math.PI / 2, 0, 0); handG.rotation.y = 0; handG.position.set(TBL.x - 0.02, TBL.y + 0.016 + d, TBL.z + 0.2); handG.rotateZ(0.5);
+    const tip = V(TBL.x - 0.06, TBL.y + 0.01, TBL.z + 0.08), k = easeIn(seg(u, 0.5, 1)); cam.fov = 40; cam.position.set(lerp(TBL.x - 0.55, tip.x - 0.02, k), lerp(TBL.y + 0.42, tip.y + 0.012, k), lerp(TBL.z + 0.75, tip.z + 0.03, k)); cam.up.set(0, 1, 0); cam.lookAt(tip); cam.near = 0.004; cam.updateProjectionMatrix(); }
+  postRoom.render();
+}
+function microFrame(t, sc) {
+  cam.near = 0.2; cam.far = 400; renderer.toneMappingExposure = 1.05; cam.up.set(0, 1, 0); cam.fov = 40;
+  cellsG.visible = sc === 'cells'; latG.visible = sc === 'lat'; atomG.visible = sc === 'atom'; pairG.visible = sc === 'pair'; rowsG.visible = sc === 'rows'; for (const a of sqA) a.visible = false; for (const a of pushA) a.visible = false; spark.visible = sc === 'pair';
+  if (sc === 'cells') { micro.background.setHex(0x3a1424); const k = easeIn(seg(t, T.cells, T.lat)), z = lerp(30, 1.3, k); cam.position.set(0.15 * (1 - k), 0.4 * (1 - k), z); cam.lookAt(V(0, 0, 0)); cellsG.rotation.z = 0.12 - 0.12 * k; }
+  else if (sc === 'lat') { micro.background.setHex(0x060a1c); const k = easeIO(seg(t, T.lat, T.stad + 0.1)), z = lerp(34, 2.2, Math.pow(k, 1.5)); latG.rotation.set(0.0, 0.32 * (1 - k), 0.1 * (1 - k)); cam.position.set(0, 0, z); cam.lookAt(V(0, 0, 0)); }
+  else if (sc === 'atom') { micro.background.setHex(0x05070f); const q = t - T.atom, ca = smooth(seg(q, 1.5, 2.9)), oa = 1 - smooth(seg(q, 1.9, 3.1));
+    nucG.rotation.set(t * 0.4, t * 0.6, 0); orbG.visible = oa > 0.01; for (const [e, r, ph, sp] of orbE) { const a = ph + t * sp; e.position.set(Math.cos(a) * r, Math.sin(a) * r, 0); e.material.opacity = oa; } orbG.traverse(o => { if (o.isMesh && o.geometry.type === 'TorusGeometry') o.material.opacity = 0.7 * oa; });
+    // the squeeze: arrows press in, the cloud gives a little and springs back
+    const sq = seg(t, T.atom + 4.3, T.pair), press = sq <= 0 ? 0 : Math.sin(Math.min(1, sq * 1.25) * Math.PI) * (0.5 + 0.5 * Math.sin(sq * 26)) , s = 1 - 0.1 * (sq > 0 ? smooth(seg(sq, 0, 0.25)) * (1 - smooth(seg(sq, 0.7, 0.95))) : 0) + 0.015 * Math.sin(t * 30) * (sq > 0.2 && sq < 0.9 ? 1 : 0);
+    cloudA.scale.setScalar(s); cloudA.userData.spin(t); cloudA.userData.alpha(ca * (1 + 0.5 * (sq > 0 ? 1 - s : 0) * 10)); cloudHalo.scale.setScalar(s); cloudHalo.material.uniforms.k.value = 0.35 * ca + (sq > 0 ? (1 - s) * 6 : 0);
+    for (const a of sqA) { a.visible = sq > 0 && sq < 0.97; const th = a.userData.th, r = 5.4 * s + 2.2 + 0.25 * Math.sin(t * 9); a.position.set(Math.cos(th) * r, Math.sin(th) * r, 0.5); a.userData.mat.opacity = smooth(seg(sq, 0, 0.12)) * (1 - smooth(seg(sq, 0.85, 0.97))); }
+    cam.position.set(0, -2.2, 40 - seg(t, T.atom, T.pair) * 2); cam.lookAt(V(0, -2.2, 0)); }
+  else if (sc === 'pair') { micro.background.setHex(0x05070f); const q = t - T.pair, d0 = lerp(5.0, 2.85, easeIO(seg(q, 0.1, 1.3))), d = q < 1.3 ? d0 : 2.85 + 0.75 * (1 - Math.exp(-(q - 1.3) * 3.5)) - 0.35 * Math.exp(-(q - 1.3) * 2.2) * Math.sin((q - 1.3) * 10), close = clamp((3.6 - d) / 0.75);
+    pA.position.set(0, d, 0); pB.position.set(0, -d, 0); const fl = 1 - 0.22 * close; pA.scale.set(1 + 0.1 * close, fl, 1); pB.scale.set(1 + 0.1 * close, fl, 1); pcA.userData.spin(t); pcB.userData.spin(t + 5);
+    spark.position.set(0, 0, 0.5); spark.scale.set(8, 1.0 + close * 1.4, 1); spark.material.opacity = close * (0.75 + 0.25 * Math.sin(t * 22)); spark.quaternion.copy(cam.quaternion);
+    const pa = smooth(seg(q, 1.1, 1.5)); for (let i = 0; i < 2; i++) { const a = pushA[i]; a.visible = pa > 0; a.position.set(i ? -3.7 : 3.5, (i ? -1 : 1) * (d - 0.9 + 0.2 * Math.sin(t * 8)), 0.5); a.userData.mat.opacity = pa; }
+    cam.position.set(-2.4, -3.0, 40); cam.lookAt(V(-2.4, -3.0, 0)); }
+  else { micro.background.setHex(0x05070f); const q = t - T.rows, d = 2.6 * (1 - easeOut(seg(q, 0.0, 0.9))) + 0.16 * Math.exp(-Math.max(0, q - 0.9) * 2.5) * Math.sin(Math.max(0, q - 0.9) * 11), close = clamp(1 - d / 0.9);
+    fingG.position.y = d; for (let i = 0; i < rowC.length; i++) rowC[i].userData.spin(t + i); bar.position.set(0, d / 2, 0.5); bar.scale.set(17, 0.9 + close * 1.3, 1); bar.material.opacity = close * (0.7 + 0.3 * Math.sin(t * 20));
+    fingG.scale.y = 1 - 0.05 * close; cam.position.set(0, -1.1, 40 - seg(t, T.rows, T.fin) * 1.5); cam.lookAt(V(0, -1.1, 0)); }
+  cam.updateProjectionMatrix(); postMicro.render();
+}
+const AER = V(0, 250, 430), MAC = V(0.1, 0.024, 0.17);
+function stadFrame(t) {
+  renderer.toneMappingExposure = 1.0; cam.up.set(0, 1, 0); const k = easeIO(seg(t, T.dive, T.dive + 1.5));
+  const a0 = AER.clone().applyAxisAngle(V(0, 1, 0), (t - T.stad) * 0.035), dir = a0.clone().normalize().lerp(MAC.clone().normalize(), k).normalize(), dist = Math.exp(lerp(Math.log(a0.length()), Math.log(MAC.length() * (1 - 0.1 * seg(t, T.dive + 1.5, T.globe))), k));
+  cam.position.copy(dir.multiplyScalar(dist)); cam.fov = lerp(42, 36, k); cam.lookAt(V(0, Math.min(18, dist * 0.04) + 0.008, 0)); cam.near = Math.max(0.01, dist * 0.02); cam.far = 6000; cam.updateProjectionMatrix();
+  const far = 1 - smooth(seg(k, 0.15, 0.6)); dome.visible = domeC.visible = far > 0.01; dome.material.opacity = 0.13 * far * smooth(seg(t, T.stad + 0.6, T.stad + 1.6)); domeC.userData.alpha(far * smooth(seg(t, T.stad + 0.6, T.stad + 1.6))); domeC.userData.spin(t * 0.25);
+  beam.visible = beamR.visible = far > 0.01 && t > T.stad + 1.5; const ba = smooth(seg(t, T.stad + 1.5, T.stad + 2.0)) * far; beam.material.opacity = 0.75 * ba; beamR.material.opacity = 0.9 * ba; const rs = 1 + 0.25 * Math.sin(t * 5); beamR.scale.set(rs, 1, rs);
+  postStad.render();
+}
+function spaceFrame(t) { cam.near = 0.5; cam.far = 4000; renderer.toneMappingExposure = 1.05; cam.up.set(0, 1, 0); starPts.rotation.y = t * 0.004; const q = t - T.globe, p = pplGeo.attributes.position; let arrived = 0;
+  for (let i = 0; i < NP; i++) { const u = easeIn(clamp((q - 0.35 - pplDel[i] * 0.9) / 1.05)); if (u >= 1) arrived++; const bx = pplBase[i * 3], by = pplBase[i * 3 + 1], bz = pplBase[i * 3 + 2], lift = Math.sin(u * Math.PI) * 5; p.setXYZ(i, lerp(bx, SINK.x, u) + (bx / 10) * lift, lerp(by, SINK.y, u), lerp(bz, SINK.z, u) + lift); } p.needsUpdate = true;
+  const f = arrived / NP; sinkB.scale.setScalar(0.2 + f * 0.25); sinkH.scale.setScalar(0.25 + f * 0.3 + Math.sin(t * 9) * 0.02); sinkH.material.uniforms.k.value = 0.4 + f * 0.5; sinkB.visible = sinkH.visible = q > 0.6;
+  cam.fov = 40; cam.position.set(0, 0, 66 - seg(t, T.globe, T.cafe) * 4); cam.lookAt(V(0, 0, 0)); cam.updateProjectionMatrix(); postSpace.render(); }
+function cafeFrame(t) { cam.near = 0.01; cam.far = 30; renderer.toneMappingExposure = 1.0; const q = t - T.cafe, a = 1 - smooth(seg(q, 0.0, 1.0)); rain.visible = a > 0.01; rain.position.set(0, 0.0125 + a * 0.12, 0); rain.scale.set(1 + a * 1.5, 1 + a * 6, 1 + a * 1.5); rain.userData.alpha(a); rain.userData.spin(t * 3);
+  const pl = 1 + Math.sin(t * 6) * 0.08; cube.material.emissiveIntensity = 0.25 + a * 1.2; cubeH.scale.setScalar((0.5 + a * 0.6) * pl); cubeH.material.uniforms.k.value = 0.5 + a * 1.2;
+  camPath([[T.cafe, V(0.07, 0.1, 0.24), V(0.0, -0.022, 0.0), 40], [T.atom, V(0.055, 0.08, 0.19), V(0.0, -0.018, 0.0), 40]], t); postCafe.render(); }
+const wp = new THREE.Vector3(); const pix = (obj, off) => { obj.updateWorldMatrix(true, false); wp.copy(off || V(0, 0, 0)); obj.localToWorld(wp); return proj(wp, cam); };
+const comma = (n) => Math.round(n).toLocaleString('en-US');
+function overlayFrame(t) {
+  const sc = sceneAt(t);
+  const ta = t < 3.2 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 2.8, 3.2)) : 0; O.set(O.title, 'What if you removed<br>all the <em>empty space</em><br>from your atoms?'); O.title.style.fontSize = '80px'; O.title.style.top = '330px'; O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`;
+  const [chh, ca] = capAt(CAPS, t); if (chh) O.set(O.cap, chh); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  let ha = 1, top = 330;
+  if (t < T.shrink) ha = 0;
+  else if (t < T.hand) { const u = shrinkU(t); O.hudSet('Your height', sizeTxt(u), u < 0.999 ? 'Squeezing out the space\nMass: 70 kg' : 'Smaller than a grain of dust\nMass: still 70 kg'); ha = seg(t, T.shrink, T.shrink + 0.4); }
+  else if (t < T.stad) { const u = seg(t, T.hand, T.stad), mag = Math.pow(10, 8 * easeIO(u)); O.hudSet('Zooming in', (sc === 'lat' && u > 0.97 ? '100,000,000' : comma(mag < 1000 ? mag : +mag.toPrecision(2))) + '×', sc === 'hand' ? 'Your hand' : (sc === 'cells' ? 'Skin cells · illustration' : 'Atoms · illustration')); top = 300; }
+  else if (t < T.dive + 0.9) { O.hudSet('One atom', 'Stadium size', 'If its nucleus were a pea\nAbout 25,000 times wider'); top = 300; ha = 1 - seg(t, T.dive + 0.5, T.dive + 0.9); }
+  else if (t < T.globe) { O.hudSet('Mass in the nucleus', '99.97%', 'Carbon atom\nElectrons: the other 0.03%'); top = 300; ha = seg(t, T.dive + 1.2, T.dive + 1.6); }
+  else if (t < T.cafe) { O.hudSet('Everyone on Earth', 'Over 8 billion', 'All the space squeezed out'); top = 300; }
+  else if (t < T.atom) { O.hudSet('The human race', '1 sugar cube', 'About 2 cubic centimetres\nSame mass as before'); top = 300; }
+  else if (t < T.pair) { const q = t - T.atom; O.hudSet(q < 2.4 ? 'The old picture' : 'The electron cloud', q < 2.4 ? 'Empty?' : (q < 4.3 ? 'Not empty' : 'Won’t squeeze'), q < 2.4 ? 'Dots circling a nucleus' : (q < 4.3 ? 'Electrons spread through\nthe whole atom' : 'It pushes back')); top = 300; }
+  else if (t < T.press) { O.hudSet('Two atoms meet', 'They repel', 'Cloud against cloud'); top = 300; }
+  else if (t < T.fin) { O.hudSet('Touching a table', sc === 'press' ? 'Zoom in' : 'A tiny gap', sc === 'press' ? 'Your fingertip' : 'Electrons pushing back'); top = 300; }
+  else if (t < T.end) { O.hudSet('You', 'Mostly space', 'And completely solid'); top = 330; }
+  else ha = 0;
+  O.show(O.hud, ha); O.hud.style.top = top + 'px';
+  let lab = ''; const L = (x, y, a, html, al) => `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${clamp(a).toFixed(3)};${al || ''}">${html}</div>`;
+  if (sc === 'room' && t >= T.shrink + 2.9) { const p = proj(speck.position, cam); lab += L(p[0] + 44, p[1] - 175, seg(t, T.shrink + 3.0, T.shrink + 3.4), '<b style="color:#ffd64a">You</b>Glow added'); const s = proj(V(SC.x, 0.05, SC.z + 0.085), cam); lab += L(clamp(s[0] - 380, 60, 600), s[1] + 40, seg(t, T.shrink + 3.3, T.shrink + 3.7), 'Same reading', 'width:360px;text-align:right'); }
+  if (sc === 'stad') { const f = 1 - seg(t, T.dive + 0.2, T.dive + 0.6); if (f > 0) { lab += L(600, 560, seg(t, T.stad + 1.0, T.stad + 1.5) * f, 'Blue haze:\nthe edge of the atom'); const p = proj(V(0, 0, 0), cam); lab += L(clamp(p[0] + 40, 60, 620), p[1] + 30, seg(t, T.stad + 1.8, T.stad + 2.3) * f, '<span style="color:#ffd64a">The pea is here</span>'); }
+    if (t > T.dive + 1.3) { const p = pix(pea); lab += L(p[0] + 110, p[1] - 150, seg(t, T.dive + 1.4, T.dive + 1.8), '<b style="color:#ffd64a">The nucleus</b>A pea, 1 cm wide'); lab += L(60, 1150, seg(t, T.dive + 1.9, T.dive + 2.3), 'Centre spot of the pitch'); } }
+  if (sc === 'globe') lab += L(60, 1150, seg(t, T.globe + 0.3, T.globe + 0.7), 'Illustration · not to scale');
+  if (sc === 'cafe') { const p = pix(cube); lab += L(clamp(p[0] + 120, 60, 640), p[1] - 70, seg(t, T.cafe + 0.9, T.cafe + 1.3), '<b style="color:#ffd64a">All of us</b>In theory'); }
+  if (sc === 'atom') { const p = proj(V(0, 0, 0), cam); lab += L(p[0] + 70, p[1] - 30, seg(t, T.atom + 0.4, T.atom + 0.8) * (1 - seg(t, T.atom + 4.0, T.atom + 4.3)), 'Nucleus\n(enlarged)'); lab += L(60, 1170, seg(t, T.atom + 2.6, T.atom + 3.0), 'Illustration · not to scale'); }
+  if (sc === 'pair') { lab += L(60, 1170, seg(t, T.pair + 0.3, T.pair + 0.7), 'Illustration · not to scale'); }
+  if (sc === 'rows') { const a = seg(t, T.rows + 0.3, T.rows + 0.7), pf = proj(V(-6.2, 3.1 + fingG.position.y, 0), cam), pt = proj(V(-6.2, -3.1, 0), cam); lab += L(60, pf[1] - 120, a, '<span style="color:#ffc08a">Atoms of your finger</span>'); lab += L(60, pt[1] + 110, a, '<span style="color:#9cc8ff">Atoms of the table</span>'); }
+  if (O.labels._h !== lab) { O.labels._h = lab; O.labels.innerHTML = lab; }
+  let fl = 0; for (const [a, d, k] of [[0.02, 0.45, 0.7], [T.shrink, 0.3, 0.5], [T.hand, 0.3, 0.6], [T.cells, 0.3, 0.9], [T.lat, 0.3, 0.9], [T.stad, 0.4, 0.95], [T.globe, 0.35, 0.8], [T.cafe, 0.4, 0.95], [T.atom, 0.35, 0.8], [T.pair, 0.3, 0.6], [T.press, 0.3, 0.6], [T.rows, 0.35, 0.9], [T.fin, 0.35, 0.8]]) if (t >= a - 0.08 && t < a + d) fl = Math.max(fl, t < a ? seg(t, a - 0.08, a) * k : (1 - seg(t, a, a + d)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { const s = sceneAt(t); if (s === 'room' || s === 'fin' || s === 'hand' || s === 'press') roomFrame(t, s); else if (s === 'stad') stadFrame(t); else if (s === 'globe') spaceFrame(t); else if (s === 'cafe') cafeFrame(t); else microFrame(t, s); overlayFrame(t); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>
