@@ -93,8 +93,9 @@
    "setting": "A fishing harbour at night",
    "hook": "What if the Moon disappeared tonight?",
    "the surprising true point": "Tides do not stop, they shrink, because the Sun raises tides too",
-   "status": "making",
-   "claimed_at": "2026-11-18T01:24:00+11:00"
+   "status": "made",
+   "claimed_at": "2026-11-18T01:24:00+11:00",
+   "file": "sim-12-moon.mp4"
   },
   {
    "title": "Krakatoa, hour by hour",

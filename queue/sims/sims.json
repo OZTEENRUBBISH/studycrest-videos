@@ -142,6 +142,23 @@
     "https://www.astronomy.com/science/what-would-happen-if-tablespoonful-neutron-star-was-brought-to-earth/",
     "https://pdglive.lbl.gov/Particle.action?node=S017"
    ]
+  },
+  {
+   "file": "sim-12-moon.mp4",
+   "title": "What if the Moon disappeared tonight?",
+   "made": "2026-11-18",
+   "caption": "What if the Moon disappeared tonight? The tides wouldn't stop. They'd shrink to less than half, because the Sun pulls on the oceans too. 🌙\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #moon #tides #studytok",
+   "science": "Sun's share of the tide: NASA Ocean Motion says 'the sun's tidal pull on the ocean is less than half (about 46%) of the moon's tidal pull'; New World Encyclopedia (Tide) gives theoretical amplitudes of about 54 cm for the Moon and 25 cm for the Sun (46%). Arithmetic run: tidal force goes as mass / distance cubed, so Sun/Moon = (1.989e30 / 7.342e22) x (3.844e8 / 1.496e11)^3 = 0.46. So with the Moon gone the tide-raising pull is 46% of the Moon's alone ('less than half', as the film says) and about a third of today's spring-tide pull (0.46 / 1.46 = 0.32); the film says only 'less than half'. Timing: NASA Ocean Motion gives the lunar day as about 24 h 50 min and says 'the times of high and low tide change by about 50 minutes from one solar day to the next'; a Sun-only tide repeats on the 24-hour solar day, so high tide comes at the same clock times every day (the time-lapse is labelled 'Simple model, real coasts lag'). Light delay: Royal Museums Greenwich gives the average Earth-Moon distance as 384,400 km and 'about 1.3 seconds for light to travel from the Moon'; arithmetic run: 3.844e8 m / 299,792,458 m/s = 1.28 s. Orbit: Earth circles the Earth-Moon centre of mass at about 12 m/s against an orbital speed of 29.8 km/s (0.04%), so 'almost exactly as before'. Tilt: Laskar, Joutel and Robutel (Nature 361, 1993, 'Stabilization of the Earth's obliquity by the Moon') found the tilt varies only about 1.3 degrees around 23.3 with the Moon and could become chaotic without it; Lissauer, Barnes and Chambers (Icarus 217, 2011) found much smaller swings (about 10 degrees), so the film says the tilt 'could start to wander' and labels the shot an illustration with a question mark. The idea's planned point (tides shrink, they do not stop) survived checking. Illustrative and labelled so: the 1.3 s countdown is shown in slow motion; the ocean bulge is 'hugely exaggerated'; orbit and tide diagrams are not to scale; the Moon in the harbour sky is drawn larger than life; the tide height in the harbour is stylised.",
+   "sources": [
+    "https://www.oceanmotion.org/html/background/tides-forces.htm",
+    "https://www.newworldencyclopedia.org/entry/Tide",
+    "https://www.earthdate.org/episodes/the-changing-tides",
+    "https://www.rmg.co.uk/stories/space-astronomy/how-far-away-moon",
+    "https://www.wikiwand.com/en/articles/Lunar_distance",
+    "https://perso.imcce.fr/jacques-laskar/pdf/Laskar_Joutel_Robutel_1993.pdf",
+    "https://www.space.com/28472-earth-moon-life-oddity.html",
+    "https://courses.lumenlearning.com/suny-earthscience/chapter/tides/"
+   ]
   }
  ]
 }
