@@ -1,0 +1,199 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// Krakatoa, hour by hour  (the Sunda Strait, 26-27 August 1883 + a schematic globe for the sound and the pressure wave)
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, mat, box, shadowAll, person, palm, cloud, skyDome, stars, arrow, overlay, capAt, makePost, skyEnv, proj } from './common.js';
+const W = 1080, H = 1920, DUR = 54.8;
+const O = overlay();
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.1, 6000);
+const R = rng(18830827), V = (x, y, z) => new THREE.Vector3(x, y, z), C = (h) => new THREE.Color(h);
+const T = { ship: 2.2, date: 8.0, erupt: 12.0, wide: 13.4, night: 17.5, morn: 19.6, e1: 19.9, e2: 20.8, big: 22.3, globe: 26.0, perth: 29.3, rod: 31.0, wave: 34.5, tsu: 37.9, toll: 41.2, after: 44.4, sunset: 46.9, end: 51.7 };
+// verified figures
+const KM = { perth: 3110, rod: 4800, RE: 6371 }, SOUND_KMH = 1224, TURNS = 3.5;
+
+// =====================================================  THE STRAIT
+const st = new THREE.Scene(); st.fog = new THREE.Fog(0xcfe3f2, 500, 3200);
+const SKY = { day: [C(0x2a78d6), C(0xcfe7f8), C(0x9fc8e6)], ash: [C(0x4a4640), C(0x8f8272), C(0x4a463f)], night: [C(0x050406), C(0x1c0f0b), C(0x060505)], morn: [C(0x3c3a39), C(0x6f6a64), C(0x35322f)], after: [C(0x6f7f95), C(0xc9cfd6), C(0x8a96a5)], sunset: [C(0x3a2450), C(0xff5a2a), C(0x501818)] };
+const FOG = { day: C(0xcfe3f2), ash: C(0x7f7568), night: C(0x120b09), morn: C(0x5f5a55), after: C(0xb9c2cc), sunset: C(0xd0553a) };
+const sky = skyDome(0x2a78d6, 0xcfe7f8, 0x9fc8e6); sky.scale.setScalar(5); st.add(sky); const ENV = skyEnv(renderer, 0x2a78d6, 0xcfe7f8, 0x2f6ea8);
+const hemi = new THREE.HemisphereLight(0xd6e9ff, 0x5f8f9a, 1.1); st.add(hemi);
+const key = new THREE.DirectionalLight(0xffe9c4, 3.0); key.position.set(-260, 420, 260); key.castShadow = true; key.shadow.mapSize.set(4096, 4096);
+Object.assign(key.shadow.camera, { left: -260, right: 260, top: 260, bottom: -260, near: 1, far: 1600 }); key.shadow.bias = -0.0006; key.shadow.normalBias = 0.05; st.add(key); st.add(key.target); key.target.position.set(0, 0, -120);
+const vent = new THREE.PointLight(0xff5a1e, 0, 0, 1.2); st.add(vent);
+const sunDisc = new THREE.Group(); { sunDisc.add(new THREE.Mesh(new THREE.SphereGeometry(60, 24, 16), new THREE.MeshBasicMaterial({ color: new THREE.Color(3.4, 1.3, 0.5), fog: false, toneMapped: false })));
+  for (const [r, o] of [[95, 0.14], [150, 0.06]]) sunDisc.add(new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), new THREE.MeshBasicMaterial({ color: 0xff8a50, transparent: true, opacity: o, fog: false, depthWrite: false, blending: THREE.AdditiveBlending }))); st.add(sunDisc); }
+const world = new THREE.Group(); st.add(world);
+// sea
+const seaMat = new THREE.MeshStandardMaterial({ color: 0x1f7fc0, roughness: 0.25, metalness: 0.45, envMap: ENV, envMapIntensity: 1.6, flatShading: true });
+const sGeo = new THREE.PlaneGeometry(640, 640, 150, 150); sGeo.rotateX(-Math.PI / 2); const sea = new THREE.Mesh(sGeo, seaMat); sea.receiveShadow = true; world.add(sea);
+{ const far = new THREE.Mesh(new THREE.PlaneGeometry(12000, 12000).rotateX(-Math.PI / 2), seaMat); far.position.set(0, -0.15, 0); world.add(far); }
+const sX = new Float32Array(sGeo.attributes.position.count), sZ = new Float32Array(sX.length), sK = new Float32Array(sX.length);
+for (let i = 0; i < sX.length; i++) { sX[i] = sGeo.attributes.position.getX(i); sZ[i] = sGeo.attributes.position.getZ(i); sK[i] = clamp((310 - Math.max(Math.abs(sX[i]), Math.abs(sZ[i]))) / 70); }
+function seaWaves(wt, amp) { const p = sGeo.attributes.position; for (let i = 0; i < sX.length; i++) { const x = sX[i] + sea.position.x, z = sZ[i] + sea.position.z; p.setY(i, (Math.sin(x * 0.09 + wt * 1.1) * 0.34 + Math.sin(z * 0.14 + wt * 0.9 + x * 0.04) * 0.28 + Math.sin((x - z) * 0.33 + wt * 1.9) * 0.1) * sK[i] * amp); } p.needsUpdate = true; }
+// the island: Rakata (south, tallest), Danan (middle), Perboewatan (north). Heights are stylised.
+const ISL = V(0, 0, -620);
+function lump(x, y, z, rx, h, rz, col, seed, det = 3) { const g = new THREE.IcosahedronGeometry(1, det), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const k = 1 + (fbm(p.getX(i) * 2 + seed, p.getY(i) * 2, p.getZ(i) * 2, 3) - 0.5) * 0.34; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k); } g.computeVertexNormals(); const m = new THREE.Mesh(g, mat(col)); m.scale.set(rx, h, rz); m.position.set(x, y, z); m.receiveShadow = true; m.castShadow = true; return m; }
+function peak(r, h, col, seed, half) { const g = new THREE.ConeGeometry(r, h, 11, 4, false, half ? -Math.PI / 2 : 0, half ? Math.PI : Math.PI * 2), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); if (y > h / 2 - 0.01) { p.setY(i, y - h * 0.08); continue; } const k = 1 + (fbm(p.getX(i) * 0.05 + seed, y * 0.05, p.getZ(i) * 0.05, 3) - 0.5) * 0.5; p.setX(i, p.getX(i) * k); p.setZ(i, p.getZ(i) * k); } g.translate(0, h / 2, 0); g.computeVertexNormals(); const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: col, flatShading: true, side: THREE.DoubleSide })); m.castShadow = true; m.receiveShadow = true; return m; }
+const before = new THREE.Group(), after = new THREE.Group(); before.position.copy(ISL); after.position.copy(ISL); world.add(before); world.add(after);
+before.add(lump(0, -2, 0, 190, 14, 70, 0x3f7f4c, 3)); { const rk = peak(84, 118, 0x4a8a55, 1); rk.position.set(98, 4, 4); before.add(rk); const rk2 = peak(34, 46, 0x6a7466, 2); rk2.position.set(98, 80, 4); before.add(rk2);
+  const dn = peak(58, 62, 0x56865a, 5); dn.position.set(-8, 4, 0); before.add(dn); const pb = peak(46, 30, 0x6b8a62, 7); pb.position.set(-104, 4, -4); before.add(pb); }
+after.add(lump(112, -2, 4, 74, 12, 56, 0x4a5a4c, 3)); { const rk = peak(84, 118, 0x56675a, 1, true); rk.position.set(98, 4, 4); rk.rotation.y = Math.PI; after.add(rk);
+  const cl = new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([V(0, 0, -84), V(0, 0, 84), V(0, 108, 0)]), new THREE.MeshLambertMaterial({ color: 0x8a7a6c, side: THREE.DoubleSide, flatShading: true })); cl.geometry.computeVertexNormals(); cl.position.set(98, 4, 4); after.add(cl); }
+const VENT = ISL.clone().add(V(-8, 60, 0));
+// ash column: puffs along a stalk that opens into an umbrella
+const ashMat = new THREE.MeshLambertMaterial({ color: 0x5c5650, flatShading: true }), ashMat2 = new THREE.MeshLambertMaterial({ color: 0x3f3a36, flatShading: true }), ashHot = new THREE.MeshLambertMaterial({ color: 0x6a4a38, emissive: 0xff5a1e, emissiveIntensity: 0.9, flatShading: true });
+const ash = new THREE.Group(), puffs = []; ash.position.copy(VENT); world.add(ash);
+{ const Ra = rng(83), geo = new THREE.IcosahedronGeometry(1, 1); for (let i = 0; i < 150; i++) { const u = Math.pow(Ra(), 0.8), top = smooth(seg(u, 0.72, 1)), a = Ra() * 6.283, rad = (10 + u * 34) * Ra() + top * (60 + Ra() * 250), m = new THREE.Mesh(geo, u < 0.07 ? ashHot : (Ra() < 0.5 ? ashMat : ashMat2)); m.userData = { u, a, rad, s: (26 + u * 40 + top * 34) * (0.7 + Ra() * 0.6), ph: Ra() * 6.283, top }; m.castShadow = false; ash.add(m); puffs.push(m); } }
+const veil = new THREE.Mesh(new THREE.SphereGeometry(2600, 20, 12), new THREE.MeshBasicMaterial({ color: 0x2a2623, transparent: true, opacity: 0, side: THREE.BackSide, depthWrite: false, fog: false })); st.add(veil);
+// ash fall / embers
+const fall = (() => { const n = 900, p = new Float32Array(n * 3), Rf = rng(9); for (let i = 0; i < n; i++) p.set([(Rf() - 0.5) * 420, Rf() * 160, (Rf() - 0.5) * 420], i * 3); const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); const m = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xb9b0a4, size: 3.2, sizeAttenuation: false, transparent: true, opacity: 0.8, fog: false })); m.userData.p0 = p.slice(); st.add(m); return m; })();
+// shock ring on the sea, and the blast glow
+const ring = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 96).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.2, 2.4), toneMapped: false, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false })); ring.position.set(ISL.x, 1.2, ISL.z); world.add(ring);
+const blast = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshBasicMaterial({ color: new THREE.Color(5, 3.4, 1.6), toneMapped: false, transparent: true, fog: false })); blast.position.copy(VENT); world.add(blast);
+// steamship
+const ship = new THREE.Group(); { const HULL = 0x23262c; ship.add(box(8, 4.4, 50, HULL, 0, 1.2, 0)); const bow = new THREE.Mesh(new THREE.ConeGeometry(5.66, 12, 4), mat(HULL)); bow.rotation.set(Math.PI / 2, Math.PI / 4, 0); bow.scale.set(1, 1, 0.78); bow.position.set(0, 1.2, 31); ship.add(bow); ship.add(box(8.2, 0.5, 50.2, 0xb33a2e, 0, -0.6, 0)); ship.add(box(7.6, 0.2, 49, 0xb89868, 0, 3.5, 0));
+  ship.add(box(5.6, 2.6, 16, 0xf2efe6, 0, 4.9, -4)); ship.add(box(6.2, 0.25, 17, 0xd8d2c4, 0, 6.3, -4)); for (let z = -10; z <= 2; z += 2.4) for (const sx of [-1, 1]) ship.add(box(0.08, 0.9, 0.9, 0x2a3a4a, sx * 2.83, 5.1, z));
+  const fn = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, 9, 12), mat(0xd8a24a)); fn.position.set(0, 10.6, -5); ship.add(fn); const ft = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.55, 1.6, 12), mat(0x1c1c1c)); ft.position.set(0, 15.6, -5); ship.add(ft);
+  for (const z of [14, -19]) { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.26, 19, 6), mat(0x8a6a45)); m.position.set(0, 13, z); ship.add(m); ship.add(box(7, 0.2, 0.2, 0x8a6a45, 0, 17, z)); }
+  for (const z of [6, 9]) ship.add(box(1.6, 0.9, 3.4, 0xf2efe6, 2.4, 4.1, z)); shadowAll(ship); ship.position.set(-16, 0, -50); ship.rotation.y = 3.0; world.add(ship);
+  const Rs = rng(31); ship.userData.crew = []; for (const [x, z] of [[-2.6, 18], [2.4, 16], [-2.4, 21], [0.5, 23], [2.6, 12], [-2.7, -16]]) { const p = person(Rs, 'stand', { shorts: false }); p.position.set(x, 3.6, z); p.rotation.y = -0.6 + Rs(); ship.add(p); ship.userData.crew.push(p); } }
+const smoke = []; { const Rk = rng(33); for (let i = 0; i < 9; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshLambertMaterial({ color: 0xd8d4cc, flatShading: true, transparent: true })); m.userData = { o: i / 9, s: Rk() }; world.add(m); smoke.push(m); } }
+// the Java coast: beach, palms, a fishing village, hills
+const COAST = V(360, 0, 40); world.add(lump(COAST.x + 260, -4, COAST.z - 80, 330, 9, 520, 0xd9c79a, 21, 4)); world.add(lump(COAST.x + 420, 0, COAST.z - 300, 300, 120, 360, 0x3f7f4c, 23)); world.add(lump(COAST.x + 520, 0, COAST.z + 260, 320, 90, 300, 0x3a7548, 25)); world.add(lump(-1500, 0, -500, 600, 150, 900, 0x4a7f66, 27)); world.add(lump(-1300, 0, 500, 500, 100, 500, 0x4a7f66, 29));
+const coastY0 = 0; const coastY = (x, z) => { const q = 1 - ((x - COAST.x - 260) / 330) ** 2 - ((z - COAST.z + 80) / 520) ** 2; return q > 0 ? -4 + 9 * Math.sqrt(q) : -9; };
+const winMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.6, 0.7), toneMapped: false });
+function hut(Rr) { const g = new THREE.Group(), w = 5 + Rr() * 2.5, d = 5 + Rr() * 2, h = 3 + Rr(); for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) g.add(box(0.3, 1.6, 0.3, 0x5c432c, sx * w * 0.42, 0.8, sz * d * 0.42)); g.add(box(w, h, d, [0xb08d5a, 0xc7a36c, 0x9a7b4f][Math.floor(Rr() * 3)], 0, 1.6 + h / 2, 0)); const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.86, 3.4, 4), mat(0x7a5a34)); roof.rotation.y = Math.PI / 4; roof.position.y = 1.6 + h + 1.7; g.add(roof); const wm = new THREE.Mesh(new THREE.BoxGeometry(1, 1.1, 0.1), winMat); wm.position.set(-w / 2 - 0.04, 1.6 + h * 0.5, 0); wm.rotation.y = Math.PI / 2; g.add(wm); shadowAll(g); wm.castShadow = false; return g; }
+{ const Rv = rng(61), put = []; let tries = 0; while (put.length < 26 && tries++ < 2000) { const x = COAST.x + 70 + Rv() * 230, z = COAST.z - 330 + Rv() * 520, y = coastY(x, z); if (y < 1.6 || put.some(q => Math.hypot(q[0] - x, q[1] - z) < 13)) continue; const hh = hut(Rv); hh.position.set(x, y - 0.3, z); hh.rotation.y = (Rv() - 0.5) * 0.6; world.add(hh); put.push([x, z]); }
+  let n = 0; tries = 0; while (n < 70 && tries++ < 3000) { const x = COAST.x - 40 + Rv() * 360, z = COAST.z - 420 + Rv() * 700, y = coastY(x, z); if (y < 0.8 || put.some(q => Math.hypot(q[0] - x, q[1] - z) < 6)) continue; const p = palm(Rv); p.position.set(x, y - 0.3, z); p.scale.setScalar(1.3 + Rv() * 0.7); world.add(p); n++; }
+  for (let i = 0; i < 7; i++) { const g = new THREE.Group(), c = [0x2f56d6, 0xd63b32, 0xf2efe6, 0x2bb673][i % 4]; g.add(box(1.6, 0.7, 6.5, c, 0, 0.3, 0)); g.add(box(0.1, 3.2, 0.1, 0x8a6a45, 0, 1.9, 0.5)); shadowAll(g); const z = COAST.z - 250 + i * 62 + Rv() * 20, x = COAST.x - 62 + Rv() * 6 + ((z - COAST.z + 80) / 520) ** 2 * 120; g.position.set(x, 0, z); g.rotation.y = Rv() * 6; g.userData = { s: Rv() * 6 }; world.add(g); smoke.boats = (smoke.boats || []).concat(g); } }
+{ const Rp = rng(71); for (const [x, z, s] of [[373, 82, 1.5], [365, 69, 1.9], [356, 101, 1.3], [380, 60, 1.7]]) { const p = palm(Rp); p.position.set(x, coastY(x, z) - 0.3, z); p.scale.setScalar(s); world.add(p); } const g = new THREE.Group(); g.add(box(1.7, 0.8, 7, 0xd63b32, 0, 0.4, 0)); g.add(box(0.1, 3.4, 0.1, 0x8a6a45, 0, 2.1, 0.5)); shadowAll(g); g.position.set(361, coastY(361, 86), 86); g.rotation.set(0, 0.9, 0.12); world.add(g); }
+// the wave: a long low ridge that comes in from the strait
+const wave = new THREE.Group(); { const g = new THREE.CylinderGeometry(1, 1, 2400, 14); g.rotateX(Math.PI / 2); const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x1d5f85, roughness: 0.3, metalness: 0.3, flatShading: true })); m.scale.set(1.9, 1, 1); wave.add(m); const f = box(5, 0.9, 2400, 0xe9f1f4, 0, 1, 0); f.castShadow = false; wave.add(f); wave.rotation.y = 0.35; world.add(wave); }
+const clouds = []; for (let i = 0; i < 9; i++) { const c = cloud(R); c.position.set(-1400 + i * 340 + R() * 120, 330 + R() * 160, -1700 + R() * 300); c.scale.setScalar(4 + R() * 3); st.add(c); clouds.push(c); } const cloudMat = clouds[0].children[0].material;
+const gulls = []; for (let i = 0; i < 6; i++) { const g = new THREE.Group(), wg = new THREE.ConeGeometry(0.2, 1.7, 3), a = new THREE.Mesh(wg, mat(0xf2f2f2)), b = new THREE.Mesh(wg, mat(0xf2f2f2)); a.rotation.z = 1.2; a.position.x = -0.65; b.rotation.z = -1.2; b.position.x = 0.65; g.add(a); g.add(b); g.userData = { a, b, c: V(-40 + R() * 70, 18 + R() * 14, -130 + R() * 60), r: 12 + R() * 18, s: R() * 6 }; world.add(g); gulls.push(g); }
+
+// =====================================================  SCHEMATIC GLOBE
+const gs = new THREE.Scene(); gs.background = new THREE.Color(0x04050b); gs.add(stars(rng(7), 2400, 1500)); gs.add(new THREE.HemisphereLight(0x9fc0ff, 0x10131f, 0.9)); { const d = new THREE.DirectionalLight(0xffffff, 1.6); d.position.set(30, 20, 60); gs.add(d); }
+const GR = 10, LON0 = 88, ll = (lat, lon, r = GR) => { const a = lat * Math.PI / 180, b = (lon - LON0) * Math.PI / 180; return V(r * Math.cos(a) * Math.sin(b), r * Math.sin(a), r * Math.cos(a) * Math.cos(b)); };
+const P = { krak: ll(-6.1, 105.4), perth: ll(-31.95, 115.86), rod: ll(-19.7, 63.4) }, KH = P.krak.clone().normalize();
+const gl = new THREE.Group(); gs.add(gl);
+gl.add(new THREE.Mesh(new THREE.IcosahedronGeometry(GR, 5), new THREE.MeshStandardMaterial({ color: 0x143a6a, flatShading: true, roughness: 0.75, metalness: 0.1 })));
+{ const pts = []; for (let lat = -75; lat <= 75; lat += 15) for (let lon = 0; lon < 360; lon += 4) { pts.push(ll(lat, lon, GR * 1.003), ll(lat, lon + 4, GR * 1.003)); } for (let lon = 0; lon < 360; lon += 15) for (let lat = -88; lat < 88; lat += 4) { pts.push(ll(lat, lon, GR * 1.003), ll(lat + 4, lon, GR * 1.003)); }
+  gl.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x7fabf0, transparent: true, opacity: 0.6 }))); const eq = []; for (let lon = 0; lon < 360; lon += 3) eq.push(ll(0, lon, GR * 1.004), ll(0, lon + 3, GR * 1.004)); gl.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(eq), new THREE.LineBasicMaterial({ color: 0xcfe0ff, transparent: true, opacity: 0.8 })));
+  gl.add(new THREE.Mesh(new THREE.SphereGeometry(GR * 1.07, 48, 32), new THREE.ShaderMaterial({ side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexShader: 'varying vec3 n; varying vec3 v; void main(){ n = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); v = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }', fragmentShader: 'varying vec3 n; varying vec3 v; void main(){ float f = pow(clamp(1.0 + dot(n, v) * 1.6, 0.0, 1.0), 2.4); gl_FragColor = vec4(0.35, 0.62, 1.0, 1.0) * f * 0.8; }' }))); }
+const dot = (p, col, r = 0.2) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), new THREE.MeshBasicMaterial({ color: col, toneMapped: false })); m.position.copy(p).multiplyScalar(1.01); gl.add(m); return m; };
+const dK = dot(P.krak, new THREE.Color(3.4, 1.4, 0.4), 0.26), dP = dot(P.perth, new THREE.Color(1.6, 1.6, 1.6)), dR = dot(P.rod, new THREE.Color(1.6, 1.6, 1.6));
+const pulse = (p) => { const m = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 2.0, 0.8), toneMapped: false, transparent: true, side: THREE.DoubleSide, depthWrite: false })); m.position.copy(p).multiplyScalar(1.012); m.lookAt(p.clone().multiplyScalar(3)); gl.add(m); return m; }; const puP = pulse(P.perth), puR = pulse(P.rod);
+const qK = new THREE.Quaternion().setFromUnitVectors(V(0, 0, 1), KH);
+const mkRing = (col, tube) => { const m = new THREE.Mesh(new THREE.TorusGeometry(1, tube, 6, 160), new THREE.MeshBasicMaterial({ color: col, toneMapped: false, transparent: true })); m.quaternion.copy(qK); gl.add(m); m.userData.set = (th) => { const s = Math.max(0.02, Math.sin(th)) * GR * 1.012; m.scale.set(s, s, GR * 1.012); m.position.copy(KH).multiplyScalar(Math.cos(th) * GR * 1.012); }; return m; };
+const sRing = mkRing(new THREE.Color(2.6, 2.0, 0.7), 0.012), wRing = mkRing(new THREE.Color(0.7, 2.0, 2.8), 0.014), trailR = [0, 1, 2].map(() => mkRing(new THREE.Color(0.4, 1.1, 1.6), 0.008));
+const TH = { perth: KM.perth / KM.RE, rod: KM.rod / KM.RE };
+// sound front angle: reaches Perth at T.perth and Rodrigues at T.rod (a constant speed gives both, since 3110/4800 = the time ratio used)
+const T0S = T.rod - (T.rod - T.perth) * KM.rod / (KM.rod - KM.perth), thSound = (t) => Math.max(0, (t - T0S) / (T.rod - T0S) * TH.rod);
+const turnsAt = (t) => TURNS * easeIO(seg(t, T.wave + 0.2, T.tsu - 0.35));
+const postS = makePost(renderer, st, cam, { bloom: 0.34, bloomThreshold: 0.86, bloomRadius: 0.7, sat: 1.14, warm: 0.02 }), postG = makePost(renderer, gs, cam, { ao: false, bloom: 0.55, bloomThreshold: 0.72, bloomRadius: 0.7, sat: 1.1 });
+const CAPS = /*CAPS*/[[2.3, 4.63, "In <em>1883</em>, one island"], [4.65, 5.4, "made a sound heard"], [5.42, 7.1, "nearly <em>5,000 kilometres</em> away."], [8.1, 10.27, "August 26th, 1 p.m."], [10.29, 12.13, "You're on a ship<br>in the Sunda Strait."], [12.15, 13.48, "The volcano <em>erupts</em>."], [13.5, 14.42, "Within an hour,"], [14.44, 17.01, "ash towers<br><em>27 kilometres</em> high."], [17.6, 18.65, "All night it goes on."], [18.67, 19.63, "Then, next morning,"], [19.65, 21.21, "four <em>colossal</em> explosions."], [22.1, 23.86, "The third,<br>at two minutes past ten,"], [23.88, 25.57, "is the <em>loudest sound</em><br>ever measured."], [26.1, 27.49, "People hear it in <em>Perth</em>,"], [27.51, 28.91, "and on <em>Rodrigues</em> island,"], [28.93, 31.48, "4,800 kilometres away."], [31.5, 34.05, "The sound needs about<br><em>four hours</em> to get there."], [34.6, 36.28, "The pressure wave<br>circles the planet"], [36.3, 37.38, "<em>three and a half</em> times."], [38.0, 39.75, "Waves over <em>30 metres</em> high"], [39.77, 41.23, "strike the nearby coasts."], [41.25, 43.83, "More than <em>36,000</em><br>people die."], [44.5, 46.24, "Two thirds of the island<br>is <em>gone</em>."], [46.26, 48.02, "For months, sunsets turn <em>red</em>"], [48.04, 48.92, "around the world."], [49.5, 50.53, "One island shook the air"], [50.55, 51.42, "of a <em>whole planet</em>."]]/*END*/;
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const inGlobeAt = (t) => t >= T.globe && t < T.tsu;
+const modeAt = (t) => t < T.erupt ? 'day' : (t < T.night ? 'ash' : (t < T.morn ? 'night' : (t < T.tsu ? 'morn' : (t < T.after ? 'morn' : (t < T.sunset ? 'after' : 'sunset')))));
+const tmpC = new THREE.Color(); const hash = (n) => { const x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); };
+function straitFrame(t) {
+  const mode = modeAt(t), a = t < T.night ? smooth(seg(t, T.erupt + 0.3, T.erupt + 3.2)) : 1, U = sky.material.uniforms, from = mode === 'ash' ? SKY.day : SKY[mode], to = SKY[mode], k = mode === 'ash' ? a : 1;
+  U.top.value.lerpColors(from[0], to[0], k); U.mid.value.lerpColors(from[1], to[1], k); U.bot.value.lerpColors(from[2], to[2], k); st.fog.color.lerpColors(mode === 'ash' ? FOG.day : FOG[mode], FOG[mode], k);
+  const L = { day: [3.0, 1.1, 1.6], ash: [lerp(3.0, 0.9, a), lerp(1.1, 0.7, a), lerp(1.6, 0.7, a)], night: [0.0, 0.2, 0.25], morn: [0.5, 0.55, 0.5], after: [1.6, 0.95, 1.2], sunset: [1.5, 0.6, 0.9] }[mode];
+  key.intensity = L[0]; hemi.intensity = L[1]; seaMat.envMapIntensity = L[2]; key.color.set(mode === 'sunset' ? 0xff7a45 : 0xffe9c4); if (mode === 'sunset') key.position.set(-420, 90, -300); else if (mode === 'after') key.position.set(-420, 300, 260); else key.position.set(-260, 420, 260);
+  hemi.color.set({ day: 0xd6e9ff, ash: 0xc9c2b8, night: 0x6a3a2a, morn: 0xa9a39b, after: 0xd6dde6, sunset: 0xff9a7a }[mode]); hemi.groundColor.set(mode === 'night' ? 0x100808 : 0x5f8f9a);
+  seaMat.color.set({ day: 0x1f7fc0, ash: 0x1f7fc0, night: 0x1a1414, morn: 0x4a5258, after: 0x5f7f96, sunset: 0x7a3a3a }[mode]); if (mode === 'ash') seaMat.color.lerp(tmpC.set(0x4a5a62), a);
+  cloudMat.emissiveIntensity = { day: 0.62, ash: lerp(0.62, 0.2, a), night: 0.01, morn: 0.12, after: 0.5, sunset: 0.3 }[mode]; cloudMat.color.set({ day: 0xffffff, ash: 0xbdb5aa, night: 0x1a1210, morn: 0x6a655f, after: 0xdfe3e8, sunset: 0xff8a6a }[mode]); if (mode === 'sunset') cloudMat.emissive.set(0xff5a3a); else cloudMat.emissive.set(0xd6e4f5);
+  for (const c of clouds) c.visible = mode !== 'night';
+  renderer.toneMappingExposure = mode === 'night' ? 1.25 : 1.0;
+  const erupting = t >= T.erupt && t < T.after, big = t >= T.big && t < T.globe, tsu = t >= T.tsu && t < T.after;
+  before.visible = t < T.after; after.visible = !before.visible;
+  // ash column: grows from the vent after 1 pm, then stands over everything
+  const g = t < T.erupt ? 0 : (t < T.night ? easeOut(seg(t, T.erupt, T.erupt + 4.6)) : 1), HC = 1000 * g + 1; ash.visible = erupting && g > 0.002;
+  if (ash.visible) for (const m of puffs) { const u = m.userData, w = 1 + 0.16 * Math.sin(t * 1.4 + u.ph), rr = u.rad * (0.35 + 0.65 * g) * (1 + 0.05 * Math.sin(t * 0.8 + u.ph)), an = u.a + t * 0.06 * (u.top ? 0.4 : 1); m.position.set(Math.cos(an) * rr, u.u * HC + Math.sin(t * 0.9 + u.ph) * 6, Math.sin(an) * rr); m.scale.setScalar(u.s * (0.25 + 0.75 * g) * w * (1 + u.top * 0.8)); m.rotation.set(u.ph + t * 0.15, u.ph * 2, 0); }
+  ashHot.emissiveIntensity = mode === 'night' ? 1.2 : 0.9; ashMat.color.set(mode === 'night' ? 0x2a2523 : 0x5c5650); ashMat2.color.set(mode === 'night' ? 0x1c1817 : 0x3f3a36); ashMat.emissive.set(mode === 'night' ? 0x2a0c04 : 0x000000);
+  veil.material.opacity = mode === 'ash' ? 0 : (mode === 'night' ? 0.0 : 0); vent.position.copy(VENT); vent.intensity = erupting && !tsu ? (mode === 'night' ? 4500 : 2500) * (0.8 + 0.2 * Math.sin(t * 9)) : 0;
+  fall.visible = erupting && t > T.erupt + 2; if (fall.visible) { const p = fall.geometry.attributes.position, p0 = fall.userData.p0; for (let i = 0; i < p.count; i++) { const y = ((p0[i * 3 + 1] - t * (14 + (i % 7) * 2)) % 160 + 160) % 160; p.setXYZ(i, cam.position.x + p0[i * 3] + Math.sin(t + i) * 2, y - 20 + cam.position.y, cam.position.z + p0[i * 3 + 2]); } p.needsUpdate = true; fall.material.color.set(mode === 'night' ? 0xff8a4a : 0xb9b0a4); fall.material.opacity = tsu ? 0.5 : 0.8; }
+  // explosions: flash at the vent, ring across the sea
+  let bl = 0, rg = 0, ra = 0; for (const [te, kk] of [[T.e1, 0.55], [T.e2, 0.6], [T.big, 1]]) if (t >= te && t < te + (kk === 1 ? 3.6 : 0.9)) { const u = (t - te) / (kk === 1 ? 3.6 : 0.9); bl = Math.max(bl, (1 - seg(u, 0, kk === 1 ? 0.35 : 0.7)) * kk); if (kk === 1) { rg = easeOut(u) * 1100; ra = (1 - u) * 0.9; } }
+  blast.visible = bl > 0.01; blast.scale.setScalar(30 + 100 * bl); blast.material.opacity = Math.min(1, bl * 1.4); ring.visible = ra > 0.01; ring.scale.setScalar(Math.max(1, rg)); ring.material.opacity = ra;
+  // sea, ship, birds
+  const wt = t, tsuAmp = 1; sea.position.set(tsu || t >= T.sunset ? COAST.x - 110 : (t >= T.after ? 0 : -20), 0, tsu || t >= T.sunset ? COAST.z - 40 : (t >= T.after ? -330 : -110)); seaWaves(wt, mode === 'day' ? 1 : 1.5);
+  ship.visible = t < T.tsu; const sp = t < T.erupt ? t * 1.2 : T.erupt * 1.2 + (t - T.erupt) * 0.3; ship.position.set(-16 + Math.sin(3.0) * sp, Math.sin(wt * 1.1) * 0.25, -50 + Math.cos(3.0) * sp); ship.rotation.set(Math.sin(wt * 0.9) * 0.02, 3.0, Math.sin(wt * 1.2) * 0.035);
+  for (const [i, c] of ship.userData.crew.entries()) { c.userData.pose(wt * 3 + i); if (t > T.erupt + 0.3 + i * 0.15) c.userData.aR.rotation.x = -2.4 * smooth(seg(t, T.erupt + 0.3 + i * 0.15, T.erupt + 0.9 + i * 0.15)) * (i % 2); }
+  for (const m of smoke) { const u = m.userData, ph = (u.o + wt * 0.22) % 1, fp = V(0, 16.6, -5).applyMatrix4(ship.matrixWorld.identity().compose(ship.position, ship.quaternion, ship.scale)); m.visible = ship.visible; m.position.set(fp.x - ph * 12 + Math.sin(u.s * 9 + ph * 5) * 1.2, fp.y + ph * 13, fp.z + ph * 16); m.scale.setScalar(0.9 + ph * 2.2); m.material.opacity = (1 - ph) * 0.45; m.material.color.set(mode === 'day' ? 0xd8d4cc : 0x6a655f); }
+  for (const b of smoke.boats) { b.position.y = Math.sin(wt * 1.3 + b.userData.s) * 0.14 - 0.05; b.rotation.z = Math.sin(wt + b.userData.s) * 0.06; b.visible = !tsu || t < T.tsu + 9; }
+  for (const gg of gulls) { const u = gg.userData, an = wt * 0.5 + u.s; gg.visible = mode === 'day'; gg.position.set(u.c.x + Math.cos(an) * u.r, u.c.y + Math.sin(an * 1.7) * 1.5, u.c.z + Math.sin(an) * u.r); gg.rotation.y = -an; const fl = Math.sin(wt * 8 + u.s) * 0.5; u.a.rotation.z = 1.2 + fl; u.b.rotation.z = -1.2 - fl; }
+  winMat.color.setRGB(2.4, 1.6, 0.7).multiplyScalar(mode === 'sunset' ? 1 : 0.12);
+  // the wave comes in from the strait; the film cuts away before it lands
+  wave.visible = tsu && t < T.toll + 0.4; if (wave.visible) { const u = seg(t, T.tsu, T.toll + 0.4), d = lerp(900, 150, u); wave.position.set(COAST.x - 60 - d * Math.cos(0.35), 0, COAST.z - 60 - d * Math.sin(0.35) * 0.4); wave.scale.set(lerp(16, 26, u), lerp(8, 24, u), 1); }
+  sunDisc.visible = mode === 'sunset'; sunDisc.position.set(-1500, 360, -1700);
+  // camera
+  const isl = ISL.clone();
+  if (t < T.ship) camPath([[0, V(-150, 70, 250), V(0, 60, -620), 46], [T.ship, V(-110, 40, 170), V(0, 55, -620), 46]], t);
+  else if (t < T.date) camPath([[T.ship, V(-31, 13, 30), V(10, 44, -620), 52], [T.date, V(-27, 15, 18), V(10, 48, -620), 50]], t);
+  else if (t < T.wide) camPath([[T.date, V(-27, 15, 18), V(10, 48, -620), 50], [T.erupt, V(-25, 16, 8), V(0, 70, -620), 52], [T.wide, V(-24, 16, 6), V(-4, 170, -620), 54]], t);
+  else if (t < T.night) camPath([[T.wide, V(-240, 16, 900), V(-10, 560, -620), 58], [T.night, V(-200, 18, 820), V(-10, 620, -620), 58]], t);
+  else if (t < T.morn) camPath([[T.night, V(-34, 12, 34), V(-8, 190, -620), 56], [T.morn, V(-32, 12, 26), V(-8, 200, -620), 56]], t);
+  else if (t < T.big) camPath([[T.morn, V(-170, 22, 230), V(-6, 150, -620), 54], [T.big, V(-150, 20, 200), V(-6, 160, -620), 54]], t);
+  else if (t < T.globe) camPath([[T.big, V(-150, 20, 200), V(-6, 160, -620), 54], [T.globe, V(-260, 60, 520), V(-6, 150, -620), 54]], t);
+  else if (tsu) camPath([[T.tsu, V(COAST.x + 30, 8, COAST.z + 70), V(COAST.x - 500, 16, COAST.z - 330), 56], [T.after, V(COAST.x + 34, 9.5, COAST.z + 76), V(COAST.x - 500, 24, COAST.z - 330), 56]], t);
+  else if (t < T.sunset) camPath([[T.after, V(-200, 46, -170), V(60, 40, -620), 44], [T.sunset, V(-150, 40, -190), V(70, 44, -620), 44]], t);
+  else camPath([[T.sunset, V(COAST.x + 150, 12, COAST.z + 150), V(COAST.x - 700, 70, COAST.z - 760), 52], [DUR, V(COAST.x + 130, 14, COAST.z + 130), V(COAST.x - 700, 84, COAST.z - 760), 50]], t);
+  if (big) { const s = (1 - seg(t, T.big, T.big + 2.2)) * 1.6; cam.position.x += (hash(Math.floor(t * 30)) - 0.5) * s; cam.position.y += (hash(Math.floor(t * 30) + 7) - 0.5) * s; }
+  postS.render();
+}
+function globeFrame(t) {
+  const wv = t >= T.wave, th = thSound(t);
+  gl.rotation.y = wv ? -0.5 * easeIO(seg(t, T.wave, T.tsu)) : 0;
+  sRing.visible = !wv && th > 0.01; sRing.userData.set(th); sRing.material.opacity = 1 - seg(th, TH.rod + 0.1, TH.rod + 0.5);
+  const turns = turnsAt(t), ph = (turns * 2) % 2, thw = (ph <= 1 ? ph : 2 - ph) * Math.PI; wRing.visible = wv; wRing.userData.set(thw); for (const [i, r] of trailR.entries()) { const tt = turnsAt(t - 0.05 * (i + 1)), p2 = (tt * 2) % 2; r.visible = wv; r.userData.set((p2 <= 1 ? p2 : 2 - p2) * Math.PI); r.material.opacity = 0.5 - i * 0.14; }
+  const hitP = !wv && th >= TH.perth, hitR = !wv && th >= TH.rod; for (const [pu, hit, tt] of [[puP, hitP, T.perth], [puR, hitR, T.rod]]) { const u = ((t - tt) * 0.9) % 1; pu.visible = hit; pu.scale.setScalar(0.3 + u * 1.3); pu.material.opacity = 1 - u; }
+  dK.scale.setScalar(1 + 0.25 * Math.sin(t * 6));
+  camPath([[T.globe, V(0, -5, 66), V(0, -3.6, 0), 38], [T.wave, V(0, -6, 62), V(0, -3.6, 0), 38], [T.tsu, V(0, -6, 68), V(0, -3.4, 0), 38]], t);
+  renderer.toneMappingExposure = 1.1; postG.render();
+  return { th, wv, turns };
+}
+const hrs = (h) => Math.floor(h) + ' h ' + String(Math.floor((h % 1) * 60)).padStart(2, '0') + ' min';
+function overlayFrame(t, gb) {
+  const ta = t < 2.1 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 1.75, 2.1)) : 0; O.set(O.title, '<em>Krakatoa</em>,<br>hour by hour'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`; O.title.style.top = '520px';
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = (gb ? 1400 : 1250) + 'px';
+  let ha = 1, ht = 860, chip = '', cha = 0;
+  if (t < T.ship + 0.2) ha = 0;
+  else if (t < T.date) { O.hudSet('Sunda Strait', '1883', 'Between Java and Sumatra\nIsland heights not to scale'); ha = seg(t, T.ship + 0.2, T.ship + 0.6); }
+  else if (t < T.erupt) O.hudSet('26 August 1883', '1:00 pm', 'The island of Krakatoa\nSeen from a steamship');
+  else if (t < T.night) { const m = Math.round(60 * seg(t, T.erupt, T.night - 0.8)); O.hudSet('26 August 1883', m >= 60 ? '2:00 pm' : '1:' + String(m).padStart(2, '0') + ' pm', 'Ash cloud: 27 km high by 2 pm\nTime sped up · not to scale'); }
+  else if (t < T.morn) O.hudSet('26 to 27 August', 'Night', 'The eruption continues');
+  else if (t < T.big) { const k = t < T.e2 ? 0 : 1; O.hudSet('27 August 1883', ['5:30 am', '6:44 am'][k], 'Explosion ' + (k + 1) + ' of 4'); }
+  else if (t < T.globe) O.hudSet('27 August 1883', '10:02 am', 'Explosion 3 of 4 · the largest\nThe loudest sound ever measured');
+  else if (t < T.wave) { O.hudSet('Since the explosion', hrs(Math.min(gb.th, TH.rod) * KM.RE / SOUND_KMH), 'Sound: about 1,200 km/h\nSchematic globe · time sped up'); ht = 1190; }
+  else if (t < T.tsu) { O.hudSet('Pressure wave', gb.turns.toFixed(1) + ' times', 'around the planet · about 1,086 km/h\nBarometers tracked it for 5 days'); ht = 1190; }
+  else if (t < T.toll) { O.hudSet('Tsunamis', 'Over 30 m', 'On the coasts of Java and Sumatra'); ha = seg(t, T.tsu + 0.1, T.tsu + 0.5); }
+  else if (t < T.after) { O.hudSet('Official death toll', '36,417', 'Java and Sumatra · August 1883'); ht = 820; }
+  else if (t < T.sunset) { O.hudSet('Krakatoa, afterwards', 'Two-thirds gone', 'Only the southern third remained'); ha = seg(t, T.after + 0.1, T.after + 0.5); }
+  else if (t < T.end) { O.hudSet('For months afterwards', 'Red sunsets', 'Seen around the world'); ha = seg(t, T.sunset + 0.1, T.sunset + 0.5); }
+  else ha = 1 - seg(t, T.end, T.end + 0.3);
+  O.hud.style.background = gb ? 'none' : 'rgba(6,10,26,.42)'; O.hud.style.boxShadow = gb ? 'none' : '0 0 0 14px rgba(6,10,26,.42)'; O.hud.style.borderRadius = '4px'; O.show(O.hud, ha); O.hud.style.top = ht + 'px';
+  O.show(O.chip, 0);
+  let hh = ''; const L = (x, y, a, small, big, col) => { if (a > 0.01) hh += `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${a}${col ? ';color:' + col : ''}">${small}${big ? '<b style="font-size:38px">' + big + '</b>' : ''}</div>`; };
+  if (gb) { const a0 = seg(t, T.globe + 0.3, T.globe + 0.8) * (1 - seg(t, T.tsu - 0.3, T.tsu)), W2 = (p) => proj(p.clone().applyQuaternion(gl.quaternion), cam), front = (p) => p.clone().applyQuaternion(gl.quaternion).z > 1.5;
+    const [kx, ky] = W2(P.krak), [px, py] = W2(P.perth), [rx, ry] = W2(P.rod);
+    if (front(P.krak)) L(clamp(kx - 70, 64, 700), ky - 92, a0, 'Krakatoa', '', '#ffb37a');
+    if (front(P.perth)) L(clamp(px + 26, 64, 700), py + 8, a0 * (gb.wv ? 1 : seg(t, T.perth - 0.2, T.perth + 0.2)), 'Perth', gb.wv ? '' : '3,110 km');
+    if (front(P.rod)) L(clamp(rx - 60, 64, 700), ry + 30, a0 * (gb.wv ? 1 : seg(t, T.rod - 0.2, T.rod + 0.2)), 'Rodrigues', gb.wv ? '' : '4,800 km');
+    L(64, 330, a0 * (gb.wv ? 0 : 1), 'Yellow ring: the sound', 'Heard this far away', '#ffd98a'); L(64, 330, a0 * (gb.wv ? 1 : 0), 'Blue ring: the pressure wave', 'Out, around and back again', '#9fe0ff'); }
+  else if (t >= T.wide + 0.4 && t < T.night) { const [ax, ay] = proj(VENT.clone().add(V(0, 930, 0)), cam), [ix, iy] = proj(ISL.clone().add(V(98, 120, 0)), cam), a0 = seg(t, T.wide + 0.4, T.wide + 0.9) * (1 - seg(t, T.night - 0.3, T.night)); L(clamp(ax + 150, 500, 640), clamp(ay, 420, 900), a0 * seg(t, T.wide + 2, T.wide + 2.6), 'Ash cloud', '27 km', '#ffd98a'); L(clamp(ix + 30, 64, 700), iy - 10, a0, 'Krakatoa', ''); }
+  else if (t >= T.after + 0.4 && t < T.sunset) { const a0 = seg(t, T.after + 0.4, T.after + 0.9) * (1 - seg(t, T.sunset - 0.3, T.sunset)), [gx, gy] = proj(ISL.clone().add(V(-40, 30, 0)), cam); L(64, 620, a0, 'Open sea', 'where the island was', '#ffd98a'); }
+  if (O.labels._h !== hh) { O.labels._h = hh; O.labels.innerHTML = hh; }
+  let fl = 0; for (const [a, dd, k] of [[T.ship, 0.3, 0.5], [T.wide, 0.3, 0.6], [T.night, 0.3, 0.5], [T.morn, 0.3, 0.5], [T.e1, 0.35, 0.75], [T.e2, 0.35, 0.8], [T.big, 0.45, 0.95], [T.globe, 0.35, 0.7], [T.tsu, 0.35, 0.7], [T.after, 0.5, 0.8], [T.sunset, 0.4, 0.7], [18.3, 0.18, 0.5], [19.1, 0.18, 0.45]]) if (t >= a - 0.06 && t < a + dd) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + dd)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.tint.style.background = t >= T.toll && t < T.after ? `rgba(4,5,10,${0.78 * seg(t, T.toll, T.toll + 0.5) * (1 - seg(t, T.after - 0.3, T.after))})` : 'none';
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { const gb = inGlobeAt(t) ? globeFrame(t) : (straitFrame(t), null); overlayFrame(t, gb); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>

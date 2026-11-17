@@ -159,6 +159,16 @@
     "https://www.space.com/28472-earth-moon-life-oddity.html",
     "https://courses.lumenlearning.com/suny-earthscience/chapter/tides/"
    ]
+  },
+  {
+   "file": "sim-13-krakatoa.mp4",
+   "title": "Krakatoa, hour by hour",
+   "made": "2026-11-18",
+   "caption": "Krakatoa, hour by hour. In 1883 one island made the loudest sound ever measured: it was heard 4,800 km away, and its pressure wave circled the planet three and a half times. 🌋\n\nFollow for a new simulation every day.\n\n#krakatoa #simulation #science #history #volcano #physics #studytok",
+   "science": "All historical figures are from Wikipedia, '1883 eruption of Krakatoa' (read 18 Nov 2026); the Smithsonian and NOAA pages could not be opened in this run, so nothing is stated that the article does not give. Timeline: 'At about 1:00 p.m. on 26 August, the eruption entered its climactic phase. By 2:00 p.m., a black ash cloud could be seen 27 km high.' On 27 August four great explosions at 5:30, 6:44, 10:02 and 10:41 a.m.; 'the third and largest explosion, at 10:02 a.m. (some sources say 9:58 a.m.)' was 'the loudest sound that has ever been measured'. Heard '3,110 kilometres away in Perth, Western Australia, and Rodrigues near Mauritius, 4,800 kilometres away'. Arithmetic run: great-circle distances from Krakatoa (6.1 S, 105.4 E) are 3,070 km to Perth and 4,780 km to Rodrigues, matching; sound at about 340 m/s (1,224 km/h) covers 4,800 km in 3.9 hours, so 'about four hours'. Pressure wave: 'several barographs recorded the wave seven times over five days', it 'rounded the globe three and a half times' and travelled at 1,086 km/h; arithmetic run: 3.5 x 40,075 km / 1,086 km/h = 129 hours = 5.4 days, consistent. Tsunamis 'over 30 m high in places' (24 m on Sumatra's south coast, up to 42 m on Java's west coast); 'the official reported death toll was 36,417'. The island 'had almost entirely disappeared, except for the southern third' (said as 'two thirds of the island is gone'). The eruption 'produced spectacular sunsets worldwide for many months'. Not used because the article is inconsistent or uncited: the decibel figure, the 80 km ash height, the 1.2 C cooling figure and the number of villages destroyed. The idea's planned point (loudest sound in recorded history, wave around the planet more than once) survived checking. Told plainly: the film cuts away before the wave reaches the shore and shows the toll on a darkened screen. Illustrative and labelled so: island heights and the ash column are not to scale; time is sped up; the globe is schematic (a grid with three located points, no coastlines); the steamship viewpoint is a device (ships such as the Loudon were in the strait); the red sunset is shown over the same coast.",
+   "sources": [
+    "https://en.wikipedia.org/wiki/1883_eruption_of_Krakatoa"
+   ]
   }
  ]
 }
