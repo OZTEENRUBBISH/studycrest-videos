@@ -80,6 +80,15 @@ TIPS = {
      T("📒", "Skim your mistake list", "Review what you've got wrong before. Don't start new topics.", "Two. Skim your mistake list. Don't start new topics."),
      T("🔮", "Do one last practice run", "A StudyCrest predicted test shows you what to look over.", "Three. Do one last practice test with StudyCrest's Test Predictor.", SC_TAG),
      T("😴", "Stop and sleep", "Set an alarm for bed, not just for waking up.", "Four. Stop, and sleep. Set an alarm for bed, not just for waking up.")]),
+ "better-at-maths": dict(title="5 ways to get", accent="better at maths", emo="📐", sub="It's about how you practise.", tag="STUDY TIPS",
+    intro_say="Five ways to get better at maths.", hashtags="#maths #mathstips #mathshelp",
+    hook="5 ways to get better at maths. Save this for your next study session. 📐",
+    tips=[
+     T("✏️", "Try before you look", "Attempt the question before you read the worked solution.", "One. Try before you look. Attempt it before you read the solution."),
+     T("💡", "Learn why, not just how", "Know why each step works, not only the order of the steps.", "Two. Learn why, not just how. Know why each step works."),
+     T("🔀", "Mix up the topics", "Don't do ten of the same type in a row.", "Three. Mix up the topics. Don't do ten of the same type in a row."),
+     T("✅", "Find the line that went wrong", "StudyCrest ticks each line as you write and flags the wrong one, with a hint.", "Four. Use StudyCrest. It flags the line that went wrong, with a hint.", SC_TAG),
+     T("🗣", "Teach it to a friend", "If you can explain it, you know it.", "Five. Teach it to a friend. If you can explain it, you know it.")]),
  # ── StudyCrest Business (@studycrestbusiness): keys start with "biz-" ──
  "biz-study-accounting": dict(title="5 ways to study", accent="accounting properly", emo="🧮", sub="Reading the textbook isn't one of them.", tag="ACCOUNTING",
     intro_say="Five ways to study accounting properly.", hashtags="#accountingstudent #accounting #businessstudent",
