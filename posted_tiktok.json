@@ -102,6 +102,12 @@
    "kind": "sim",
    "due_at": "2026-11-19T00:00:00+11:00",
    "buffer_post_id": "6afb3ec12561836c9112d679"
+  },
+  {
+   "file": "studycrest-03-engineering",
+   "kind": "spot",
+   "due_at": "2026-11-19T12:00:00+11:00",
+   "buffer_post_id": "6afc61e660c1e1fa99998fc7"
   }
  ]
 }
