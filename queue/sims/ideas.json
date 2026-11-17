@@ -256,6 +256,22 @@
    "hook": "What if you drank only seawater?",
    "the surprising true point": "Seawater is saltier than the saltiest urine your kidneys can make, so every mouthful costs you more water than it gives",
    "status": "planned"
+  },
+  {
+   "title": "The Wright brothers' first flight, second by second",
+   "kind": "second-by-second",
+   "setting": "The dunes at Kitty Hawk, North Carolina, 17 December 1903",
+   "hook": "The first aeroplane flight lasted 12 seconds",
+   "the surprising true point": "The first powered flight covered about 37 metres, less than the wingspan of a modern jumbo jet, and the fourth flight that same day lasted almost a minute",
+   "status": "planned"
+  },
+  {
+   "title": "What if you dropped a hammer and a feather on the Moon?",
+   "kind": "what-if",
+   "setting": "The lunar surface beside a lander, with an astronaut holding both",
+   "hook": "What if you dropped a hammer and a feather on the Moon?",
+   "the surprising true point": "They land at the same moment: with no air, everything falls at the same rate, as Apollo 15 showed on camera in 1971, and they fall about six times more slowly than on Earth",
+   "status": "planned"
   }
  ]
 }
