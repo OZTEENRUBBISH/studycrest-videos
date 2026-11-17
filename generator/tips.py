@@ -89,6 +89,15 @@ TIPS = {
      T("🔀", "Mix up the topics", "Don't do ten of the same type in a row.", "Three. Mix up the topics. Don't do ten of the same type in a row."),
      T("✅", "Find the line that went wrong", "StudyCrest ticks each line as you write and flags the wrong one, with a hint.", "Four. Use StudyCrest. It flags the line that went wrong, with a hint.", SC_TAG),
      T("🗣", "Teach it to a friend", "If you can explain it, you know it.", "Five. Teach it to a friend. If you can explain it, you know it.")]),
+ "stuck-on-a-question": dict(title="5 things to do when", accent="you're stuck on a question", emo="🧩", sub="Before you give up on it.", tag="STUDY TIPS",
+    intro_say="Five things to do when you're stuck on a question.", hashtags="#homework #homeworkhelp #studyhacks",
+    hook="5 things to do when you're stuck on a question. Save this for your next homework session. 🧩",
+    tips=[
+     T("📝", "Write down what you know", "List what the question gives you and what it's asking for.", "One. Write down what you know, and what the question is asking for."),
+     T("💡", "Get a hint, not the answer", "StudyCrest flags the line that went wrong and gives you a hint, so you finish it yourself.", "Two. Get a hint, not the answer. StudyCrest flags the wrong line, with a hint.", SC_TAG),
+     T("✏️", "Draw it", "A quick sketch, table or timeline often shows the next step.", "Three. Draw it. A quick sketch or table often shows the next step."),
+     T("📖", "Find a similar example", "Look in your notes for a worked example of the same type.", "Four. Find a similar example. Look in your notes for one of the same type."),
+     T("🙋", "Ask, and bring your working", "Show exactly where you got stuck, not just that you did.", "Five. Ask for help, and show exactly where you got stuck.")]),
  # ── StudyCrest Business (@studycrestbusiness): keys start with "biz-" ──
  "biz-study-accounting": dict(title="5 ways to study", accent="accounting properly", emo="🧮", sub="Reading the textbook isn't one of them.", tag="ACCOUNTING",
     intro_say="Five ways to study accounting properly.", hashtags="#accountingstudent #accounting #businessstudent",
