@@ -275,6 +275,14 @@
    "hook": "What if you dropped a hammer and a feather on the Moon?",
    "the surprising true point": "They land at the same moment: with no air, everything falls at the same rate, as Apollo 15 showed on camera in 1971, and they fall about six times more slowly than on Earth",
    "status": "planned"
+  },
+  {
+   "title": "What if you flew at 99% of the speed of light for one year?",
+   "kind": "what-if",
+   "setting": "A small starship leaving Earth, with two clocks side by side: one on board, one at home",
+   "hook": "What if you flew at 99% of the speed of light for one year?",
+   "the surprising true point": "Your clock really runs slower: one year on board is about seven years on Earth, so you come home younger than the people you left",
+   "status": "planned"
   }
  ]
 }
