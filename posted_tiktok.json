@@ -126,6 +126,12 @@
    "kind": "sim",
    "due_at": "2026-11-20T00:00:00+11:00",
    "buffer_post_id": "6afc8a19a166de7b3ec3da42"
+  },
+  {
+   "file": "studycrest-04-law",
+   "kind": "spot",
+   "due_at": "2026-11-20T12:00:00+11:00",
+   "buffer_post_id": "6afdb1a9ea3aea9074f89512"
   }
  ]
 }
