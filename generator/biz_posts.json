@@ -1150,5 +1150,55 @@
    }
   ],
   "caption": "Are you thinking of doing a commerce degree? You choose a major, and each one points somewhere different. Here's one role per major with median pay from the U.S. Bureau of Labor Statistics (May 2025). Which major are you leaning towards? 👇\n\nAll of them share the same first-year core. StudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#commercedegree #commercestudent #bcom #businessdegree #futurestudent #careeradvice #unilife #studycrest"
+ },
+ "15-spot-the-mistake-depreciation": {
+  "slides": [
+   {
+    "type": "cover",
+    "photo": "calculator-pen",
+    "focus": 0.5,
+    "kicker": "Spot the mistake",
+    "title": "One line of this depreciation answer is wrong. *Can you find it?*",
+    "sub": "Swipe for the working, then the answer."
+   },
+   {
+    "type": "working",
+    "label": "The working",
+    "title": "Which line would you flag?",
+    "question": "A delivery van costs $48,000. It will be used for 5 years, then sold for an expected $8,000. What is the straight-line depreciation each year?",
+    "lines": [
+     "Depreciable amount = $48,000",
+     "Annual depreciation = $48,000 ÷ 5",
+     "Annual depreciation = $9,600"
+    ],
+    "prompt": "Decide before you swipe."
+   },
+   {
+    "type": "working",
+    "label": "The answer",
+    "title": "Line 1 forgets the *residual value*.",
+    "question": "Straight-line depreciation spreads the cost minus the residual value, not the full cost, over the useful life.",
+    "lines": [
+     "Depreciable amount = $48,000",
+     "Annual depreciation = $48,000 ÷ 5",
+     "Annual depreciation = $9,600"
+    ],
+    "flag": 0,
+    "reveal": true,
+    "fix": "($48,000 − $8,000) ÷ 5|= $8,000 a year"
+   },
+   {
+    "type": "statement",
+    "label": "Why it matters",
+    "title": "The method was right. One number was left out, and the expense was overstated by *$1,600 every year*.",
+    "body": [
+     "StudyCrest checks every line of your working while you write and flags the line that went wrong, with a hint before the answer."
+    ]
+   },
+   {
+    "type": "cta"
+   }
+  ],
+  "caption": "One line of this depreciation answer is wrong. Which one would you flag? Comment the line number before you swipe. 👇\n\nStudyCrest checks every line of your working while you write, so one slip doesn't cost you the whole question.\n\nTry StudyCrest free for 30 days with the promo code in the bio at @studycrestapp. You pay $0 for the first 30 days, and if you cancel before day 30 you're never charged.\n\n#accountingstudent #financialaccounting #businessstudent #depreciation #commercestudent #spotthemistake #examprep #studycrest"
  }
 }
