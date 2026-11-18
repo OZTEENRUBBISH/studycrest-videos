@@ -98,6 +98,15 @@ TIPS = {
      T("✏️", "Draw it", "A quick sketch, table or timeline often shows the next step.", "Three. Draw it. A quick sketch or table often shows the next step."),
      T("📖", "Find a similar example", "Look in your notes for a worked example of the same type.", "Four. Find a similar example. Look in your notes for one of the same type."),
      T("🙋", "Ask, and bring your working", "Show exactly where you got stuck, not just that you did.", "Five. Ask for help, and show exactly where you got stuck.")]),
+ "exam-time": dict(title="5 ways to manage", accent="your time in an exam", emo="⏱", sub="So you finish the whole paper.", tag="EXAM TIPS",
+    intro_say="Five ways to manage your time in an exam.", hashtags="#examtips #exams #timemanagement",
+    hook="5 ways to manage your time in an exam. Save this for exam day. ⏱️",
+    tips=[
+     T("🔮", "Rehearse the timing first", "StudyCrest's Test Predictor builds a practice test from your test notice and a past paper.", "One. Rehearse first, with a practice test from StudyCrest's Test Predictor.", SC_TAG),
+     T("👀", "Skim the whole paper", "Before you write anything, see what's coming and where the big marks are.", "Two. Skim the whole paper, and find where the big marks are."),
+     T("🧮", "Split your time by marks", "More marks, more minutes. Write a finish time next to each section.", "Three. Split your time by marks. More marks, more minutes."),
+     T("🚀", "Start with one you can do", "An early win settles the nerves.", "Four. Start with a question you can do. An early win settles the nerves."),
+     T("⏭", "Stuck? Move on", "Mark the question, keep going, and come back at the end.", "Five. Stuck? Move on. Mark it, and come back at the end.")]),
  # ── StudyCrest Business (@studycrestbusiness): keys start with "biz-" ──
  "biz-study-accounting": dict(title="5 ways to study", accent="accounting properly", emo="🧮", sub="Reading the textbook isn't one of them.", tag="ACCOUNTING",
     intro_say="Five ways to study accounting properly.", hashtags="#accountingstudent #accounting #businessstudent",
