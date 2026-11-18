@@ -161,6 +161,15 @@ TIPS = {
      T("🏷", "Label the axes first", "Easy marks are in the labels.", "Two. Label the axes first. Easy marks are in the labels."),
      T("🗣", "Tell the story out loud", "What shifted, which way, and what happens to price.", "Three. Tell the story out loud. What shifted, and which way?"),
      T("♻️", "Get fresh questions", "StudyCrest's Practice Questions turns one you've done into a new one.", "Four. Get fresh questions. StudyCrest's Practice Questions writes new ones.", SC_TAG)]),
+ "biz-marketing-exam": dict(title="5 ways to study", accent="for a marketing exam", emo="📣", sub="Theory, examples and the numbers.", tag="MARKETING",
+    intro_say="Five ways to study for a marketing exam.", hashtags="#marketingstudent #marketing #businessstudent",
+    hook="5 ways to study for a marketing exam. Save this for exam week. 📣",
+    tips=[
+     T("🧩", "Learn the frameworks cold", "Well enough to write each one out without your notes.", "One. Learn the frameworks cold. Write each one out without notes."),
+     T("📌", "Pin an example to each idea", "A real campaign makes a concept easier to explain.", "Two. Pin a real example to each idea. It makes it easier to explain."),
+     T("📝", "Plan before you write", "Three points and an example for each, then start.", "Three. Plan before you write. Three points, and an example for each."),
+     T("✅", "Practise the numbers too", "StudyCrest checks every line of your margin or break-even working as you write.", "Four. Practise the numbers too. StudyCrest checks every line as you write.", SC_TAG),
+     T("🎯", "Answer the question asked", "Use the words of the question in your first line.", "Five. Answer the question asked. Use its words in your first line.")]),
 }
 OFFER_SAY = ["Try StudyCrest free for thirty days. You pay nothing!", "Follow for more study tips!"]
 OFFER_AT = (0.45,)          # first offer line starts this long into the end card
