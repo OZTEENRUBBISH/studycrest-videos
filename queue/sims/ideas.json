@@ -122,8 +122,9 @@
    "setting": "The city skyline and the street below",
    "hook": "What if you dropped a coin from the top of a skyscraper?",
    "the surprising true point": "Air resistance caps its speed; it stings but it is not a bullet",
-   "status": "making",
-   "claimed_at": "2026-11-21T01:20:00+11:00"
+   "status": "made",
+   "claimed_at": "2026-11-21T01:20:00+11:00",
+   "file": "sim-15-coin.mp4"
   },
   {
    "title": "The first nuclear chain reaction, minute by minute",
@@ -285,6 +286,30 @@
    "setting": "A small starship leaving Earth, with two clocks side by side: one on board, one at home",
    "hook": "What if you flew at 99% of the speed of light for one year?",
    "the surprising true point": "Your clock really runs slower: one year on board is about seven years on Earth, so you come home younger than the people you left",
+   "status": "planned"
+  },
+  {
+   "title": "What if you stood on the surface of Venus?",
+   "kind": "what-if",
+   "setting": "The rocky plain of Venus under thick orange cloud, with an old lander nearby",
+   "hook": "What if you stood on the surface of Venus?",
+   "the surprising true point": "The air is so dense it presses like the sea almost a kilometre down, and it is hot enough to melt lead: the toughest landers lasted only about two hours",
+   "status": "planned"
+  },
+  {
+   "title": "The Great Molasses Flood, minute by minute",
+   "kind": "second-by-second",
+   "setting": "A giant storage tank beside the harbour, Boston North End, 15 January 1919",
+   "hook": "The day a wave of molasses flooded Boston",
+   "the surprising true point": "Molasses is not always slow: when the tank burst, a wave several metres high moved faster than a person can run, and the cold then made it set around everything it reached",
+   "status": "planned"
+  },
+  {
+   "title": "What if you made tea on top of Mount Everest?",
+   "kind": "what-if",
+   "setting": "A camp stove on the summit ridge, with a cutaway of the water and the thin air above it",
+   "hook": "What if you made tea on top of Mount Everest?",
+   "the surprising true point": "Water boils at only about 70 degrees there, because the air pressure is about a third of sea level: boiling tells you about pressure, not just heat",
    "status": "planned"
   }
  ]

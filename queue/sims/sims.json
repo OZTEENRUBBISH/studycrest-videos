@@ -179,6 +179,18 @@
    "sources": [
     "https://www.sciencealert.com/99-9999999-of-your-body-is-empty-space"
    ]
+  },
+  {
+   "file": "sim-15-coin.mp4",
+   "title": "What if you dropped a coin from the top of a skyscraper?",
+   "made": "2026-11-21",
+   "caption": "What if you dropped a coin from the top of a skyscraper? It wouldn't hit like a bullet. Air stops it speeding up after about 15 metres, and it flutters down at about 40 km/h. A pen is another story. 🪙\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #gravity #terminalvelocity #studytok",
+   "science": "Worked from first principles and run in Python. The tower is invented (400 m to the roof), so no real building's height is claimed. No air: v = sqrt(2 x 9.81 x 400) = 88.6 m/s = 319 km/h after 9.0 s, said and shown as '320 km/h'. With air: a 2.5 g, 19 mm coin falling flat (drag coefficient 1.17, air 1.2 kg/m3) has terminal speed sqrt(2mg / (rho Cd A)) = 11.1 m/s = 40 km/h; it is within 5 percent of that after 14.5 m and 2.1 s, said as 'after about fifteen metres'. Both match physicist Louis Bloomfield (University of Virginia) as reported by Scientific American / Live Science (2012): pennies reach terminal velocity 'after only about 50 feet (15 meters)' and then 'flutter to the ground' at 25 mph (40 kph); he tested it with wind tunnels and helium balloons, and being hit felt like being 'flicked in the forehead'. The same article gives 208 mph (335 km/h) with no air for the Empire State Building, which is taller than the film's tower. At 40 km/h the coin carries 0.15 J against 9.8 J with no air: the air removes over 98 percent of the energy (not stated in the film). The pen: the article quotes Bloomfield that a ballpoint pen 'might well come down at 200 mph' (320 km/h) and 'will chip the sidewalk'. My own figure for a light plastic pen (5.8 g, 8 mm wide, point first, Cd 0.82) is 48 m/s, about 170 km/h, so the narration says only 'several times faster' and 'fast enough to chip the pavement', the HUD shows the 170 km/h calculation and the on-screen note says 'Heavier pens: estimates up to 320'. The idea's planned point survived checking. Limits: the ABC News page could not be opened; the claim that coins dropped from the Empire State Building land on lower ledges could not be verified and is not used. Illustrative and labelled: the coin marker in the long shots ('coin (enlarged)'), the balloon test ('re-creation of a physicist's test, coins shown larger'), slow motion and sped-up passages (HUD). The fall in the close-up follows v = vt tanh(gt/vt). The film carries the line 'Never drop anything from a height'.",
+   "sources": [
+    "https://www.scientificamerican.com/article/could-a-penny-dropped-off/",
+    "https://www.livescience.com/18832-penny-dropped-skyscraper.html",
+    "https://van.physics.illinois.edu/ask/listing/8546"
+   ]
   }
  ]
 }

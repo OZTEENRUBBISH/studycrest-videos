@@ -1,0 +1,183 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// What if you dropped a coin from the top of a skyscraper?  A 400 m tower (invented), the street below, and a fall with and without air.
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, mat, box, shadowAll, person, cloud, skyDome, arrow, overlay, capAt, proj, tower, lamp, makePost, skyEnv } from './common.js';
+const W = 1080, H = 1920, DUR = 47.2, G = 9.81, HT = 400;
+const VT = 11.07;      // m/s: flat 2.5 g, 19 mm coin, Cd 1.17, air 1.2 kg/m3  -> 40 km/h
+const VTP = 48.0;      // m/s: 5.8 g, 8 mm ballpoint pen falling point-first, Cd 0.82 -> about 170 km/h
+const O = overlay();
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.05, 3000);
+const R = rng(20261121), V = (x, y, z) => new THREE.Vector3(x, y, z);
+
+// =====================================================  CITY
+const city = new THREE.Scene(); city.fog = new THREE.Fog(0xd6e7f3, 300, 1900);
+city.add(skyDome(0x2a74d6, 0xcfe6f7, 0xc3d7e4)); const ENV = skyEnv(renderer, 0x2a74d6, 0xcfe6f7, 0xb9b3a8);
+city.add(new THREE.HemisphereLight(0xdcecff, 0xcfc4b0, 1.3));
+const sun = new THREE.DirectionalLight(0xffe7c4, 3.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.05; city.add(sun); city.add(sun.target);
+const setSun = (c, r) => { sun.target.position.copy(c); sun.position.set(c.x + r * 0.9, c.y + r * 1.5, c.z + r * 0.8); Object.assign(sun.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 0.5, far: r * 6 }); sun.shadow.camera.updateProjectionMatrix(); };
+const world = new THREE.Group(); city.add(world);
+{ const g = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000).rotateX(-Math.PI / 2), mat(0xc6c1b6)); g.receiveShadow = true; world.add(g); }
+const flat = (w, d, col, x, z, y = 0.03, h = 0.06) => { const m = box(w, h, d, col, x, y, z); m.castShadow = false; world.add(m); return m; };
+// streets: a grid every 80 m; the main street runs along z just east of the tower
+for (let k = -5; k <= 5; k++) { flat(14, 900, 0x3b3f46, 41 + k * 80, 0, 0.03); flat(900, 12, 0x3b3f46, 0, 40 + k * 80, 0.028); }
+for (let z = -440; z < 440; z += 9) { if (Math.abs(((z + 40) % 80 + 80) % 80) < 9) continue; flat(0.22, 4, 0xf2f2f2, 41, z, 0.066); }
+flat(11.6, 68, 0xdcd7cc, 28.2, 0, 0.15, 0.3); flat(11.6, 68, 0xdcd7cc, 28.2, -80, 0.15, 0.3); flat(11.6, 68, 0xdcd7cc, 28.2, 80, 0.15, 0.3); flat(6, 68, 0xdcd7cc, 51, 0, 0.15, 0.3);
+for (let z = -30; z <= 30; z += 4) flat(11.4, 0.06, 0xbdb8ad, 28.2, z, 0.305, 0.02);
+// the tower: a 40 x 40 m glass prism, 400 m to the roof
+function glassTex(night) { const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d'), Rt = rng(9); x.fillStyle = '#31506f'; x.fillRect(0, 0, 512, 512);
+  for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) { const r = Rt(); x.fillStyle = r < 0.1 ? '#ffeec2' : (r < 0.7 ? '#7fb0dc' : '#a8d3f3'); x.fillRect(i * 64 + 3, j * 64 + 5, 58, 52); const g = x.createLinearGradient(i * 64, j * 64, i * 64 + 64, j * 64 + 64); g.addColorStop(0, 'rgba(255,255,255,.3)'); g.addColorStop(0.55, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(i * 64 + 3, j * 64 + 5, 58, 52); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t; }
+const GT = glassTex();
+function glassBox(w, h, d, x, y, z) { const t = GT.clone(); t.needsUpdate = true; t.repeat.set(Math.round(w / 3.2) / 8, Math.round(h / 3.6) / 8); const m = new THREE.MeshStandardMaterial({ map: t, roughness: 0.22, metalness: 0.5, envMap: ENV, envMapIntensity: 1.15 }), rf = mat(0x59626e);
+  const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [m, m, rf, rf, m, m]); b.position.set(x, y, z); b.castShadow = true; b.receiveShadow = true; world.add(b); return b; }
+glassBox(40, HT, 40, 0, HT / 2, 0);
+for (const y of [100, 200, 300]) world.add(box(41.2, 1.6, 41.2, 0xe9edf2, 0, y, 0, { metalness: 0.6, roughness: 0.3, envMap: ENV }));
+for (const [x, z] of [[-20, -20], [20, -20], [-20, 20], [20, 20]]) world.add(box(1.4, HT, 1.4, 0xe9edf2, x, HT / 2, z, { metalness: 0.6, roughness: 0.3, envMap: ENV }));
+world.add(box(41, 0.6, 41, 0x8d9299, 0, HT + 0.0, 0)); world.add(box(18, 9, 18, 0x9aa0a8, -4, HT + 4.8, 0)); world.add(box(0.8, 46, 0.8, 0xd8dde3, -4, HT + 32, 0));
+{ const l = new THREE.Mesh(new THREE.SphereGeometry(0.9, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3a2a })); l.position.set(-4, HT + 55.5, 0); world.add(l); }
+for (const [x, z, w, d] of [[0, -20.2, 41, 0.3], [0, 20.2, 41, 0.3], [-20.2, 0, 0.3, 41], [20.2, -11.5, 0.3, 17.4], [20.2, 11.5, 0.3, 17.4]]) world.add(box(w, 1.25, d, 0xcfd6de, x, HT + 0.9, z));
+// the viewing platform that sticks out over the street
+world.add(box(6.4, 0.35, 5.6, 0x6d737b, 23.2, HT + 0.1, 0)); for (const s of [-1, 1]) { const r = box(6.2, 1.2, 0.08, 0xbfe1f7, 23.2, HT + 0.9, s * 2.76, { transparent: true, opacity: 0.35 }); r.castShadow = false; world.add(r); world.add(box(6.3, 0.07, 0.1, 0xe9edf2, 23.2, HT + 1.5, s * 2.76)); }
+// the rest of the city
+for (let gx = -5; gx <= 5; gx++) for (let gz = -5; gz <= 5; gz++) { if (gx === 0 && gz === 0) continue; const near = Math.max(Math.abs(gx), Math.abs(gz));
+  const n = near <= 2 ? 1 : (R() < 0.6 ? 1 : 2); for (let k = 0; k < n; k++) { const w = n === 1 ? 36 + R() * 14 : 24 + R() * 8, d = n === 1 ? 36 + R() * 16 : 50, h = (gx === 1 && Math.abs(gz) <= 1 ? 60 : 40) + Math.pow(R(), 1.5) * (near <= 1 ? 120 : 250);
+    const b = tower(R, w, h, d, { env: ENV }); b.position.set(gx * 80 + (n === 2 ? (k ? 16 : -16) : (R() - 0.5) * 6), 0.3, gz * 80 + (R() - 0.5) * 4); world.add(b); } }
+for (let z = -100; z <= 100; z += 20) { if (Math.abs(((z + 40) % 80 + 80) % 80) < 8) continue; if (Math.abs(z + 64) < 22) continue; const l = lamp(); l.position.set(33.2, 0.3, z); world.add(l); const l2 = lamp(); l2.position.set(48.8, 0.3, z + 10); l2.rotation.y = Math.PI; world.add(l2); }
+for (let z = -30; z <= 30; z += 12) { const t = new THREE.Group(); t.add(box(0.3, 2.4, 0.3, 0x7a5a3c, 0, 1.2, 0)); const c = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 0), mat(0x3fa35a)); c.position.y = 3.4; t.add(c); t.position.set(32.6, 0.3, z + 5); world.add(shadowAll(t)); }
+const clouds = []; for (let i = 0; i < 14; i++) { const c = cloud(R), a = R() * 6.28, r = 260 + R() * 700; c.position.set(Math.cos(a) * r, 190 + R() * 330, Math.sin(a) * r); c.scale.setScalar(1.8 + R() * 2.2); city.add(c); clouds.push(c); }
+// traffic and people
+function car(col) { const c = new THREE.Group(); c.add(box(1.9, 0.7, 4.2, col, 0, 0.6, 0)); c.add(box(1.7, 0.6, 2.2, 0x26313f, 0, 1.2, -0.2)); for (const [x, z] of [[-0.95, -1.3], [0.95, -1.3], [-0.95, 1.3], [0.95, 1.3]]) c.add(box(0.25, 0.6, 0.6, 0x111111, x, 0.3, z)); return shadowAll(c); }
+const CC = [0xe2574c, 0xffffff, 0x2f56d6, 0x49c6d8, 0xf2c94c, 0x9aa3ad, 0x2bb673], cars = [];
+for (let i = 0; i < 22; i++) { const dir = i % 2 ? 1 : -1, c = car(CC[i % 7]); c.userData = { z0: -300 + i * 27 + R() * 8, dir, sp: 9 + R() * 3 }; c.position.x = dir > 0 ? 37.6 : 44.4; c.rotation.y = dir > 0 ? 0 : Math.PI; world.add(c); cars.push(c); }
+const walkers = []; for (let i = 0; i < 30; i++) { const p = person(R, 'walk'), far = i % 3 === 0, dir = R() < 0.5 ? 1 : -1; p.userData.w = { z0: -110 + R() * 220, dir, sp: 1.1 + R() * 0.5 }; p.position.set(far ? 50 + R() * 2.5 : 30.6 + R() * 2.2, 0.3, 0); p.rotation.y = dir > 0 ? 0 : Math.PI; world.add(p); walkers.push(p); }
+// you, on the platform
+const hero = person(R, 'stand', { shirt: 0xf2c94c, pants: 0x1e3aa8, shorts: false, skin: 0xe0ac7e, hair: 0x2b1b12 }); hero.scale.setScalar(1.05); hero.position.set(25.7, HT + 0.28, 0); hero.rotation.y = Math.PI / 2; world.add(hero);
+const START = V(26.42, HT + 1.72, -0.31);
+// the coin (real size: 19 mm across), the pen (14 cm), and a bright marker for the long shots
+const goldM = new THREE.MeshStandardMaterial({ color: 0xd9a441, metalness: 0.9, roughness: 0.28, envMap: ENV, envMapIntensity: 1.5, flatShading: false });
+function makeCoin() { const g = new THREE.Group(), c = new THREE.Mesh(new THREE.CylinderGeometry(0.0095, 0.0095, 0.0016, 40), goldM); g.add(c); const rim = new THREE.Mesh(new THREE.TorusGeometry(0.0088, 0.0006, 6, 40), goldM); rim.rotation.x = Math.PI / 2; rim.position.y = 0.0009; g.add(rim); const r2 = rim.clone(); r2.position.y = -0.0009; g.add(r2);
+  const st = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.0022, 5), new THREE.MeshStandardMaterial({ color: 0xb98227, metalness: 0.9, roughness: 0.35, envMap: ENV })); g.add(st); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); return g; }
+const coin = makeCoin(); world.add(coin);
+const pen = new THREE.Group(); { const body = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.115, 12), new THREE.MeshStandardMaterial({ color: 0x2f56d6, roughness: 0.35, metalness: 0.1, envMap: ENV })); body.position.y = 0.01; pen.add(body);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.004, 0.018, 12), new THREE.MeshStandardMaterial({ color: 0xd8dde3, metalness: 0.9, roughness: 0.25, envMap: ENV })); tip.rotation.x = Math.PI; tip.position.y = -0.0565; pen.add(tip);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.0046, 0.0046, 0.03, 12), mat(0x16307f)); cap.position.y = 0.06; pen.add(cap); pen.add(box(0.0016, 0.03, 0.003, 0x16307f, 0.0052, 0.058, 0)); pen.traverse(o => { if (o.isMesh) o.castShadow = true; }); } world.add(pen);
+const dot = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), new THREE.MeshBasicMaterial({ color: 0xffd64a })); world.add(dot);
+const trail = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.5, 1, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.55, depthWrite: false })); world.add(trail);
+// force arrows, sized for the close-ups
+const AL = 0.02, aG = arrow(AL, 0xff4a3a, 0.0011), aD = arrow(AL, 0xffd64a, 0.0011); aG.rotation.z = Math.PI; world.add(aG); world.add(aD);
+// impact effects
+const SPOT = V(START.x, 0.3, START.z);
+const crack = new THREE.Group(); { const Rc = rng(4); for (let i = 0; i < 9; i++) { const L = 0.25 + Rc() * 0.45, b = box(L, 0.012, 0.018 + Rc() * 0.02, 0x2a2622, 0, 0, 0); b.castShadow = false; const a = i / 9 * 6.28 + Rc() * 0.4; b.position.set(Math.cos(a) * L / 2, 0.012, Math.sin(a) * L / 2); b.rotation.y = -a; crack.add(b); } const c = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.05, 0.02, 9), mat(0x2a2622)); c.position.y = 0.006; crack.add(c); } crack.position.copy(SPOT); world.add(crack);
+const chipN = 46, chips = []; { const Rc = rng(12); for (let i = 0; i < chipN; i++) { const s = 0.012 + Rc() * 0.03, m = new THREE.Mesh(new THREE.TetrahedronGeometry(s), mat(i % 3 ? 0xcfcabd : 0x9a968c)); m.castShadow = true; const a = Rc() * 6.28, sp = 1.2 + Rc() * 3.6; m.userData = { vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: 1.8 + Rc() * 4.2, r: Rc() * 20 }; world.add(m); chips.push(m); } }
+const puff = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial({ color: 0xe9e2d2, transparent: true, opacity: 0.5, depthWrite: false })); world.add(puff);
+function impactFx(q, big) { const on = q >= 0; crack.visible = on; crack.scale.setScalar(big); for (const c of chips) { const u = c.userData; c.visible = on && q < 2.2; if (!on) continue; const y = u.vy * q * big - 4.9 * q * q; c.position.set(SPOT.x + u.vx * q * big * 0.6, 0.31 + Math.max(0, y), SPOT.z + u.vz * q * big * 0.6); c.rotation.set(u.r * q * (y > 0 ? 1 : 0), u.r, 0); }
+  puff.visible = on && q < 0.9; if (on) { puff.position.set(SPOT.x, 0.4, SPOT.z); puff.scale.setScalar((0.15 + easeOut(q / 0.9) * 1.1) * big); puff.material.opacity = 0.5 * (1 - q / 0.9); } }
+// the test: a physicist, a bunch of helium balloons, falling coins
+const PH = V(29.4, 0.3, -64);
+const phys = person(rng(31), 'stand', { shirt: 0xffffff, sleeve: 0xffffff, pants: 0x34495e, shorts: false, skin: 0xf1c9a5, hair: 0xbfbfbf, shoe: 0x222222 }); phys.scale.setScalar(1.0); phys.position.copy(PH); phys.rotation.y = 0.25; world.add(phys);
+const HEAD = PH.y + 1.86;
+const balloons = new THREE.Group(); { const Rb = rng(8), cols = [0xe2574c, 0x2f9bd6, 0xf2c94c, 0x2bb673, 0xff8fb8, 0xf2994a, 0x9b59b6]; for (let i = 0; i < 15; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.8, 14, 10), new THREE.MeshStandardMaterial({ color: cols[i % 7], roughness: 0.25, metalness: 0.05, envMap: ENV, envMapIntensity: 0.8 })); b.scale.y = 1.2; b.position.set((Rb() - 0.5) * 2.6, Rb() * 2.2, (Rb() - 0.5) * 2.6); balloons.add(b); const s = box(0.012, 2.6, 0.012, 0xf5f5f5, b.position.x * 0.5, b.position.y - 1.9, b.position.z * 0.5); s.castShadow = false; balloons.add(s); } balloons.add(box(0.7, 0.12, 0.7, 0x8a6d3b, 0, -3.3, 0)); } balloons.position.set(PH.x, 30, PH.z); world.add(balloons);
+const tcoins = []; { const Rt = rng(21); for (let i = 0; i < 7; i++) { const c = makeCoin(); c.scale.setScalar(3.6); c.userData = { t0: 27.3 + i * 0.52, ox: i === 3 ? 0.02 : (Rt() - 0.5) * 1.5, oz: i === 3 ? 0.03 : (Rt() - 0.5) * 1.5, s: Rt() * 6, hit: i === 3 }; if (!c.userData.hit && Math.hypot(c.userData.ox, c.userData.oz) < 0.4) c.userData.ox += 0.6; world.add(c); tcoins.push(c); } }
+
+const post = makePost(renderer, city, cam, { bloom: 0.16, bloomThreshold: 0.95, warm: 0.03, sat: 1.15 });
+// =====================================================  TIMELINE
+const T = { roof: 3.2, vac: 8.6, vdrop: 9.1, vhit: 12.3, real: 13.7, rdrop: 14.1, flut: 22.7, test: 26.5, pen: 32.6, pdrop: 33.0, ptrack: 33.7, pst: 36.9, phit: 37.7, fin: 40.7, end: 44.6 };
+const CAPS = /*CAPS*/[[3.3, 4.8, "You're <em>400 metres</em> up."], [4.82, 6.76, "People say a coin<br>dropped from here"], [6.78, 7.99, "would hit like a <em>bullet</em>."], [8.8, 10.29, "With <em>no air</em>,<br>they'd be right."], [10.31, 13.39, "It would land at<br><em>320 km/h</em>."], [13.9, 14.78, "But there <em>is</em> air."], [14.8, 16.39, "And a coin is<br><em>flat and light</em>."], [16.41, 17.95, "After about <em>15 metres</em>,"], [17.97, 21.05, "the air pushes up as hard<br>as gravity pulls down."], [21.07, 22.47, "So it <em>stops</em><br>speeding up."], [22.9, 24.37, "It flutters down<br>like a <em>leaf</em>,"], [24.39, 26.2, "at about <em>40 km/h</em>."], [26.7, 28.05, "A physicist tested it,"], [28.07, 29.92, "with coins dropped<br>from <em>balloons</em>."], [29.94, 32.45, "Getting hit felt like<br>a <em>flick on the forehead</em>."], [32.8, 33.82, "Now drop a <em>pen</em>."], [33.84, 35.76, "It's narrow, and heavy<br>for its size,"], [35.78, 37.22, "so it falls like an <em>arrow</em>,"], [37.24, 38.64, "several times faster."], [38.66, 40.44, "Fast enough to<br><em>chip the pavement</em>."], [40.9, 43.29, "It's not the <em>height</em> that<br>makes a fall dangerous."], [43.31, 44.12, "It's the <em>shape</em>."]]/*END*/;
+const TVAC = Math.sqrt(2 * (HT + 1.42) / G), fallD = (s, vt) => vt * vt / G * Math.log(Math.cosh(G * s / vt)), fallV = (s, vt) => vt * Math.tanh(G * s / vt), fallT = (h, vt) => vt / G * Math.acosh(Math.exp(h * G / vt / vt));
+const TPEN = fallT(HT + 1.42, VTP);
+// seconds since the real coin was let go (slow motion in the close-up, then sped up)
+const coinS = (t) => t < T.rdrop ? 0 : (t < T.flut ? (t - T.rdrop) * 0.47 : (t < T.test ? 4.04 + (t - T.flut) * 6.2 : 27.6));
+const penS = (t) => t < T.pdrop ? 0 : Math.min(TPEN, (t - T.pdrop) * (TPEN / (T.phit - T.pdrop)));
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const coinPos = V(0, 0, 0), penPos = V(0, 0, 0); let sunR = 0;
+function coinAt(s, into) { const k = clamp(s / 2.5); into.set(START.x + (0.55 * Math.sin(s * 1.9) + 0.25 * Math.sin(s * 4.3 + 1)) * k * 0.8 + 0.5 * k, START.y - fallD(s, VT), START.z + (0.5 * Math.sin(s * 1.4 + 2) + 0.2 * Math.sin(s * 3.7)) * k); return into; }
+function coinRot(o, s) { const k = clamp(s / 1.2); o.rotation.set(0.25 + Math.sin(s * 5.3) * 0.95 * k + s * 0.9 * k, s * 2.1, Math.sin(s * 3.9 + 1) * 0.8 * k); }
+function frame(t) {
+  const wt = t; for (const c of cars) { const u = c.userData; c.position.z = ((u.z0 + u.dir * u.sp * wt + 300) % 600 + 600) % 600 - 300; }
+  for (const p of walkers) { const u = p.userData.w; p.position.z = ((u.z0 + u.dir * u.sp * wt + 110) % 220 + 220) % 220 - 110; p.userData.pose(wt * 5.4 + p.userData.seed, 'walk'); p.visible = !(Math.abs(p.position.z - PH.z) < 5 && p.position.x < 40 && t >= T.test - 0.5 && t < T.pen); }
+  for (const c of clouds) c.position.x += 0;
+  // defaults
+  coin.visible = pen.visible = dot.visible = trail.visible = aG.visible = aD.visible = false; coin.scale.setScalar(1); pen.scale.setScalar(1); hero.visible = t < T.vac + 0.6 || (t >= T.real && t < T.flut) || (t >= T.pen && t < T.pst); balloons.visible = phys.visible = t >= T.test - 0.1 && t < T.pen; for (const c of tcoins) c.visible = false;
+  hero.userData.pose(t * 1.3, 'stand'); const armOut = t < T.roof + 1.2 ? smooth(seg(t, T.roof + 0.3, T.roof + 1.2)) : 1; hero.userData.aR.rotation.x = -1.5 * armOut; hero.userData.hips.rotation.x = 0.1 * armOut;
+  let fx = -1, fxBig = 1, r = 60, sc = V(28, 0, 0);
+  if (t < T.roof) { camPath([[0, V(281, 120, 280), V(0, 215, 0), 56], [T.roof, V(190, 372, 215), V(0, 352, 0), 50]], t); r = 260; sc.set(0, 200, 0); }
+  else if (t < T.vac) { // on the platform: you, the coin, the drop
+    coin.visible = true; coin.position.copy(START); coin.position.y -= (1 - armOut) * 0.7; coin.rotation.set(0.5, t * 0.6, 0.3);
+    camPath([[T.roof, V(29.4, HT + 2.3, 4.2), V(25.6, HT + 1.3, 1.2), 46], [T.roof + 2.4, V(28.2, HT + 2.0, 2.6), V(26.0, HT + 1.45, 0.5), 38], [T.vac, V(27.6, HT + 4.4, 1.5), V(27.0, HT - 30, -0.6), 58]], t); r = 9; sc.set(25, HT, 0); }
+  else if (t < T.real) { // the same drop with no air: it never stops speeding up
+    const s = clamp((t - T.vdrop) / (T.vhit - T.vdrop)) * TVAC, y = Math.max(0.6, START.y - 0.5 * G * s * s), v = G * s;
+    dot.visible = true; dot.position.set(START.x, y, START.z); dot.scale.setScalar(t < T.vhit ? 2.1 : Math.max(0.01, 2.1 * (1 - seg(t, T.vhit, T.vhit + 0.2))));
+    trail.visible = t > T.vdrop && t < T.vhit + 0.15; const L = Math.min(START.y - y, 6 + v * 0.9); trail.scale.set(3.2, Math.max(0.1, L), 3.2); trail.position.set(START.x, y + L / 2, START.z);
+    if (t < T.vhit - 0.7) { camPath([[T.vac, V(250, 250, 250), V(8, 215, 0), 52], [T.vhit - 0.7, V(235, 150, 240), V(8, 165, 0), 52]], t); r = 260; sc.set(0, 200, 0); }
+    else { camPath([[T.vhit - 0.7, V(28.6, 1.7, 8.5), V(START.x - 0.5, 3.0, START.z), 58], [T.real, V(28.0, 1.35, 5.4), V(START.x - 0.5, 0.75, START.z), 46]], t); r = 14; sc.copy(SPOT); dot.scale.multiplyScalar(0.035); trail.scale.x = trail.scale.z = 0.06; fx = t - T.vhit; fxBig = 1.25; const q = t - T.vhit; if (q > 0 && q < 0.5) { cam.position.y += Math.sin(q * 70) * 0.03 * (1 - q / 0.5); } } }
+  else if (t < T.flut) { // the real drop, in slow motion, close enough to see the two forces
+    const s = coinS(t), v = fallV(s, VT); coinAt(s, coinPos); coin.visible = true; coin.position.copy(coinPos); coinRot(coin, s);
+    const k = smooth(seg(t, T.rdrop + 0.5, T.rdrop + 1.6)); aG.visible = aD.visible = k > 0.01; aG.position.set(coinPos.x, coinPos.y - 0.013, coinPos.z); aG.scale.set(1, 1, 1); aD.position.set(coinPos.x, coinPos.y + 0.013, coinPos.z); aD.scale.set(1, Math.max(0.02, (v / VT) * (v / VT)), 1); aG.userData.mat.opacity = aD.userData.mat.opacity = k;
+    const u = seg(t, T.real, T.flut), off = V(0.085 + 0.02 * Math.sin(t * 0.7), 0.03 + 0.015 * Math.sin(t * 0.5 + 1), 0.20 - 0.02 * u);
+    if (t < T.rdrop + 0.5) camPath([[T.real, V(28.0, HT + 2.1, 1.6), V(26.3, HT + 1.6, -0.3), 34], [T.rdrop + 0.5, V(coinPos.x + off.x, coinPos.y + off.y, coinPos.z + off.z), V(coinPos.x, coinPos.y, coinPos.z), 30]], t);
+    else { cam.position.copy(coinPos).add(off); cam.fov = 30; cam.up.set(0, 1, 0); cam.lookAt(V(coinPos.x, coinPos.y - 0.004, coinPos.z)); cam.updateProjectionMatrix(); }
+    const sh = smooth(seg(t, T.rdrop + 0.3, T.rdrop + 0.9)); cam.translateX(-0.016 * sh); cam.translateY(-0.006 * sh);
+    r = 3; sc.copy(coinPos); }
+  else if (t < T.test) { // sped up: it wanders down the face of the tower like a leaf
+    const s = coinS(t); coinAt(s, coinPos); coin.visible = true; coin.position.copy(coinPos); coinRot(coin, s * 0.35); coin.scale.setScalar(110);
+    const cy = lerp(300, 185, seg(t, T.flut, T.test)); cam.position.set(62, cy + 22, 36); cam.fov = 52; cam.up.set(0, 1, 0); cam.lookAt(V(24, cy - 16, -1)); cam.updateProjectionMatrix(); r = 240; sc.set(0, 200, 0); }
+  else if (t < T.pen) { // the test
+    for (const c of tcoins) { const u = c.userData, q = t - u.t0; if (q < 0) continue; c.visible = true; const top = 26.4, yF = top - VT * q; let x = PH.x + u.ox, z = PH.z + u.oz, y;
+      const lim = u.hit ? HEAD : 0.325, qh = (top - lim) / VT;
+      if (q < qh) { y = yF; x += Math.sin(q * 2.3 + u.s) * 0.12; c.rotation.set(Math.sin(q * 6 + u.s) * 0.9 + q * 1.5, q * 2, Math.sin(q * 4.1 + u.s) * 0.7); }
+      else { const b = q - qh; if (u.hit) { const vy = 1.5; y = HEAD + vy * b - 4.9 * b * b; x += 0.5 * b; z += 0.9 * b; c.rotation.set(b * 11, b * 3, 0.4); if (y < 0.325) { y = 0.325; x = PH.x + u.ox + 0.5 * 0.78; z = PH.z + u.oz + 0.9 * 0.78; c.rotation.set(0, 1, 0); } } else { const hop = Math.max(0, 0.9 * b - 4.9 * b * b); y = 0.325 + hop; x += 0.25 * Math.min(b, 0.19) * (u.ox > 0 ? 1 : -1); c.rotation.set(hop > 0 ? b * 14 : 0, u.s, 0); } }
+      c.position.set(x, y, z); }
+    const hitT = tcoins[3].userData.t0 + (26.4 - HEAD) / VT, fl = t - hitT; phys.userData.pose(t * 1.4, 'stand'); phys.userData.hips.rotation.x = fl > 0 && fl < 0.5 ? -0.1 * Math.sin(fl / 0.5 * Math.PI) : 0; const look = 1 - smooth(seg(t, T.test + 1.5, T.test + 2.4)); phys.userData.hips.rotation.x -= 0.22 * look; phys.userData.aL.rotation.x = fl > 0.5 ? -2.4 * smooth(seg(fl, 0.5, 1.0)) * (1 - smooth(seg(fl, 2.2, 2.8))) : 0; phys.userData.aL.rotation.z = fl > 0.5 ? 0.35 * smooth(seg(fl, 0.5, 1.0)) * (1 - smooth(seg(fl, 2.2, 2.8))) : 0;
+    camPath([[T.test, V(PH.x + 2.5, 1.5, PH.z + 9), V(PH.x, 27, PH.z), 52], [T.test + 1.5, V(PH.x + 2.3, 1.7, PH.z + 8), V(PH.x, 16, PH.z), 52], [T.test + 2.6, V(PH.x + 1.6, 1.9, PH.z + 5.4), V(PH.x - 0.75, 1.5, PH.z), 42], [T.pen, V(PH.x + 1.4, 1.9, PH.z + 4.8), V(PH.x - 0.7, 1.5, PH.z), 40]], t); r = 46; sc.set(PH.x, 18, PH.z); if (t > T.test + 2.2) { r = 9; sc.copy(PH); } }
+  else if (t < T.fin) { // the pen
+    const s = penS(t), v = fallV(s, VTP); penPos.set(START.x, Math.max(0.3 + 0.055, START.y - fallD(s, VTP)), START.z); pen.visible = true; pen.position.copy(penPos); const wob = 0.05 * Math.sin(s * 9) * clamp(1 - s / 3); pen.rotation.set(wob, s * 1.5, wob * 0.7 + (t < T.pdrop ? 0.25 : 0.25 * Math.max(0, 1 - s * 2)));
+    if (t < T.ptrack) { camPath([[T.pen, V(28.3, HT + 2.2, 1.7), V(26.35, HT + 1.66, -0.3), 30], [T.ptrack, V(penPos.x + 0.16, penPos.y + 0.05, penPos.z + 0.40), penPos.clone(), 34]], t); r = 4; sc.copy(penPos); }
+    else if (t < T.pst) { const k = smooth(seg(t, T.ptrack + 0.2, T.ptrack + 1.0)); aG.visible = aD.visible = true; aG.userData.mat.opacity = aD.userData.mat.opacity = k; aG.scale.set(2.2, 2.2, 2.2); aG.position.set(penPos.x, penPos.y - 0.07, penPos.z); aD.position.set(penPos.x, penPos.y + 0.082, penPos.z); aD.scale.set(2.2, 2.2 * Math.max(0.02, (v / VTP) * (v / VTP)), 2.2);
+      cam.position.set(penPos.x + 0.16, penPos.y + 0.05, penPos.z + 0.40); cam.fov = 34; cam.up.set(0, 1, 0); cam.lookAt(penPos); cam.updateProjectionMatrix(); cam.translateX(-0.04 * k); cam.translateY(-0.03 * k); r = 3; sc.copy(penPos); }
+    else { camPath([[T.pst, V(28.4, 1.3, 6.0), V(START.x - 0.4, 3.2, START.z), 56], [T.phit, V(28.0, 1.1, 4.4), V(START.x - 0.35, 0.85, START.z), 46], [T.fin, V(27.6, 0.95, 3.0), V(START.x - 0.3, 0.62, START.z), 40]], t); r = 12; sc.copy(SPOT); fx = t - T.phit; fxBig = 0.8;
+      if (t >= T.phit) { pen.position.set(START.x + 0.5, 0.31, START.z + 0.35); pen.rotation.set(0, 0.6, Math.PI / 2); const q = t - T.phit; if (q < 0.5) { pen.position.y += 0.9 * Math.sin(q / 0.5 * Math.PI); pen.rotation.x = q * 22; pen.position.x = START.x + q; pen.position.z = START.z + q * 0.7; cam.position.y += Math.sin(q * 70) * 0.02 * (1 - q / 0.5); } }
+      else { trail.visible = true; trail.scale.set(0.03, 2.4, 0.03); trail.position.set(penPos.x, penPos.y + 1.3, penPos.z); } } }
+  else { // side by side: same height, same gravity, different shape
+    const q = t - T.fin, s = 6 + q * 0.5; coinPos.set(30, 318 - VT * q * 0.5, 0); coin.visible = true; coin.position.set(29.979 + Math.sin(s * 1.9) * 0.004, coinPos.y, 0); coinRot(coin, s);
+    pen.visible = true; pen.position.set(30.022, coinPos.y + 0.125 - 0.062 * q, 0); pen.rotation.set(0, q * 2, 0);
+    cam.position.set(30, coinPos.y + 0.012, 0.30); cam.fov = 30; cam.up.set(0, 1, 0); cam.lookAt(V(30, coinPos.y - 0.004, 0)); cam.updateProjectionMatrix(); cam.translateX(-0.013); r = 3; sc.copy(coinPos); }
+  impactFx(fx, fxBig); if (r !== sunR || r < 20) { setSun(sc, r); sunR = r; }
+  post.render();
+}
+const kmh = (v) => Math.round(v * 3.6);
+function overlayFrame(t) {
+  const ta = t < 3.1 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 2.75, 3.1)) : 0; O.set(O.title, 'What if you dropped<br>a <em>coin</em> from the top<br>of a skyscraper?'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`;
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = '1230px';
+  let chip = '', cha = 0; if (t >= T.vac + 0.3 && t < T.real) { chip = 'If there were no air'; cha = Math.min(seg(t, T.vac + 0.3, T.vac + 0.7), 1 - seg(t, T.real - 0.3, T.real)); } else if (t >= T.real + 0.3 && t < T.test) { chip = 'With air: what really happens'; cha = Math.min(seg(t, T.real + 0.3, T.real + 0.7), 1 - seg(t, T.test - 0.3, T.test)); } else if (t >= T.pen + 0.3 && t < T.fin) { chip = 'Now a pen'; cha = Math.min(seg(t, T.pen + 0.3, T.pen + 0.7), 1 - seg(t, T.fin - 0.3, T.fin)); }
+  O.set(O.chip, chip); O.show(O.chip, cha);
+  let ha = 1; const f1 = (x) => x.toFixed(1);
+  if (t < T.roof) ha = 0;
+  else if (t < T.vac) { O.hudSet('Height', '400 m', 'Above the street'); ha = seg(t, T.roof, T.roof + 0.4); }
+  else if (t < T.real) { const s = clamp((t - T.vdrop) / (T.vhit - T.vdrop)) * TVAC; O.hudSet('Speed', kmh(G * s) + ' km/h', `${f1(s)} s since the drop\nNo air: nothing slows it`); }
+  else if (t < T.test) { const s = coinS(t), v = fallV(s, VT), d = fallD(s, VT); O.hudSet('Speed', kmh(v) + ' km/h', `${f1(s)} s since the drop · fallen ${d < 100 ? f1(d) : Math.round(d)} m\n${t < T.flut ? 'Slow motion' : 'Sped up'}`); }
+  else if (t < T.pen) { O.hudSet('Coin speed', '40 km/h', 'As fast as it ever gets'); ha = Math.min(seg(t, T.test + 2.6, T.test + 3.0), 1); }
+  else if (t < T.fin) { const s = penS(t), v = fallV(s, VTP); O.hudSet('Pen speed', (t >= T.phit ? 'about 170' : kmh(v)) + ' km/h', t < T.pdrop ? 'Same height: 400 m' : (t < T.phit ? `${f1(s)} s since the drop\nPoint first, like an arrow` : 'Light plastic pen, point first\nHeavier pens: estimates up to 320')); }
+  else if (t < T.end) O.hudSet('Same drop', '400 m', 'Same gravity');
+  else ha = 0;
+  O.show(O.hud, ha); O.hud.style.top = '860px';
+  let lab = ''; const L = (x, y, a, html, al) => `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${clamp(a).toFixed(3)};${al || ''}">${html}</div>`;
+  if (t >= T.roof + 1.0 && t < T.roof + 3.6) { const p = proj(hero.position.clone().add(V(0, 2.25, 0)), cam); lab += L(p[0] - 34, p[1] - 44, Math.min(seg(t, T.roof + 1.0, T.roof + 1.4), 1 - seg(t, T.roof + 3.2, T.roof + 3.6)), 'You'); }
+  if (t >= T.vdrop && t < T.vhit - 0.7) { const p = proj(dot.position, cam); lab += L(clamp(p[0] + 40, 60, 640), p[1] - 20, seg(t, T.vdrop, T.vdrop + 0.3), 'Coin<br>(enlarged)'); }
+  if (t >= T.rdrop + 1.2 && t < T.flut) { const a = seg(t, T.rdrop + 1.2, T.rdrop + 1.8) * (1 - seg(t, T.flut - 0.3, T.flut)), pg = proj(V(coinPos.x, coinPos.y - 0.026, coinPos.z), cam), pd = proj(V(coinPos.x, coinPos.y + 0.016 + AL * 0.6 * Math.pow(fallV(coinS(t), VT) / VT, 2), coinPos.z), cam);
+    lab += L(clamp(pg[0] + 34, 420, 760), clamp(pg[1] - 20, 420, 1150), a, '<span style="color:#ff8a7c">Gravity</span>'); lab += L(clamp(pd[0] + 34, 420, 640), clamp(pd[1] - 16, 420, 1130), a, '<span style="color:#ffd64a">Air resistance</span>'); }
+  if (t >= T.flut + 0.3 && t < T.test) { const p = proj(coinPos, cam); lab += L(clamp(p[0] + 60, 60, 640), p[1] - 20, Math.min(seg(t, T.flut + 0.3, T.flut + 0.6), 1 - seg(t, T.test - 0.3, T.test)), 'Coin<br>(enlarged)'); }
+  if (t >= T.test + 2.8 && t < T.pen) lab += L(64, 1080, Math.min(seg(t, T.test + 2.8, T.test + 3.2), 1 - seg(t, T.pen - 0.3, T.pen)) * 0.95, 'Re-creation of a physicist’s test\nCoins shown larger', 'font-size:21px;letter-spacing:2.5px');
+  if (t >= T.phit + 0.3 && t < T.fin) lab += L(64, 1112, Math.min(seg(t, T.phit + 0.3, T.phit + 0.7), 1 - seg(t, T.fin - 0.3, T.fin)) * 0.95, 'Never drop anything from a height', 'font-size:21px;letter-spacing:2.5px');
+  if (t >= T.fin + 0.3 && t < T.end) { const a = Math.min(seg(t, T.fin + 0.3, T.fin + 0.7), 1 - seg(t, T.end - 0.3, T.end)); lab += L(400, 560, a, 'Flat and light<b>40 km/h</b>'); lab += L(690, 560, a, 'Narrow, heavier<b>170 km/h</b>'); }
+  if (O.labels._h !== lab) { O.labels._h = lab; O.labels.innerHTML = lab; }
+  let fl = 0; for (const [a, d, k] of [[T.roof, 0.3, 0.5], [T.vac, 0.3, 0.6], [T.vhit, 0.45, 0.9], [T.real, 0.5, 0.9], [T.flut, 0.3, 0.6], [T.test, 0.3, 0.6], [T.pen, 0.35, 0.7], [T.pst, 0.25, 0.5], [T.phit, 0.3, 0.7], [T.fin, 0.3, 0.6]]) if (t >= a - 0.06 && t < a + d) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + d)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { frame(t); overlayFrame(t); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>
