@@ -191,6 +191,19 @@
     "https://www.livescience.com/18832-penny-dropped-skyscraper.html",
     "https://van.physics.illinois.edu/ask/listing/8546"
    ]
+  },
+  {
+   "file": "sim-16-pile.mp4",
+   "title": "The first nuclear chain reaction, minute by minute",
+   "made": "2026-11-21",
+   "caption": "The first nuclear chain reaction, minute by minute. Chicago, 2 December 1942: a pile of graphite bricks and uranium in a squash court, a man with an axe, a lunch break, and about half a watt of power. ⚛️\n\nFollow for a new simulation every day.\n\n#chicagopile #simulation #science #history #physics #nuclear #studytok",
+   "science": "Every time, name and figure was checked against four pages read in this run: the U.S. Department of Energy's OSTI Manhattan Project history ('CP-1 goes critical'), the DOE reissue of the 1946 account 'The First Reactor', Argonne National Laboratory, and the University of Chicago Magazine. Place: a squash (racquets) court under the West Stands of Stagg Field, University of Chicago, 2 December 1942; the room was about 30 by 60 feet with a balcony about ten feet up (DOE), drawn at that size. The pile: graphite bricks with uranium in them, 'square at the bottom and a flattened sphere on top' (DOE), about 20 feet high (UChicago), with 'no radiation shielding and no cooling system of any kind' (OSTI). The number of layers and bricks was not in the pages read, so no count is stated; graphite is given by the sources as 380 to 'almost 400' tons and is not stated in the film. Control: cadmium rods; the emergency rod 'Zip' was tied by a rope to the balcony rail with Norman Hilberry ready to cut it with an axe (DOE, OSTI); three men stood on a platform ready to flood the pile with cadmium-salt solution (shown, not narrated). Timeline used: rods first withdrawn 9:45 am (DOE; OSTI says 9:54); 11:35 the automatic safety rod slammed in because its trip point was set too low, and Fermi said 'I'm hungry. Let's go to lunch.' (DOE); work resumed at 2:00 pm (DOE, OSTI; UChicago says 2:30); at about 3:25 pm George Weil pulled the last rod out another foot, the counters did not level off and Fermi said 'the reaction is self-sustaining' (OSTI). DOE, OSTI and Argonne give 3:25; a DOE footnote says Herbert Anderson put it at 3:36, 'now the accepted official time', so the film says 'around 3:25' and the HUD adds 'Some records say 3:36'. Power 'about half a watt' (OSTI, UChicago). It ran 28 minutes and was stopped at 3:53 pm with 'Zip in' (DOE, Argonne). The toast with Chianti in paper cups is from OSTI. Kettle comparison: an ordinary electric kettle draws around 2,000 W, which is 4,000 times half a watt, said as 'thousands of times more' and labelled 'around 2,000 W'. The idea's planned point was corrected: the rod was not 'pulled by hand' in one go; it was withdrawn in steps on Fermi's instructions, the last step one foot. Illustrative and labelled: uranium lumps drawn on the pile's surface 'to show the pattern inside'; the neutron recorder trace ('drawn from accounts': it levelled off after each earlier step, then kept climbing); the chain diagram ('diagram, not to scale', k = 1; OSTI gives k = 1.0006). The number of people present differs by source (43 on the signed list, 49 per Argonne and UChicago) and is not stated; about 25 figures are drawn. The weather and the look of the stands are a plain grey-morning illustration, not a record. Clock values between the sourced times are interpolated for the HUD.",
+   "sources": [
+    "https://www.osti.gov/opennet/manhattan-project-history/Events/1942-1944_pu/cp-1_critical.htm",
+    "https://www.energy.gov/ne/articles/first-reactor",
+    "https://www.anl.gov/article/7-things-you-might-not-know-about-the-worlds-first-nuclear-reactor",
+    "https://mag.uchicago.edu/science-medicine/manhattans-critical-moment"
+   ]
   }
  ]
 }

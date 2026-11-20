@@ -132,8 +132,9 @@
    "setting": "Chicago Pile-1 under the stadium stands, 1942",
    "hook": "The first nuclear chain reaction, minute by minute",
    "the surprising true point": "A pile of graphite and uranium, controlled by pulling one rod out by hand",
-   "status": "making",
-   "claimed_at": "2026-11-21T01:20:00+11:00"
+   "status": "made",
+   "claimed_at": "2026-11-21T01:20:00+11:00",
+   "file": "sim-16-pile.mp4"
   },
   {
    "title": "What if all the oxygen vanished for 5 seconds?",
