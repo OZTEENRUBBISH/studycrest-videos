@@ -204,6 +204,25 @@
     "https://www.anl.gov/article/7-things-you-might-not-know-about-the-worlds-first-nuclear-reactor",
     "https://mag.uchicago.edu/science-medicine/manhattans-critical-moment"
    ]
+  },
+  {
+   "file": "sim-17-oxygen.mp4",
+   "title": "What if all the oxygen vanished for 5 seconds?",
+   "made": "2026-11-21",
+   "caption": "What if all the oxygen vanished for 5 seconds? Buildings wouldn't crumble. The air pressure drops by a fifth, flames die and engines cut, and you'd probably stay awake. The viral version forgets that you are mostly oxygen too. 🔥\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #oxygen #chemistry #studytok",
+   "science": "The film takes the question literally: the oxygen GAS (O2) in the air is gone for five seconds, then returns. Worked from first principles and run in Python. Dry air is 20.946 percent oxygen by volume (NOAA) and 23.14 percent by mass (0.20946 x 31.998 / 28.965), said as 'a fifth'. Pressure: 101.325 kPa x (1 - 0.20946) = 80.1 kPa, which the standard atmosphere puts at 1,939 m (Anderson, Introduction to Flight, App. D: 80.49 kPa at 1,900 m, 79.50 kPa at 2,000 m), said as 'two kilometres up' and shown as '1,940 m'. Ears: a step of about 21 kPa (158 mmHg) is above the reported discomfort level (60 mmHg) and at the low end of the range where eardrums can tear (100 to 400 mmHg), so the film says only 'your ears pop'; the viral 'inner ears explode' is not repeated. Flames: fire needs oxygen (US National Park Service: at least 16 percent), so candle and gas flames go out; petrol and diesel engines stop firing, and an idling engine with no combustion stops in about a second (my estimate, labelled 'about'). Jet: thrust is lost and lift is proportional to air density (NASA Glenn lift equation), so lift falls by the mass share of oxygen, 23 percent; the sag drawn is 0.5 x 0.2314 x 9.81 x t^2 (28 m after 5 s if nothing is done). The film says it 'glides' and does not claim a relight. Consciousness: FAA AC 61-107B gives 9 to 12 seconds of useful consciousness at 43,000 ft (13 km) and above, so five seconds is said as 'you'd probably stay awake'; the US Chemical Safety Board warns that one or two breaths of oxygen-free gas can cause unconsciousness, which is why the film says 'probably'. The viral version (a 2013 Quora answer and the videos made from it: concrete turns to dust, oceans evaporate, the crust crumbles) removes every oxygen ATOM, not the gas; the film says so and shows it under the chip 'The viral version' with a MYTH stamp. Oxygen by mass: water 88.9 percent (15.999 / 18.015), Earth's crust about 46 percent (Britannica; CRC 46.1), the human body 61 to 65 percent depending on the source, said as 'more than sixty percent'. Concrete is given no figure ('bound in its minerals'). The idea's planned point survived checking. Illustrative and labelled: air molecules ('shown far larger than real'; 210 red in 1,000), the jet ('not to scale', flown lower than cruise), slow motion with a clock that runs unevenly so each change can be seen. Limits: Airbus and FAA engine pages on in-flight relight could not be opened, so relight is not mentioned; no source was found for how long a flame takes to die, so no time is stated.",
+   "sources": [
+    "https://www.noaa.gov/jetstream/atmosphere",
+    "https://highered.mheducation.com/sites/dl/free/0072950463/281732/and50463_appD.pdf",
+    "https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_61-107B_CHG_1.pdf",
+    "https://www.csb.gov/assets/1/20/sb-nitrogen-6-11-03.pdf",
+    "https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/lift-equation",
+    "https://nps.gov/articles/wildlandfire-facts-fuel-heat-oxygen.htm",
+    "https://www.slate.com/blogs/quora/2013/03/19/what_would_happen_if_oxygen_were_to_disappear_for_5_seconds.html",
+    "https://www.britannica.com/summary/oxygen",
+    "https://courses.lumenlearning.com/suny-ap1/?p=1663",
+    "https://peds.unboundmedicine.com/pedscentral/view/5-Minute-Pediatric-Consult/617104/all/Barotitis"
+   ]
   }
  ]
 }
