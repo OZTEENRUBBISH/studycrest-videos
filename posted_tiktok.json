@@ -132,6 +132,18 @@
    "kind": "spot",
    "due_at": "2026-11-20T12:00:00+11:00",
    "buffer_post_id": "6afdb1a9ea3aea9074f89512"
+  },
+  {
+   "file": "studycrest-05-maths-expanding",
+   "kind": "spot",
+   "due_at": "2026-11-21T12:00:00+11:00",
+   "buffer_post_id": "6b0054b877e195b72209a6ed"
+  },
+  {
+   "file": "studycrest-08-business",
+   "kind": "spot",
+   "due_at": "2026-11-22T12:00:00+11:00",
+   "buffer_post_id": "6b0054b944831c50e4ce3b75"
   }
  ]
 }
