@@ -150,6 +150,14 @@ POSTS = {
     point("blue", 4, "🖊️", "Sum it up the same day", "Three lines on what the class covered, while it's still fresh.", 4, n),
     point("blue", 5, "✅", "Do your working in StudyCrest", "It checks every line as you write: a tick, a flag or a hint.", 5, n, tag="Free for 30 days"),
     cta_slide("blue", 6, n)],
+ "H-nursing-degree-5-jobs": lambda n=7: [
+    cover("paper", "🩺", "Doing or thinking of doing a nursing degree?", "Here are 5 jobs and what they pay.", 0, n),
+    salary("paper", "💉", "Nurse Anesthetist", "$236,590", "Gives anaesthesia and looks after patients during surgery. Needs a master's degree.", 1, n),
+    salary("paper", "👶", "Nurse Midwife", "$134,040", "Cares for women through pregnancy and birth. Needs a master's degree.", 2, n),
+    salary("paper", "🩺", "Nurse Practitioner", "$132,300", "Diagnoses and treats patients. Needs a master's degree.", 3, n),
+    salary("paper", "🏥", "Registered Nurse", "$97,550", "Provides and coordinates patient care. Usually needs a bachelor's degree.", 4, n),
+    salary("paper", "📋", "Licensed Practical Nurse", "$64,400", "Provides basic care under registered nurses and doctors. A shorter course, not a degree.", 5, n),
+    cta_slide("paper", 6, n, kicker="First, you have to pass the degree.")],
 }
 
 if __name__ == "__main__":
