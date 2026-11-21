@@ -96,3 +96,37 @@ What stands out: sim-01-gravity is still growing (43,512 to 67,429 views) and re
 | studycrest-04-law | ad (spot) | 20 Nov 12:02pm | 17 h | 5 | 0 | 0 | 0 | not judged yet |
 
 What stands out: three of the four daily slots were missed in the last 24 hours because nothing was scheduled for them, not because a post failed. Views are steady, not rising: sim-01-gravity is still growing (67,429 on 18 Nov to 127,853) and remains the only post beyond a few hundred; the other 13 simulations sit between 187 and 740 (middle value 553), the seven judged ads between 71 and 273 (middle value 127). Average watch time is 5.5 to 10.0 s for simulations and 1.0 to 2.2 s for ads. Buffer last refreshed most numbers at 12:22pm on 20 Nov, so sim-13 and sim-14 were read at about 18 and 12 hours live and are probably higher now, and the 5 views for studycrest-04-law were read 20 minutes after it went out; the two 15 Nov ads have not been refreshed since 5:17pm on 15 Nov. Best of the week: sim-01-gravity (127,853). Worst judged: studycrest-09-test-predictor (71, stale reading); worst with a fresh reading: studycrest-03-engineering (126).
+
+## 2026-11-22 (checked 5:14am Sydney)
+
+**Overall: healthy.** Of the five judged posts from the last 3 days, three are "seen" and two "slow" (both ads); none is "not travelling". Across all 21 judged posts this week, 14 are "seen" and 7 "slow". No posts with status error. Four posts sent in the last 24 hours, as expected.
+
+| Post | Kind | Sent (Sydney) | Live for | Views | Likes | Comments | Shares | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| studycrest-06-physics | ad (spot) | 15 Nov 6:02am | 167 h | 121 | 2 | 0 | 0 | slow |
+| studycrest-09-test-predictor | ad (feature) | 15 Nov 12:01pm | 161 h | 71 | 1 | 0 | 0 | slow |
+| sim-02-chernobyl | simulation | 15 Nov 6:02pm | 155 h | 740 | 13 | 0 | 0 | seen |
+| sim-03-sun | simulation | 16 Nov 12:04am | 149 h | 553 | 8 | 0 | 0 | seen |
+| studycrest-07-chemistry | ad (spot) | 16 Nov 6:03am | 143 h | 279 | 4 | 0 | 0 | slow |
+| studycrest-10-practice-questions | ad (feature) | 16 Nov 12:01pm | 137 h | 128 | 1 | 0 | 0 | slow |
+| sim-04-titanic | simulation | 16 Nov 6:02pm | 131 h | 413 | 7 | 0 | 0 | seen |
+| sim-05-spin | simulation | 17 Nov 12:06am | 125 h | 708 | 8 | 0 | 0 | seen |
+| sim-06-space | simulation | 17 Nov 6:05am | 119 h | 709 | 18 | 0 | 0 | seen |
+| studycrest-01-nursing | ad (spot) | 17 Nov 12:02pm | 113 h | 166 | 1 | 0 | 0 | slow |
+| sim-07-hindenburg | simulation | 17 Nov 6:03pm | 107 h | 573 | 11 | 0 | 0 | seen |
+| sim-08-tunnel | simulation | 18 Nov 12:05am | 101 h | 678 | 9 | 0 | 0 | seen |
+| sim-09-apollo13 | simulation | 18 Nov 6:04am | 95 h | 496 | 16 | 1 | 0 | seen |
+| studycrest-02-maths-product-rule | ad (spot) | 18 Nov 12:03pm | 89 h | 320 | 3 | 0 | 0 | seen |
+| sim-10-radiation | simulation | 18 Nov 6:02pm | 83 h | 883 | 21 | 0 | 0 | seen |
+| sim-11-neutron | simulation | 19 Nov 12:06am | 77 h | 643 | 13 | 0 | 2 | seen |
+| sim-12-moon | simulation | 19 Nov 6:04am | 71 h | 648 | 19 | 0 | 3 | seen |
+| studycrest-03-engineering | ad (spot) | 19 Nov 12:03pm | 65 h | 129 | 0 | 0 | 0 | slow |
+| sim-13-krakatoa | simulation | 19 Nov 6:03pm | 59 h | 589 | 14 | 0 | 0 | seen |
+| sim-14-atoms | simulation | 20 Nov 12:05am | 53 h | 650 | 11 | 0 | 0 | seen |
+| studycrest-04-law | ad (spot) | 20 Nov 12:02pm | 41 h | 118 | 0 | 0 | 0 | slow |
+| sim-15-coin | simulation | 21 Nov 6:03am | 23 h | 346 | 4 | 0 | 0 | not judged yet |
+| studycrest-05-maths-expanding | ad (spot) | 21 Nov 12:04pm | 17 h | 93 | 0 | 0 | 0 | not judged yet |
+| sim-16-pile | simulation | 21 Nov 6:01pm | 11 h | 10 | 0 | 0 | 0 | not judged yet |
+| sim-17-oxygen | simulation | 22 Nov 12:05am | 5 h | 0 | 0 | 0 | 0 | not judged yet |
+
+What stands out: the posting schedule is back to four a day after the three missed slots on 20 and 21 Nov. Every judged simulation is now "seen" (413 to 883 views, middle value 648); sim-13 and sim-14, "slow" yesterday on early readings, reached 589 and 650. Ads remain well behind: 71 to 320 views (middle value 128.5), with one ad, studycrest-02-maths-product-rule, passing 300 for the first time. Average watch time is 5.4 to 10.0 s for simulations and 1.0 to 2.6 s for ads. sim-01-gravity (127,853 views at the last check) is now older than the 7-day window and no longer listed; nothing since has passed 900. Buffer last refreshed most numbers at 6:52pm on 21 Nov, so sim-16's 10 views were read 51 minutes after it went out, and the zeros for sim-17 were recorded before it was posted; the two 15 Nov ads have not been refreshed since 5:17pm on 15 Nov. Best of the week: sim-10-radiation (883). Worst judged: studycrest-09-test-predictor (71, stale reading); worst with a fresh reading: studycrest-04-law (118).
