@@ -180,6 +180,12 @@
    "kind": "sim",
    "due_at": "2026-11-22T18:00:00+11:00",
    "buffer_post_id": "6b01cd2a846b0ee9072318aa"
+  },
+  {
+   "file": "sim-20-tunguska",
+   "kind": "sim",
+   "due_at": "2026-11-23T00:00:00+11:00",
+   "buffer_post_id": "6b01d6b08bd84d59660809f4"
   }
  ]
 }
