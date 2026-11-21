@@ -1,0 +1,146 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// What if all the ice on Earth melted?  (coastal city + floating-ice glass + globe)
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, mat, box, shadowAll, person, palm, cloud, skyDome, stars, globe, overlay, capAt, lamp, tower, makePost, skyEnv, proj } from './common.js';
+const W = 1080, H = 1920, DUR = 50.4;
+const O = overlay(); O.show(O.chip, 0);
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.1, 9000);
+const R = rng(20261122), V = (x, y, z) => new THREE.Vector3(x, y, z), C = (h) => new THREE.Color(h);
+const T = { city: 2.6, glass: 9.4, globe: 17.6, south: 20.4, flood: 23.5, under: 30.7, pace: 35.9, fin: 42.4, end: 47.5 };
+const RISE = 65, HERO_H = 66;                         // metres: middle of the 60 to 70 m range; a 20-storey block at 3.3 m a floor
+const lvlAt = (t) => t < T.flood ? 0 : RISE * smooth(seg(t, T.flood + 0.5, T.pace - 0.7));
+
+// =====================================================  CITY  (1 unit = 1 metre; sea towards +z, city towards -z)
+const city = new THREE.Scene(); city.fog = new THREE.Fog(0xcfe3f2, 500, 3800);
+const DAYC = [C(0x2f7fdc), C(0xcfe7f8), C(0xa9d0ea)], DUSK = [C(0x2a3f7e), C(0xf6a56f), C(0x4a4560)];
+const sky = skyDome(0x2f7fdc, 0xcfe7f8, 0xa9d0ea); sky.scale.setScalar(6); city.add(sky); const ENV = skyEnv(renderer, 0x2f7fdc, 0xcfe7f8, 0x9ab8cc);
+const hemi = new THREE.HemisphereLight(0xd6e9ff, 0x6f8f9a, 1.1); city.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff0d0, 3.0); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+Object.assign(sun.shadow.camera, { left: -420, right: 420, top: 420, bottom: -420, near: 1, far: 2400 }); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.3; city.add(sun); city.add(sun.target); sun.target.position.set(0, 0, -150);
+const sunDisc = new THREE.Group(); { sunDisc.add(new THREE.Mesh(new THREE.SphereGeometry(110, 24, 16), new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.0, 0.9), fog: false, toneMapped: false })));
+  for (const [r, o] of [[170, 0.12], [270, 0.05]]) sunDisc.add(new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: o, fog: false, depthWrite: false, blending: THREE.AdditiveBlending }))); city.add(sunDisc); }
+const world = new THREE.Group(); city.add(world);
+// sea
+const seaMat = new THREE.MeshStandardMaterial({ color: 0x2f86c9, roughness: 0.2, metalness: 0.55, envMap: ENV, envMapIntensity: 2.0, flatShading: true });
+const seaG = new THREE.Group(); world.add(seaG);
+const sGeo = new THREE.PlaneGeometry(1500, 1500, 150, 150); sGeo.rotateX(-Math.PI / 2); const sea = new THREE.Mesh(sGeo, seaMat); sea.position.set(0, 0, -250); sea.receiveShadow = true; seaG.add(sea);
+{ const far = new THREE.Mesh(new THREE.PlaneGeometry(16000, 16000).rotateX(-Math.PI / 2), seaMat); far.position.set(0, -0.3, -1000); seaG.add(far); }
+const sX = new Float32Array(sGeo.attributes.position.count), sZ = new Float32Array(sX.length), sK = new Float32Array(sX.length);
+for (let i = 0; i < sX.length; i++) { sX[i] = sGeo.attributes.position.getX(i); sZ[i] = sGeo.attributes.position.getZ(i); sK[i] = clamp((740 - Math.max(Math.abs(sX[i]), Math.abs(sZ[i]))) / 120); }
+function seaWaves(wt, amp) { const p = sGeo.attributes.position; for (let i = 0; i < sX.length; i++) { const x = sX[i], z = sZ[i]; p.setY(i, (Math.sin(x * 0.045 + wt * 1.1) * 0.5 + Math.sin(z * 0.07 + wt * 0.9 + x * 0.02) * 0.42 + Math.sin((x - z) * 0.15 + wt * 1.9) * 0.2) * sK[i] * amp); } p.needsUpdate = true; }
+// land: sea wall, promenade, road, city blocks, hills
+const LAND = 3;
+world.add(box(4000, 40, 2600, 0xa7a59c, 0, LAND - 20.2, -1305)); world.add(box(4000, 0.3, 26, 0xd9d2c2, 0, LAND + 0.05, -18)); world.add(box(4000, 0.3, 16, 0x3c4048, 0, LAND + 0.05, -40));
+world.add(box(4000, 1.1, 0.6, 0xb9b2a2, 0, LAND + 0.6, -5.4)); world.add(box(4000, 1.5, 0.4, 0x5d6660, 0, 0.3, -4.9)); for (let x = -400; x <= 400; x += 9) world.add(box(0.25, 2.2, 0.3, 0x8d8b82, x, 2.0, -4.95));
+for (let x = -600; x <= 600; x += 14) world.add(box(5, 0.05, 0.35, 0xf2f2f2, x, LAND + 0.24, -40));
+const Rc = rng(77);
+for (let x = -292; x <= 300; x += 16) { if (Math.abs(x - 2) < 12) continue; const p = palm(Rc); p.position.set(x + Rc() * 3, LAND, -12 - Rc() * 3); p.scale.setScalar(1.25); world.add(p); }
+for (let x = -300; x <= 300; x += 30) { const l = lamp(); l.position.set(x + 7, LAND, -29); l.rotation.y = -Math.PI / 2; l.scale.setScalar(1.4); world.add(l); }
+for (let i = 0; i < 26; i++) { const c = new THREE.Group(), col = [0xe2574c, 0xf2f2f2, 0x2f56d6, 0xf2c94c, 0x34495e, 0x2bb673][Math.floor(Rc() * 6)]; c.add(box(4.4, 0.9, 1.9, col, 0, 0.75, 0)); c.add(box(2.4, 0.75, 1.75, 0x9fc3e8, -0.2, 1.5, 0)); for (const sx of [-1.4, 1.4]) for (const sz of [-0.9, 0.9]) c.add(box(0.7, 0.7, 0.3, 0x1a1a1a, sx, 0.35, sz)); c.position.set(-310 + i * 24 + Rc() * 8, LAND + 0.1, Rc() < 0.5 ? -37 : -43.5); shadowAll(c); world.add(c); }
+for (const x of [-34, -6, 26, 58]) { world.add(box(3.4, 0.14, 0.9, 0x8a6d3b, x, LAND + 0.75, -9)); world.add(box(3.4, 0.7, 0.12, 0x8a6d3b, x, LAND + 1.1, -9.45)); for (const s of [-1.4, 1.4]) world.add(box(0.14, 0.7, 0.8, 0x444444, x + s, LAND + 0.38, -9)); }
+// hero block: 20 storeys, about 66 m
+const HERO = V(34, LAND, -92); let hero = null; for (let s = 1; s < 400 && !hero; s++) { const tw = tower(rng(s), 26, HERO_H, 24, { style: 'white', env: ENV }); if (tw.children[0].geometry.parameters.height === HERO_H) hero = tw; }
+hero.position.copy(HERO); world.add(hero); { const band = box(26.8, 1.2, 24.8, 0xffd64a, 0, HERO_H - 0.6, 0, { emissive: 0xffc020, emissiveIntensity: 0.5 }); hero.add(band); }
+const Rt = rng(31); let nT = 0;
+for (let r = 0; r < 11; r++) for (let c = -9; c <= 9; c++) { const x = c * 44 + (Rt() - 0.5) * 6, z = -78 - r * 52 + (Rt() - 0.5) * 6; if (Math.hypot(x - HERO.x, z - HERO.z) < 34) continue; if (Rt() < 0.06) continue;
+  const core = Math.exp(-(((x + 40) / 190) ** 2) - ((z + 330) / 210) ** 2), h = (r === 0 ? 16 + Rt() * 26 : 20 + Rt() * 46) + core * (60 + Rt() * 210), w = 20 + Rt() * 12, d = 20 + Rt() * 12;
+  const tw = tower(Rt, w, h, d, { env: ENV }); tw.position.set(x, LAND, z); world.add(tw); nT++; }
+function hill(x, z, rx, h, rz, col, seed) { const g = new THREE.IcosahedronGeometry(1, 3), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const k = 1 + (fbm(p.getX(i) * 2 + seed, p.getY(i) * 2, p.getZ(i) * 2, 3) - 0.5) * 0.3; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k); } g.computeVertexNormals(); const m = new THREE.Mesh(g, mat(col)); m.scale.set(rx, h, rz); m.position.set(x, -h * 0.05, z); m.receiveShadow = true; world.add(m); return m; }
+hill(-700, -1250, 620, 330, 380, 0x4f7f52, 1); hill(300, -1500, 800, 420, 420, 0x45724e, 5); hill(1100, -1150, 520, 280, 360, 0x4f7f52, 9); hill(-1500, -1000, 600, 240, 400, 0x45724e, 13);
+// boats ride the water
+const boats = []; function boat(Rr) { const g = new THREE.Group(), hc = [0xf2efe6, 0x2f56d6, 0xd63b32, 0x1f7a8c][Math.floor(Rr() * 4)]; g.add(box(2.6, 1.2, 8, hc, 0, 0.4, 0)); const bow = new THREE.Mesh(new THREE.ConeGeometry(1.84, 2.6, 4), mat(hc)); bow.rotation.set(Math.PI / 2, Math.PI / 4, 0); bow.scale.set(1, 1, 0.78); bow.position.set(0, 0.4, 5.2); g.add(bow);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 11, 6), mat(0xd8d2c4)); mast.position.set(0, 6.3, 0.6); g.add(mast); const sg = new THREE.BufferGeometry().setFromPoints([V(0, 1.6, 0.4), V(0, 11.4, 0.4), V(0, 1.6, -4.4)]); sg.computeVertexNormals(); g.add(new THREE.Mesh(sg, new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide }))); return shadowAll(g); }
+for (const [x, z, ry] of [[3, 9, 1.9], [-46, 34, 0.5], [52, 60, 2.2], [-10, 92, 1.2], [96, 26, 2.8], [-120, 70, 0.2], [160, 120, 1.9], [-70, 170, 2.5], [30, 150, 0.9]]) { const b = boat(R); b.position.set(x, 0, z); b.rotation.y = ry; b.userData = { ry, s: R() * 6, x, z }; world.add(b); boats.push(b); }
+// people on the promenade (they belong to "today"; the flood takes thousands of years)
+const people = []; function addP(x, z, kind, ry, cols) { const p = person(R, kind, cols); p.position.set(x, LAND + 0.2, z); p.rotation.y = ry; p.scale.multiplyScalar(1.15); p.userData.b = { p: p.position.clone(), ry, d: R() }; world.add(p); people.push(p); return p; }
+addP(-1.3, -7.2, 'stand', 0.1, { shirt: 0xf2c94c }); addP(1.2, -7.4, 'stand', -0.15, { shirt: 0xe2574c }); addP(4.6, -7.0, 'stand', 0.05, { shirt: 0x2f56d6 });
+for (const [x, z, ry] of [[-14, -7.3, 0.2], [-22, -8, -0.2], [15, -7.6, 0.3], [-36, -9.6, 0.0], [24.5, -9.6, 0.1]]) addP(x, z, 'stand', ry);
+for (const [x, ry] of [[-40, 1.57], [-12, -1.57], [10, 1.57], [36, -1.57], [-26, 1.57], [48, -1.57]]) addP(x, -14 - R() * 8, 'walk', ry);
+const clouds = []; for (let i = 0; i < 9; i++) { const c = cloud(R); c.position.set(-2600 + i * 620 + R() * 200, 620 + R() * 320, -2600 + R() * 500); c.scale.setScalar(9 + R() * 6); city.add(c); clouds.push(c); } const cloudMat = clouds[0].children[0].material;
+const gulls = []; for (let i = 0; i < 7; i++) { const g = new THREE.Group(), wg = new THREE.ConeGeometry(0.3, 2.4, 3), a = new THREE.Mesh(wg, mat(0xf2f2f2)), b = new THREE.Mesh(wg, mat(0xf2f2f2)); a.rotation.z = 1.2; a.position.x = -0.9; b.rotation.z = -1.2; b.position.x = 0.9; g.add(a); g.add(b); g.userData = { a, b, c: V(-60 + R() * 140, 22 + R() * 30, 10 + R() * 90), r: 18 + R() * 30, s: R() * 6 }; world.add(g); gulls.push(g); }
+
+// =====================================================  GLASS  (floating ice melting in a full glass)
+const lab = new THREE.Scene(); lab.add(skyDome(0x14161f, 0x2b2a33, 0x0c0d12)); lab.add(new THREE.HemisphereLight(0xcfe0ff, 0x1a2238, 1.3));
+{ const d = new THREE.DirectionalLight(0xfff2dc, 2.6); d.position.set(8, 16, 12); d.castShadow = true; d.shadow.mapSize.set(2048, 2048); Object.assign(d.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 1, far: 60 }); lab.add(d); }
+{ const tb = new THREE.Mesh(new THREE.CylinderGeometry(15, 15, 0.7, 48), mat(0x9a6b3c)); tb.position.y = -0.35; tb.receiveShadow = true; lab.add(tb); const mt = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.6, 0.12, 36), mat(0xf2efe6)); mt.position.y = 0.06; mt.receiveShadow = true; lab.add(mt); }
+const GR = 3.1, GH = 8.4, WL = 6.4;                    // glass radius, glass height, water line
+{ const gm = new THREE.MeshStandardMaterial({ color: 0xdff0ff, transparent: true, opacity: 0.16, roughness: 0.05, metalness: 0.2, side: THREE.DoubleSide, depthWrite: false }); const gl = new THREE.Mesh(new THREE.CylinderGeometry(GR, GR * 0.9, GH, 40, 1, true), gm); gl.position.y = GH / 2 + 0.15; lab.add(gl);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(GR, 0.07, 8, 60).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x8fa3ba })); rim.position.y = GH + 0.15; lab.add(rim); const bs = new THREE.Mesh(new THREE.CylinderGeometry(GR * 0.9, GR * 0.9, 0.3, 40), new THREE.MeshStandardMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.5, roughness: 0.1 })); bs.position.y = 0.3; lab.add(bs); }
+const water = new THREE.Mesh(new THREE.CylinderGeometry(GR * 0.965, GR * 0.875, WL - 0.45, 40), new THREE.MeshStandardMaterial({ color: 0x2f9bff, transparent: true, opacity: 0.8, roughness: 0.08, metalness: 0.1 })); water.position.y = 0.45 + (WL - 0.45) / 2; water.renderOrder = 1; lab.add(water);
+const wTop = new THREE.Mesh(new THREE.CircleGeometry(GR * 0.965, 40).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x8fd0ff, transparent: true, opacity: 0.75, roughness: 0.05 })); wTop.position.y = WL; wTop.renderOrder = 2; lab.add(wTop);
+const lineRing = new THREE.Mesh(new THREE.TorusGeometry(GR + 0.08, 0.075, 8, 80).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 2.0, 0.5), toneMapped: false })); lineRing.position.y = WL; lab.add(lineRing);
+const cubes = []; { const im = new THREE.MeshStandardMaterial({ color: 0xf4fbff, roughness: 0.25, emissive: 0x9fd4ff, emissiveIntensity: 0.35, flatShading: true }); for (const [x, z, s, ry] of [[-1.2, 0.5, 1.5, 0.3], [0.9, -0.7, 1.35, 1.1], [0.8, 1.2, 1.2, 0.7], [-0.9, -1.3, 1.1, 2.0], [0.1, 0.1, 1.0, 1.6]]) { const m = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), im); m.castShadow = true; m.userData = { x, z, s, ry, ph: x * 3 + z }; lab.add(m); cubes.push(m); } }
+
+// =====================================================  GLOBE  (where the ice is; illustration, not a real map)
+const space = new THREE.Scene(); space.background = new THREE.Color(0x04050b); space.add(stars(rng(7), 2600, 1800));
+space.add(new THREE.HemisphereLight(0x9fc0ff, 0x1a1f33, 0.6)); { const d = new THREE.DirectionalLight(0xfff4e0, 1.7); d.position.set(30, 20, 60); space.add(d); }
+const EG = globe(10, 14), tiltG = new THREE.Group(); tiltG.add(EG); space.add(tiltG);
+const capRing = (y, r, col) => { const m = new THREE.Mesh(new THREE.TorusGeometry(r, 0.09, 8, 90).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, toneMapped: false })); m.position.y = y; EG.add(m); return m; };
+const ringN = capRing(9.02, 4.5, new THREE.Color(0.4, 0.8, 1.3)), ringS = capRing(-9.02, 4.5, new THREE.Color(1.5, 1.15, 0.3));
+
+const postC = makePost(renderer, city, cam, { bloom: 0.22, bloomThreshold: 0.9, sat: 1.14 }), postL = makePost(renderer, lab, cam, { bloom: 0.35, bloomThreshold: 0.8, sat: 1.1 }), postS = makePost(renderer, space, cam, { bloom: 0.18, bloomThreshold: 0.97, bloomRadius: 0.6, sat: 1.1 });
+const CAPS = /*CAPS*/[[2.6, 4.82, "You're on the waterfront<br>of a coastal city."], [4.84, 6.53, "The sea wouldn't come<br>as a <em>wave</em>."], [6.55, 7.78, "It would come <em>slowly</em>."], [7.8, 8.97, "And it would not stop."], [9.6, 12.13, "Start with the ice already<br><em>floating</em> in the sea."], [12.15, 13.07, "Melt all of it,"], [13.09, 14.76, "and the water <em>barely rises</em>."], [14.78, 17.15, "Like ice cubes melting<br>in a full glass."], [17.8, 19.75, "The ice that matters<br>sits on <em>land</em>."], [19.77, 21.4, "Mountain glaciers, Greenland,"], [21.42, 23.07, "and above all, <em>Antarctica</em>."], [23.7, 24.62, "Melt all of that,"], [24.64, 28.01, "and the sea rises by around<br><em>60 to 70 metres</em>."], [28.03, 30.29, "About as high as<br>a <em>20-storey</em> building."], [30.9, 33.41, "Coastal cities all over<br>the world go under."], [33.43, 35.45, "The map of every coast<br>is <em>redrawn</em>."], [36.1, 37.12, "But not overnight."], [37.14, 39.7, "At today's pace,<br>about <em>3 millimetres</em> a year,"], [39.72, 41.93, "it would take more than<br><em>20,000 years</em>."], [42.6, 44.19, "The ice won't vanish in a day."], [44.21, 45.99, "But every centimetre it gives up,"], [46.01, 47.08, "the ocean <em>keeps</em>."]]/*END*/;
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const sceneAt = (t) => (t >= T.glass && t < T.globe) ? 'glass' : ((t >= T.globe && t < T.flood) ? 'globe' : 'city');
+const tmpC = new THREE.Color();
+function cityFrame(t) {
+  const lvl = lvlAt(t), flooded = t >= T.flood, fin = t >= T.fin, dusk = fin ? 1 : 0, wt = flooded ? T.flood + (t - T.flood) * 1.6 : t;
+  const U = sky.material.uniforms; U.top.value.copy(DAYC[0]).lerp(DUSK[0], dusk * 0.8); U.mid.value.copy(DAYC[1]).lerp(DUSK[1], dusk); U.bot.value.copy(DAYC[2]).lerp(DUSK[2], dusk);
+  city.fog.color.set(0xcfe3f2).lerp(tmpC.set(0xe0a888), dusk * 0.85);
+  const sp = fin ? V(-520, 210, -1500) : V(380, 620, 300); sun.position.copy(sp).multiplyScalar(fin ? 0.8 : 1); sun.color.set(0xfff0d0).lerp(tmpC.set(0xffa25e), dusk); sun.intensity = fin ? 2.3 : 3.0; hemi.intensity = fin ? 0.8 : 1.1;
+  sunDisc.visible = fin; sunDisc.position.set(-900, 330, -3600);
+  cloudMat.color.setScalar(1).lerp(tmpC.set(0xffb890), dusk * 0.6); seaMat.color.set(0x2f86c9).lerp(tmpC.set(0x6a6f9a), dusk * 0.5);
+  seaG.position.y = lvl; seaWaves(wt, 1);
+  for (const b of boats) { const u = b.userData; b.position.set(u.x + (flooded ? Math.sin(u.s) * lvl * 1.4 : 0), lvl - 0.15 + Math.sin(wt * 1.3 + u.s) * 0.25, u.z - (flooded ? lvl * (2.2 + u.s * 0.5) : 0)); b.rotation.set(Math.sin(wt * 1.1 + u.s) * 0.04, u.ry + (flooded ? lvl * 0.01 : 0), Math.sin(wt * 0.9 + u.s * 2) * 0.06); }
+  for (const p of people) { const u = p.userData, b = u.b; p.visible = !flooded; p.position.copy(b.p); p.rotation.y = b.ry; if (u.kind === 'walk') p.position.x += Math.sin(b.ry) * (t - 3) * 1.3; u.pose(t * 5.6 + u.seed, u.kind); }
+  for (const g of gulls) { const u = g.userData, an = wt * 0.45 + u.s; g.position.set(u.c.x + Math.cos(an) * u.r, lvl + u.c.y + Math.sin(an * 1.7) * 2, u.c.z + Math.sin(an) * u.r); g.rotation.y = -an; const fl = Math.sin(wt * 8 + u.s) * 0.5; u.a.rotation.z = 1.2 + fl; u.b.rotation.z = -1.2 - fl; }
+  if (t < T.city) camPath([[0, V(-150, 120, 430), V(0, 60, -260), 52], [T.city, V(-90, 70, 300), V(0, 55, -260), 52]], t);
+  else if (t < T.glass) camPath([[T.city, V(-30, 6.5, 13), V(14, 13, -45), 60], [T.glass, V(-26, 6.8, 17), V(14, 14.5, -45), 60]], t);
+  else if (t < T.under) { const k = lvl; camPath([[T.flood, V(-52, 26 + k * 1.02, 150), V(26, 30 + k * 0.45, -120), 54], [T.under, V(-70, 30 + k * 1.02, 190), V(26, 34 + k * 0.45, -120), 54]], t); }
+  else if (t < T.pace) camPath([[T.under, V(230, 170, 420), V(0, 60, -260), 50], [T.pace, V(170, 185, 470), V(-10, 55, -260), 50]], t);
+  else if (t < T.fin) camPath([[T.pace, V(92, 84, 6), V(34, 64, -92), 46], [T.fin, V(104, 88, 24), V(34, 62, -92), 46]], t);
+  else camPath([[T.fin, V(210, 96, 380), V(-150, 70, -400), 50], [DUR, V(170, 104, 420), V(-150, 78, -400), 48]], t);
+  renderer.toneMappingExposure = 1.0; postC.render();
+}
+function glassFrame(t) {
+  const m = 1 - 0.97 * smooth(seg(t, T.glass + 1.6, T.globe - 1.0));               // ice left (linear size)
+  for (const c of cubes) { const u = c.userData, s = u.s * m; c.scale.setScalar(Math.max(m, 0.001)); c.visible = m > 0.04; c.position.set(u.x, WL - s * 0.41 + Math.sin(t * 1.7 + u.ph) * 0.03, u.z); c.rotation.set(Math.sin(t * 0.9 + u.ph) * 0.08, u.ry + t * 0.12, Math.cos(t * 0.8 + u.ph) * 0.08); }
+  camPath([[T.glass, V(-3, 11.5, 32), V(0, 7.6, 0), 38], [T.globe, V(2.5, 10.6, 29), V(0, 7.4, 0), 38]], t);
+  renderer.toneMappingExposure = 1.05; postL.render(); return { m };
+}
+function globeFrame(t) {
+  const south = smooth(seg(t, T.south - 0.6, T.south + 0.6)); tiltG.rotation.x = lerp(0.95, -(Math.PI - 0.95), south); EG.rotation.y = 0.6 + t * 0.12;
+  ringN.visible = south < 0.5; ringS.visible = south >= 0.5;
+  cam.position.set(0, 0, 56); cam.fov = 40; cam.up.set(0, 1, 0); cam.lookAt(0, 3.6, 0); cam.updateProjectionMatrix(); renderer.toneMappingExposure = 1.1; postS.render();
+  tiltG.updateMatrixWorld(true); return { south, n: proj(EG.localToWorld(V(0, 10, 0)), cam), s: proj(EG.localToWorld(V(0, -10, 0)), cam) };
+}
+function overlayFrame(t, sc, x) {
+  const ta = t < 2.5 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 2.1, 2.5)) : 0; O.set(O.title, 'What if <em>all the ice</em><br>on Earth<br>melted?'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`; O.title.style.top = '560px';
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = (sc === 'glass' ? 1330 : (sc === 'globe' ? 1370 : 1250)) + 'px';
+  let ha = 1, ht = 860; const lvl = lvlAt(t);
+  if (t < T.city + 0.2) ha = 0;
+  else if (t < T.glass) { O.hudSet('Sea level', 'Today', 'A coastal city · sunny day'); ha = seg(t, T.city + 0.2, T.city + 0.6); }
+  else if (t < T.globe) { O.hudSet('Floating ice melts', x.m > 0.5 ? 'Water line?' : 'Same level', 'Floating ice already pushes aside\nits own weight of water\nSalt water: a very small rise'); ht = 400; ha = seg(t, T.glass + 0.2, T.glass + 0.6); }
+  else if (t < T.south) { O.hudSet('Around the North Pole', 'Sea ice', 'Mostly floating on the ocean\nGreenland is the big land ice\nIllustration · not a real map'); ht = 330; }
+  else if (t < T.flood) { O.hudSet('Antarctica', 'Land ice', 'Most of the ice on land is here\nIllustration · not a real map'); ht = 330; }
+  else if (t < T.pace) { O.hudSet('Sea level', '+' + Math.round(lvl) + ' m', 'All land ice melted: 60 to 70 m\nThousands of years · sped up'); ht = 330; ha = seg(t, T.flood + 0.1, T.flood + 0.5); }
+  else if (t < T.fin) { O.hudSet('At 3 mm a year', '20,000+ yrs', "Today's pace · it is not fixed\n65 m ÷ 3 mm a year"); ht = 330; ha = seg(t, T.pace + 0.1, T.pace + 0.5); }
+  else if (t < T.end) { O.hudSet('All the ice melted', '+65 m', 'Estimates: 60 to 70 m'); ht = 330; ha = seg(t, T.fin + 0.2, T.fin + 0.6); }
+  else ha = 1 - seg(t, T.end, T.end + 0.3);
+  const plate = sc === 'city'; O.hud.style.background = plate ? 'rgba(6,10,26,.42)' : 'none'; O.hud.style.boxShadow = plate ? '0 0 0 14px rgba(6,10,26,.42)' : 'none'; O.hud.style.borderRadius = '4px'; O.show(O.hud, ha); O.hud.style.top = ht + 'px';
+  let hh = ''; const L = (px, py, a, small, big, col) => { if (a > 0.01) hh += `<div class="lab" style="left:${Math.round(px)}px;top:${Math.round(py)}px;opacity:${a}${col ? ';color:' + col : ''}">${small}${big ? '<b style="font-size:38px">' + big + '</b>' : ''}</div>`; };
+  if (sc === 'glass') { const a0 = seg(t, T.glass + 0.4, T.glass + 0.9) * (1 - seg(t, T.globe - 0.3, T.globe)), [lx, ly] = proj(V(GR + 0.2, WL, 0), cam); L(clamp(lx + 14, 64, 700), ly - 20, a0, '← water line', '', '#ffd98a'); L(64, 690, a0 * (1 - seg(t, T.glass + 4.2, T.glass + 4.8)), 'Ice floating in a full glass', ''); L(64, 690, a0 * seg(t, T.glass + 5.0, T.glass + 5.6), 'The ice is gone', 'The line has not moved'); }
+  if (sc === 'globe') { const aN = seg(t, T.globe + 0.3, T.globe + 0.8) * (1 - seg(t, T.south - 0.7, T.south - 0.4)), aS = seg(t, T.south + 0.5, T.south + 0.9) * (1 - seg(t, T.flood - 0.3, T.flood));  }
+  if (sc === 'city' && t >= T.flood && t < T.fin) { hero.updateMatrixWorld(true); const [px, py] = proj(V(HERO.x - 13, HERO.y + HERO_H, HERO.z + 12), cam), a0 = (t < T.under ? 0 : (t >= T.pace ? seg(t, T.pace + 0.4, T.pace + 0.9) * (1 - seg(t, T.fin - 0.3, T.fin)) : 0)); L(clamp(px - 300, 64, 560), clamp(py - 120, 620, 1100), a0, 'Yellow band:', '20 storeys', '#ffd98a'); }
+  if (O.labels._h !== hh) { O.labels._h = hh; O.labels.innerHTML = hh; }
+  let fl = 0; for (const [a, dd, k] of [[T.glass, 0.35, 0.7], [T.globe, 0.35, 0.7], [T.flood, 0.35, 0.7], [T.under, 0.3, 0.5], [T.pace, 0.3, 0.5], [T.fin, 0.6, 0.9]]) if (t >= a - 0.06 && t < a + dd) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + dd)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { const sc = sceneAt(t); const x = sc === 'glass' ? glassFrame(t) : (sc === 'globe' ? globeFrame(t) : (cityFrame(t), null)); overlayFrame(t, sc, x); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>

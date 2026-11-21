@@ -223,6 +223,19 @@
     "https://courses.lumenlearning.com/suny-ap1/?p=1663",
     "https://peds.unboundmedicine.com/pedscentral/view/5-Minute-Pediatric-Consult/617104/all/Barotitis"
    ]
+  },
+  {
+   "file": "sim-18-ice.mp4",
+   "title": "What if all the ice on Earth melted?",
+   "made": "2026-11-22",
+   "caption": "What if all the ice on Earth melted? The ice already floating in the sea would add almost nothing. The ice on land would lift the oceans by 60 to 70 metres, but over thousands of years, not overnight. 🧊\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #sealevel #ice #studytok",
+   "science": "Sea level rise if all glaciers and ice sheets melted: USGS says 'approximately 70 meters (approximately 230 feet)', NASA Sea Level says 'more than 195 feet (60 meters)'; the two agencies differ, so the film says 'around sixty to seventy metres' and draws 65 m (labelled '60 to 70 m'). Where the ice is: USGS Fact Sheet 002-00, 'Most of the current global land ice mass is located in the Antarctic and Greenland ice sheets'; the film names mountain glaciers, Greenland and Antarctica and gives no shares. Floating ice: worked from first principles (Archimedes) and run in Python. A floating piece of ice displaces its own weight of water, and its meltwater has that same weight, so in fresh water the level is unchanged (displaced volume m/1000 = melt volume m/1000); in sea water (about 1,025 kg per cubic metre) the meltwater takes about 2.4 percent more room than the sea water displaced, so the film says 'barely rises' and the glass shot notes 'Salt water: a very small rise'. Pace: NASA Sea Level FAQ, 'Currently, total sea level rise is about 3 millimeters per year', and contributions from the ice sheets 'are expected to continue for millennia'. Arithmetic run: 60 m / 3 mm a year = 20,000 years, 65 m = 21,667, 70 m = 23,333, said as 'more than twenty thousand years' at 'today's pace' and labelled 'it is not fixed' (the rate is not constant, and only about a third of today's rise comes from the ice sheets). Twenty storeys: 20 x 3.3 m = 66 m, the yellow-banded block in the film. 'Coastal cities all over the world go under' follows from a rise of 60 m or more; no list of cities and no map is shown. The idea's planned point survived checking. Illustrative and labelled: the city is invented; the globe is 'not a real map' (the kit's noise continents with a white cap at each pole); the flood is 'thousands of years, sped up'. Limits: no page read in this run gave a time for complete melting, so none is stated beyond the pace arithmetic; the thickness of the Antarctic ice was not stated on the pages read and is not mentioned; Wikipedia could not be opened.",
+   "sources": [
+    "https://www.usgs.gov/faqs/how-would-sea-level-change-if-all-glaciers-melted",
+    "https://sealevel.nasa.gov/understanding-sea-level/global-sea-level/ice-melt",
+    "https://sealevel.nasa.gov/faq/11/how-much-rise-should-we-expect-from-greenland-and-antarctica",
+    "https://pubs.usgs.gov/fs/fs2-00/"
+   ]
   }
  ]
 }
