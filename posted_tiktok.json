@@ -162,6 +162,12 @@
    "kind": "sim",
    "due_at": "2026-11-22T00:00:00+11:00",
    "buffer_post_id": "6b008bbe63ab5fef67443494"
+  },
+  {
+   "file": "studycrest-21-physics-speed",
+   "kind": "spot",
+   "due_at": "2026-11-23T12:00:00+11:00",
+   "buffer_post_id": "6b01aea8d5eabfb8cc3aa64c"
   }
  ]
 }
