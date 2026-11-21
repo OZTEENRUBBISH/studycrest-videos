@@ -1,0 +1,178 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// Tunguska, second by second  (30 June 1908: a rock from space explodes above the Siberian forest)
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, mat, box, shadowAll, person, cloud, skyDome, stars, overlay, capAt, lamp, makePost, proj } from './common.js';
+const W = 1080, H = 1920, DUR = 57.2;
+const O = overlay(); O.show(O.chip, 0);
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.5, 20000);
+const R = rng(19080630), V = (x, y, z) => new THREE.Vector3(x, y, z), C = (h) => new THREE.Color(h);
+const T = { post: 2.5, entry: 7.0, close: 12.9, burst: 20.5, fall: 29.4, top: 32.9, europe: 36.9, exp: 42.9, fin: 51.7, end: 54.7 };
+// Diagram scale in the forest scene: 1 unit = 12.5 m, so the burst (drawn at 8 km, inside the 5 to 10 km range) is 640 units up
+// and the flattened area (about 2,000 square km -> radius about 25 km) is 2,000 units across the ground. Trees are drawn far too big.
+const HB = 640, RF = 2000, VS = 175, B = V(0, HB, 0), P0 = V(2700, 1950, -300);
+const arrive = (d) => T.burst + Math.sqrt(HB * HB + d * d) / VS;     // when the (slowed-down) shock shell reaches the ground at distance d
+
+// ---------- pines as instanced meshes
+const trunkGeo = new THREE.CylinderGeometry(0.45, 0.8, 11, 5); trunkGeo.translate(0, 5.5, 0);
+const folGeo = new THREE.LatheGeometry([[0.01, 2.6], [4.4, 2.6], [2.0, 8], [3.4, 8], [1.2, 14], [2.3, 14], [0.01, 20]].map(p => new THREE.Vector2(p[0], p[1])), 6);
+function pines(scene, list, shadow) {
+  const n = list.length, tm = new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), fm = new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true });
+  const tr = new THREE.InstancedMesh(trunkGeo, tm, n), fo = new THREE.InstancedMesh(folGeo, fm, n), d = new THREE.Object3D(), c = new THREE.Color(), qf = new THREE.Quaternion(), qy = new THREE.Quaternion(), ax = new THREE.Vector3(), up = V(0, 1, 0), GREY = C(0xb9b3a6);
+  tr.castShadow = fo.castShadow = !!shadow; tr.frustumCulled = fo.frustumCulled = false;
+  for (let i = 0; i < n; i++) { const t = list[i]; fo.setColorAt(i, c.setHSL(0.36 + t.v * 0.07, 0.42 + t.v * 0.15, 0.2 + t.v * 0.1)); tr.setColorAt(i, c.set(0x6a4c33).multiplyScalar(0.8 + t.v * 0.5)); }
+  const set = (i, ang, strip, grey) => { const t = list[i]; d.position.set(t.x, t.y || 0, t.z); qy.setFromAxisAngle(up, t.ry); if (ang > 0.0005) { ax.set(t.dz, 0, -t.dx); qf.setFromAxisAngle(ax, ang); d.quaternion.copy(qf).multiply(qy); } else d.quaternion.copy(qy);
+    if (strip) d.scale.set(t.s * strip, t.s, t.s * strip); else d.scale.setScalar(t.s); d.updateMatrix(); tr.setMatrixAt(i, d.matrix); if (strip) { d.scale.setScalar(0.0001); d.updateMatrix(); } fo.setMatrixAt(i, d.matrix); if (grey !== undefined) tr.setColorAt(i, c.set(0x6a4c33).multiplyScalar(0.8 + t.v * 0.5).lerp(GREY, grey)); };
+  for (let i = 0; i < n; i++) set(i, 0, false); scene.add(tr); scene.add(fo);
+  return { tr, fo, list, set, done() { tr.instanceMatrix.needsUpdate = true; fo.instanceMatrix.needsUpdate = true; if (tr.instanceColor) tr.instanceColor.needsUpdate = true; } };
+}
+
+// =====================================================  THE FOREST (taiga around the burst point)
+const taiga = new THREE.Scene(); taiga.fog = new THREE.Fog(0xd5e2ea, 2500, 11000);
+const tSky = skyDome(0x4a8fd6, 0xdbe9f2, 0xb9cdb8); tSky.scale.setScalar(14); taiga.add(tSky);
+const tHemi = new THREE.HemisphereLight(0xdcecff, 0x55704f, 1.25); taiga.add(tHemi); const tSun = new THREE.DirectionalLight(0xffeccc, 2.4); tSun.position.set(-1400, 900, 1300); taiga.add(tSun);
+const burstL = new THREE.PointLight(0xfff0d0, 0, 0, 0); burstL.position.copy(B); taiga.add(burstL);
+const gMat = new THREE.MeshLambertMaterial({ color: 0x4d7a4b }); { const g = new THREE.Mesh(new THREE.CircleGeometry(16000, 64).rotateX(-Math.PI / 2), gMat); g.position.y = -0.5; taiga.add(g); }
+const riverPts = []; { const rm = new THREE.MeshLambertMaterial({ color: 0x3f86c4 }); for (let i = 0; i < 90; i++) { const x = -4200 + i * 95, z = 1150 + Math.sin(i * 0.33) * 260 + Math.sin(i * 0.11 + 1) * 380; riverPts.push([x, z]); const m = new THREE.Mesh(new THREE.BoxGeometry(130, 0.6, 70), rm); m.position.set(x, 0, z); m.rotation.y = -Math.atan2(Math.cos(i * 0.33) * 260 * 0.33 + Math.cos(i * 0.11 + 1) * 380 * 0.11, 95); taiga.add(m); } }
+const nearRiver = (x, z) => riverPts.some(p => Math.abs(p[0] - x) < 80 && Math.abs(p[1] - z) < 75);
+function thill(x, z, rx, h, rz, col, seed) { const g = new THREE.IcosahedronGeometry(1, 3), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const k = 1 + (fbm(p.getX(i) * 2 + seed, p.getY(i) * 2, p.getZ(i) * 2, 3) - 0.5) * 0.3; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k); } g.computeVertexNormals(); const m = new THREE.Mesh(g, mat(col)); m.scale.set(rx, h, rz); m.position.set(x, -h * 0.1, z); taiga.add(m); }
+thill(-5200, -6500, 2600, 900, 1500, 0x46704a, 1); thill(1500, -7600, 3400, 1100, 1600, 0x3f6846, 5); thill(6600, -5600, 2400, 800, 1500, 0x46704a, 9); thill(-8200, -2500, 1800, 700, 2200, 0x3f6846, 13); thill(8200, -1000, 1800, 650, 2400, 0x3f6846, 17);
+const POND = 46;                                                     // the swamp found at the centre in 1927
+const TL = []; { const Rt = rng(41); let tries = 0; while (TL.length < 9500 && tries++ < 60000) { const a = Rt() * Math.PI * 2, d = 3000 * Math.sqrt(Rt()), x = Math.cos(a) * d, z = Math.sin(a) * d; if (d < POND + 14 || nearRiver(x, z)) continue; TL.push({ x, z, d, dx: x / d, dz: z / d, ry: Rt() * 6.28, s: 2.6 + Rt() * 1.5, v: Rt(), j: (Rt() - 0.5) * 0.5, lean: 1.38 + Rt() * 0.16 }); }
+  for (const t of TL) { const a = Math.atan2(t.dz, t.dx) + t.j * 0.35; t.dx = Math.cos(a); t.dz = Math.sin(a); t.ta = arrive(t.d) + t.j * 0.25; } }
+const F = pines(taiga, TL, false);
+const pond = new THREE.Mesh(new THREE.CircleGeometry(POND, 28).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x3a5a52 })); pond.position.y = 0.3; taiga.add(pond);
+const reeds = new THREE.Group(); { const Rr = rng(8); for (let i = 0; i < 46; i++) { const a = Rr() * 6.28, r = POND * (0.75 + Rr() * 0.4); reeds.add(box(0.5, 3 + Rr() * 3, 0.5, 0x7d8a4a, Math.cos(a) * r, 2, Math.sin(a) * r)); } taiga.add(reeds); }
+// the rock, its glowing bow of squeezed air, its trail, and the pieces it breaks into
+const rock = new THREE.Group(); { const g = new THREE.IcosahedronGeometry(15, 1), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const k = 1 + (fbm(p.getX(i) * 0.2, p.getY(i) * 0.2, p.getZ(i) * 0.2, 3) - 0.5) * 0.7; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k); } g.computeVertexNormals(); rock.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x4a4038, flatShading: true, roughness: 0.9, emissive: 0xff6a1a, emissiveIntensity: 0.5 }))); taiga.add(rock); }
+const DIR = B.clone().sub(P0).normalize();
+const add = (r, o, col) => new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, toneMapped: false }));
+const bow = new THREE.Group(); { const b1 = add(20, 0.4, new THREE.Color(2.2, 1.3, 0.5)), b2 = add(30, 0.13, new THREE.Color(1.5, 0.7, 0.3)); b1.scale.set(1, 1, 0.55); b2.scale.set(1, 1, 0.6); bow.add(b1); bow.add(b2); bow.userData = { b1, b2 }; taiga.add(bow); }
+const trail = new THREE.Group(); { for (const [r, L, o, col] of [[16, 900, 0.5, new THREE.Color(2.2, 1.3, 0.5)], [34, 1500, 0.16, new THREE.Color(1.4, 0.7, 0.3)], [60, 2300, 0.07, new THREE.Color(0.9, 0.8, 0.7)]]) { const g = new THREE.ConeGeometry(r, L, 14, 1, true); g.translate(0, -L / 2, 0); g.rotateX(-Math.PI / 2); const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false, toneMapped: false })); trail.add(m); } taiga.add(trail); }
+const frags = []; { const Rf = rng(5); for (let i = 0; i < 14; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(3 + Rf() * 5, 0), new THREE.MeshStandardMaterial({ color: 0x4a4038, flatShading: true, emissive: 0xff7a2a, emissiveIntensity: 1.6 })); m.userData = { o: V(Rf() - 0.5, Rf() - 0.5, Rf() - 0.5).multiplyScalar(90), s: Rf() * 6 }; taiga.add(m); frags.push(m); } }
+const fire = [add(1, 0.95, new THREE.Color(3.2, 2.8, 2.2)), add(1, 0.5, new THREE.Color(2.6, 1.5, 0.5)), add(1, 0.2, new THREE.Color(1.6, 0.7, 0.3))]; for (const f of fire) { f.position.copy(B); taiga.add(f); }
+const shell = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { k: { value: 1 } },
+  vertexShader: 'varying vec3 n; varying vec3 v; void main(){ n = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); v = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+  fragmentShader: 'varying vec3 n; varying vec3 v; uniform float k; void main(){ float f = pow(1.0 - abs(dot(n, v)), 2.2); gl_FragColor = vec4(0.85, 0.93, 1.0, 1.0) * (0.05 + f * 0.75) * k; }' })); shell.position.copy(B); taiga.add(shell);
+const ring = new THREE.Mesh(new THREE.TorusGeometry(1, 0.012, 6, 120).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.5, 1.3), transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); ring.position.y = 14; taiga.add(ring);
+const dust = new THREE.Mesh(new THREE.RingGeometry(0.86, 1, 96).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xd8cdb8, transparent: true, opacity: 0.35, depthWrite: false })); dust.position.y = 26; taiga.add(dust);
+// 1927: the expedition
+const expo = new THREE.Group(); const exP = []; { const Re = rng(27); for (let i = 0; i < 5; i++) { const p = person(Re, 'walk', { shorts: false, shirt: [0x6b5b45, 0x4f5a3c, 0x7a6a55, 0x3f4a5a, 0x5a4a3a][i], pants: 0x3a352e, sleeve: [0x6b5b45, 0x4f5a3c, 0x7a6a55, 0x3f4a5a, 0x5a4a3a][i] }); p.userData.hips.add(box(0.36, 0.5, 0.22, 0x8a6d3b, 0, 0.42, -0.24)); p.userData.hips.add(box(0.36, 0.06, 0.36, 0x5a4a3a, 0, 1.04, 0)); p.scale.multiplyScalar(4.2); p.userData.i = i; expo.add(p); exP.push(p); }
+  const tent = new THREE.Mesh(new THREE.ConeGeometry(11, 13, 4), mat(0xcfc6ae)); tent.position.set(-62, 6.5, 44); tent.rotation.y = 0.5; expo.add(tent); expo.add(box(5, 3, 5, 0x7a5a3c, -44, 1.5, 52)); expo.add(box(4, 2.4, 4, 0x8a6d3b, -40, 1.2, 46)); taiga.add(expo); }
+
+// =====================================================  TWO SETTLEMENTS: a Siberian trading post far from the blast, and a town in western Europe
+function house(Rr, s, log) { const g = new THREE.Group(), w = (6 + Rr() * 3) * s, h = (3.6 + Rr() * 2.4) * s * (log ? 1 : 1.5), d = (5 + Rr() * 3) * s, col = log ? [0x7a5a3c, 0x6b4c33, 0x8a6843][Math.floor(Rr() * 3)] : [0xd9c9b0, 0xc9a58f, 0xbfc6cc, 0xe6d6b8, 0xb9907a][Math.floor(Rr() * 5)];
+  g.add(box(w, h, d, col, 0, h / 2, 0)); if (log) for (let y = 0.5; y < h; y += 0.7 * s) g.add(box(w + 0.15, 0.08, d + 0.15, 0x4f3b28, 0, y, 0));
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.8, 2.8 * s, 4), mat(log ? 0x4a4038 : [0x8a4a3a, 0x5b6470, 0x6f4a3a][Math.floor(Rr() * 3)])); roof.rotation.y = Math.PI / 4; roof.position.y = h + 1.4 * s; g.add(roof);
+  const wm = new THREE.MeshBasicMaterial({ color: log ? new THREE.Color(0.25, 0.3, 0.36) : new THREE.Color(2.6, 1.9, 0.9), toneMapped: false }); for (const sx of [-1, 1]) { const m = new THREE.Mesh(new THREE.BoxGeometry(1.0 * s, 1.1 * s, 0.1), wm); m.position.set(sx * w * 0.25, h * 0.55, d / 2 + 0.05); g.add(m); }
+  g.add(box(1.0 * s, 1.9 * s, 0.1, 0x3a2c1e, 0, 0.95 * s, d / 2 + 0.06)); if (log) g.add(box(0.7 * s, 1.6 * s, 0.7 * s, 0x5a5048, w * 0.25, h + 1.6 * s, 0)); return shadowAll(g); }
+function settlement(europe) {
+  const sc = new THREE.Scene(), Rs = rng(europe ? 1859 : 1908), o = { sc, people: [] };
+  o.sky = europe ? skyDome(0x16305a, 0x7fb6c8, 0x24304a) : skyDome(0x4a8fd6, 0xe6eef2, 0xb9cdb8); sc.add(o.sky); sc.fog = new THREE.Fog(europe ? 0x4a7088 : 0xdbe6ea, 160, 900);
+  sc.add(new THREE.HemisphereLight(europe ? 0x9fd0e0 : 0xdcecff, europe ? 0x2a3440 : 0x55704f, europe ? 0.95 : 1.2));
+  const sun = new THREE.DirectionalLight(europe ? 0xbfe6ff : 0xffe2b8, europe ? 0.9 : 2.6); sun.position.set(-90, europe ? 120 : 70, 60); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120, near: 1, far: 500 }); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.06; sc.add(sun); o.sun = sun;
+  const gr = new THREE.Mesh(new THREE.CircleGeometry(1400, 48).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: europe ? 0x4f6654 : 0x5d8a55 })); gr.receiveShadow = true; sc.add(gr);
+  if (europe) { sc.add(stars(rng(3), 900, 700)); const road = box(11, 0.2, 400, 0x6f6a62, 0, 0.1, -120); road.receiveShadow = true; sc.add(road);
+    for (let i = 0; i < 9; i++) for (const sx of [-1, 1]) { const hs = house(Rs, 1.5, false); hs.position.set(sx * (15 + Rs() * 3), 0, 22 - i * 19); hs.rotation.y = -sx * Math.PI / 2; sc.add(hs); }
+    const ch = new THREE.Group(); ch.add(box(12, 34, 12, 0xbfb7a6, 0, 17, 0)); const sp = new THREE.Mesh(new THREE.ConeGeometry(9, 22, 4), mat(0x4f5a66)); sp.rotation.y = Math.PI / 4; sp.position.y = 45; ch.add(sp); const cl = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.4, 16).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.0, 1.5), toneMapped: false })); cl.position.set(0, 27, 6.1); ch.add(cl); ch.add(box(0.3, 2.6, 0.2, 0x222222, 0, 28.2, 6.4)); shadowAll(ch); ch.position.set(3, 0, -175); sc.add(ch);
+    for (let i = 0; i < 6; i++) for (const sx of [-1, 1]) { const l = lamp(); l.position.set(sx * 7, 0, 14 - i * 28); l.rotation.y = sx > 0 ? Math.PI : 0; sc.add(l); const g = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 2.3, 1.2), toneMapped: false })); g.position.set(sx * 6.05, 4.95, 14 - i * 28); sc.add(g); }
+    for (const [x, z, ry] of [[-1.6, 22, 3.2], [0.4, 21.4, 3.0], [2.6, 23, 3.3], [-3.6, 9, 3.1], [3.4, 4, 3.4], [-2.2, -12, 3.0], [1.5, -18, 3.2], [-4, 28, 2.6], [4.4, 30, 3.6]]) { const p = person(R, 'stand', { shorts: false, shirt: [0x34495e, 0x5a4a3a, 0x6b5b45, 0x2c3e50][Math.floor(R() * 4)], sleeve: 0x34495e, pants: 0x2a2a2a }); p.position.set(x, 0.2, z); p.rotation.y = ry; sc.add(p); o.people.push(p); }
+    o.glow = new THREE.Mesh(new THREE.SphereGeometry(650, 24, 12, 0, Math.PI * 2, Math.PI * 0.32, Math.PI * 0.2), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.75, 1.2, 1.05), transparent: true, opacity: 0.4, side: THREE.BackSide, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, toneMapped: false })); sc.add(o.glow);
+  } else { const rv = box(900, 0.3, 46, 0x3f86c4, 0, 0.05, -70); sc.add(rv); const bank = box(900, 0.5, 6, 0xb9a77c, 0, 0.1, -44); bank.receiveShadow = true; sc.add(bank);
+    for (const [x, z, ry] of [[-26, -8, 0.3], [-8, -18, -0.2], [14, -6, 0.1], [30, -20, -0.4], [-40, -26, 0.5], [44, 0, -0.2]]) { const hs = house(Rs, 1.25, true); hs.position.set(x, 0, z); hs.rotation.y = ry + Math.PI; sc.add(hs); }
+    for (const [x, z] of [[-6, -46], [8, -47]]) { const bt = new THREE.Group(); bt.add(box(1.8, 0.7, 7, 0x6b4c33, 0, 0.4, 0)); bt.add(box(1.5, 0.1, 6.4, 0x8a6843, 0, 0.78, 0)); bt.position.set(x, 0.2, z); bt.rotation.y = 1.2; shadowAll(bt); sc.add(bt); }
+    for (let i = 0; i < 7; i++) { sc.add(box(0.5, 2.2, 0.5, 0x6b4c33, -18 + i * 3, 1.1, 8)); if (i < 6) sc.add(box(3, 0.25, 0.2, 0x6b4c33, -16.5 + i * 3, 1.5, 8)); }
+    for (const [x, z] of [[20, 10], [22.4, 10.6], [21, 12]]) { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.6, 10), mat(0x7a5a3c)); b.position.set(x, 0.8, z); b.castShadow = true; sc.add(b); }
+    for (const [x, z, ry, k] of [[-3, 14, 2.9, 'stand'], [-0.6, 15.2, 3.3, 'stand'], [3, 13, 3.0, 'stand'], [9, 6, 3.5, 'stand'], [-12, 4, 2.7, 'stand'], [18, 14, 3.2, 'stand'], [-22, 12, 1.57, 'walk'], [28, 4, -1.57, 'walk'], [-9, -40, 3.1, 'stand']]) { const p = person(R, k, { shorts: false, shirt: [0x8a6d3b, 0xa94438, 0x4f5a3c, 0xcfc6ae, 0x34495e][Math.floor(R() * 5)], pants: 0x3a352e }); p.position.set(x, 0.2, z); p.rotation.y = ry; p.userData.b = { p: p.position.clone(), ry, d: R() }; sc.add(p); o.people.push(p); }
+    const L = []; const Rp = rng(12); for (let i = 0; i < 520; i++) { const x = (Rp() - 0.5) * 900, z = -100 - Rp() * 600; L.push({ x, z, dx: 1, dz: 0, ry: Rp() * 6, s: 1.0 + Rp() * 0.7, v: Rp() }); } for (let i = 0; i < 60; i++) { const sx = Rp() < 0.5 ? -1 : 1; L.push({ x: sx * (60 + Rp() * 300), z: -35 + Rp() * 90, dx: 1, dz: 0, ry: Rp() * 6, s: 1.0 + Rp() * 0.7, v: Rp() }); } o.pines = pines(sc, L, true);
+    for (let i = 0; i < 5; i++) { const c = cloud(R); c.position.set(-500 + i * 240, 210 + R() * 60, -700 - R() * 100); c.scale.setScalar(2.2); sc.add(c); }
+    o.ball = new THREE.Group(); o.ball.add(add(9, 1, new THREE.Color(3.4, 3.0, 2.4))); o.ball.add(add(20, 0.3, new THREE.Color(2.4, 1.6, 0.8))); const tg = new THREE.ConeGeometry(8, 300, 10, 1, true); tg.translate(0, -150, 0); tg.rotateX(-Math.PI / 2); o.tail = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: new THREE.Color(2.0, 1.4, 0.8), transparent: true, opacity: 0.45, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false, toneMapped: false })); o.ball.add(o.tail); sc.add(o.ball); }
+  return o;
+}
+const POST = settlement(false), EUR = settlement(true);
+const postT = makePost(renderer, taiga, cam, { bloom: 0.5, bloomThreshold: 0.85, bloomRadius: 0.7, sat: 1.12 }), postP = makePost(renderer, POST.sc, cam, { bloom: 0.45, bloomThreshold: 0.85, sat: 1.12 }), postE = makePost(renderer, EUR.sc, cam, { bloom: 0.5, bloomThreshold: 0.8, bloomRadius: 0.7, sat: 1.1 });
+// a single not-a-number pixel in the HDR buffer becomes a black block once the bloom blur spreads it, so clean the frame before the bloom
+const Clean = { uniforms: { tDiffuse: { value: null } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); vec3 x = c.rgb; if (!(x.r >= 0.0 && x.r < 1e6) || !(x.g >= 0.0 && x.g < 1e6) || !(x.b >= 0.0 && x.b < 1e6)) { vec2 px = vec2(1.0 / 1620.0, 1.0 / 2880.0); vec3 a = texture2D(tDiffuse, vUv + vec2(px.x * 2.0, 0.0)).rgb; x = (a.r >= 0.0 && a.r < 1e6 && a.g >= 0.0 && a.g < 1e6 && a.b >= 0.0 && a.b < 1e6) ? a : vec3(0.0); } gl_FragColor = vec4(min(x, vec3(60.0)), 1.0); }' };
+for (const P of [postT, postP, postE]) P.composer.insertPass(new ShaderPass(Clean), 1);
+const CAPS = /*CAPS*/[[2.5, 5.86, "Siberia, the 30th of June, <em>1908</em>."], [5.88, 7.47, "Just after seven in the morning,"], [7.49, 8.61, "a rock from space,"], [8.63, 10.1, "around <em>60 metres</em> wide,"], [10.12, 12.62, "hits the air at<br><em>15 kilometres a second</em>."], [13.1, 14.54, "It <em>never</em> reaches the ground."], [14.56, 16.15, "Five to ten kilometres up,"], [16.17, 18.24, "the air ahead of it<br>piles up so hard"], [18.26, 19.67, "that the rock breaks apart,"], [19.69, 20.67, "and <em>explodes</em>."], [21.6, 25.33, "The blast is hundreds of times<br>stronger than the Hiroshima bomb."], [25.35, 27.63, "The shock wave hits the forest<br>from <em>above</em>,"], [27.65, 28.82, "then races outward."], [29.6, 31.7, "Around <em>80 million</em> trees go down,"], [31.72, 33.95, "across 2,000 square kilometres."], [33.97, 36.29, "Every trunk points<br><em>away from the centre</em>."], [37.1, 39.47, "Seismographs in western Europe<br>pick it up."], [39.49, 40.72, "For nights afterwards,"], [40.74, 42.31, "the sky over Europe <em>glows</em>."], [43.1, 46.37, "Scientists reach the site in <em>1927</em>."], [46.39, 48.08, "They find a swamp, fallen trees,"], [48.1, 49.04, "and <em>no crater</em>."], [49.06, 51.2, "No piece of the rock<br>has ever been found."], [51.9, 52.92, "It flattened a forest,"], [52.94, 54.33, "without ever <em>touching the ground</em>."]]/*END*/;
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const sceneAt = (t) => t < T.entry ? 'post' : ((t >= T.europe && t < T.exp) ? 'europe' : 'taiga');
+const rockAt = (t) => P0.clone().lerp(B, clamp((t - T.entry + 2.2) / (T.burst - T.entry + 2.2)));
+const altKm = (t) => rockAt(t).y / HB * 8;
+const tmpC = new THREE.Color();
+function postFrame(t) {
+  const u = seg(t, 4.6, T.entry + 0.2), bp = V(lerp(330, -60, u), lerp(250, 150, u), -650); POST.ball.visible = t > 4.6; POST.ball.position.copy(bp); POST.ball.lookAt(bp.clone().add(V(-390, -100, 0)));
+  for (const p of POST.people) { const ud = p.userData, b = ud.b; p.position.copy(b.p); p.rotation.y = b.ry; let mode = ud.kind; if (ud.kind === 'walk') { const wd = Math.min(t, 4.8 + b.d) * 1.4; p.position.x += Math.sin(b.ry) * wd; if (t > 4.8 + b.d) mode = 'stand'; } ud.pose(t * 5.4 + ud.seed, mode); if (t > 4.9 + b.d * 0.8) ud.aR.rotation.x = -2.6 * smooth(seg(t, 4.9 + b.d * 0.8, 5.4 + b.d * 0.8)); }
+  POST.sun.intensity = 2.6;
+  if (t < T.post) camPath([[0, V(-70, 46, 120), V(0, 26, -120), 54], [T.post, V(-40, 26, 78), V(0, 30, -160), 54]], t);
+  else camPath([[T.post, V(-9, 5.2, 30), V(6, 13, -60), 60], [4.8, V(-6, 4.8, 27), V(10, 22, -160), 60], [T.entry, V(-5, 4.6, 26), V(-6, 40, -300), 60]], t);
+  renderer.toneMappingExposure = 1.0; postP.render();
+}
+function europeFrame(t) {
+  for (const p of EUR.people) { p.userData.pose(t * 2 + p.userData.seed, 'stand'); p.userData.aR.rotation.x = p.userData.seed % 3 < 1.3 ? -2.5 : 0; }
+  EUR.glow.material.opacity = 0.34 + Math.sin(t * 0.9) * 0.05;
+  camPath([[T.europe, V(-2, 4.4, 44), V(2, 21, -120), 60], [T.exp, V(0, 4.0, 37), V(2, 26, -120), 60]], t); renderer.toneMappingExposure = 1.15; postE.render();
+}
+function taigaFrame(t) {
+  const later = t >= T.exp, rp = rockAt(t), pre = t < T.burst, tb = t - T.burst;
+  // rock, bow, trail, fragments
+  rock.visible = pre && t < T.burst - 1.5; rock.position.copy(rp); rock.rotation.set(t * 0.7, t * 0.5, 0); const heat = smooth(seg(t, T.entry, T.burst - 1.5)); rock.children[0].material.emissiveIntensity = 0.4 + heat * 2.2;
+  bow.visible = trail.visible = pre; bow.position.copy(rp).addScaledVector(DIR, 9); bow.lookAt(rp.clone().add(DIR)); const pulse = 1 + Math.sin(t * 31) * 0.05 + heat * 0.3; bow.userData.b1.scale.set(pulse, pulse, 0.55 * pulse); bow.userData.b2.scale.set(pulse * 1.1, pulse * 1.1, 0.6 * pulse);
+  trail.position.copy(rp); trail.lookAt(rp.clone().add(DIR)); trail.scale.set(0.7 + heat * 0.9, 0.7 + heat * 0.9, 1);
+  const br = smooth(seg(t, T.burst - 1.5, T.burst)); for (const f of frags) { f.visible = pre && br > 0; f.position.copy(rp).addScaledVector(f.userData.o, 0.12 + br * 1.0); f.rotation.set(t * 2 + f.userData.s, t * 1.4, 0); }
+  // fireball, shock shell, ground ring
+  const fb = !pre && !later && t < T.europe; for (let i = 0; i < 3; i++) { const f = fire[i]; f.visible = fb && tb < 9; const r = (60 + 250 * easeOut(tb / 2.2)) * (1 + i * 0.6) * (1 + tb * 0.05); f.scale.setScalar(r); f.material.opacity = [0.95, 0.5, 0.2][i] * (1 - seg(tb, 0.7, 6.5)); }
+  const Rs = VS * tb; shell.visible = fb && tb < 13; shell.scale.setScalar(Math.max(Rs, 1)); shell.material.uniforms.k.value = (1 - seg(tb, 9, 13)) * 0.9;
+  const gr = Rs > HB ? Math.sqrt(Rs * Rs - HB * HB) : 0; ring.visible = dust.visible = fb && gr > 0 && gr < RF + 500; ring.scale.set(gr, 1, gr); dust.scale.set(gr, 1, gr); const fade = 1 - seg(gr, RF - 150, RF + 450); ring.material.opacity = 0.8 * fade; dust.material.opacity = 0.32 * fade;
+  burstL.intensity = fb ? 9 * (1 - seg(tb, 0.3, 6)) : 0;
+  // trees: inside the flattened circle they go down as the shell reaches them, pointing away from the centre
+  for (let i = 0; i < TL.length; i++) { const tr = TL[i]; let a = 0; if (tr.d < RF) a = later || t >= T.europe ? tr.lean : tr.lean * easeOut(seg(t, tr.ta, tr.ta + 0.75)); else if (tr.d < RF + 420) a = (later ? 0.1 : 0.16 * Math.sin(clamp((t - tr.ta) * 2.2, 0, Math.PI))) * (1 - (tr.d - RF) / 420);
+    F.set(i, a, a > 1.0 && t >= T.top ? (later ? 1.0 : 2.2) : 0, later && tr.d < RF ? 1 : (a > 1.0 && t >= T.top ? 0.9 : 0)); } F.done();
+  gMat.color.set(0x4d7a4b).lerp(tmpC.set(0x5a5540), later ? 0.7 : (t >= T.top ? 0.6 : 0)); const topv = t >= T.top && t < T.europe; taiga.fog.near = topv ? 9000 : 2500; taiga.fog.far = topv ? 40000 : 11000; expo.visible = pond.visible = reeds.visible = later;
+  // light and sky
+  const flash = fb ? 1 - seg(tb, 0.0, 2.6) : 0; tHemi.intensity = (later ? 1.0 : 1.25) + flash * 1.6; tSun.intensity = later ? 1.5 : 2.4; tSun.color.set(later ? 0xdfe6ee : 0xffeccc);
+  const U = tSky.material.uniforms; U.top.value.set(later ? 0x7f95aa : 0x4a8fd6); U.mid.value.set(later ? 0xcfd6da : 0xdbe9f2); taiga.fog.color.set(later ? 0xc6ccce : 0xd5e2ea);
+  if (later) for (const p of exP) { const i = p.userData.i, u = (t - T.exp) * 5.2; p.position.set(150 - i * 13 - (t - T.exp) * 7.5, 0.5, 96 + Math.sin(i * 2.1) * 9 - (t - T.exp) * 1.6); p.rotation.y = -Math.PI / 2 - 0.2; p.userData.pose(u + i * 1.3, 'walk'); }
+  // camera
+  if (t < T.close) { const look = rp.clone().lerp(V(300, 500, 0), 0.45); camPath([[T.entry, V(-500, 150, 2900), look, 58], [T.close, V(-300, 190, 2500), look, 56]], t); }
+  else if (pre) { const u = easeIO(seg(t, T.close, T.close + 1.3)), cp = rp.clone().add(V(70 - 30 * seg(t, T.close, T.burst), 4, 250 + 260 * seg(t, T.burst - 1.6, T.burst))); cam.position.copy(cp); cam.fov = 46; cam.up.set(0, 1, 0); cam.lookAt(rp.clone().addScaledVector(DIR, -40 * (1 - u))); cam.updateProjectionMatrix(); }
+  else if (t < T.fall) camPath([[T.burst, V(-200, 200, 3300), V(0, 520, 0), 56], [T.burst + 3.4, V(-120, 320, 3600), V(0, 430, 0), 56], [T.fall, V(300, 900, 4300), V(0, 160, 0), 56]], t);
+  else if (t < T.top) camPath([[T.fall, V(2260, 230, 520), V(1500, 20, -60), 54], [T.top, V(2330, 250, 560), V(1500, 20, -60), 54]], t);
+  else if (t < T.europe) { const u = easeIO(seg(t, T.top, T.europe)); cam.position.set(0, lerp(3500, 5700, u), 30); cam.fov = 50; cam.up.set(0, 0, -1); cam.lookAt(0, 0, 0); cam.updateProjectionMatrix(); }
+  else if (t < T.fin) camPath([[T.exp, V(190, 21, 215), V(20, 16, 20), 54], [T.fin, V(140, 26, 200), V(0, 14, 10), 54]], t);
+  else camPath([[T.fin, V(260, 420, 900), V(0, 0, 0), 54], [DUR, V(360, 1500, 2300), V(0, 0, -200), 54]], t);
+  renderer.toneMappingExposure = 1.0 + flash * 0.9; postT.render();
+  return { rp, gr, tb };
+}
+function overlayFrame(t, sc, x) {
+  const ta = t < 2.4 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 2.0, 2.4)) : 0; O.set(O.title, '<em>Tunguska</em>,<br>second<br>by second'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`; O.title.style.top = '560px';
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  let ha = 1, ht = 330;
+  if (t < T.post + 0.2) ha = 0;
+  else if (t < T.entry) { O.hudSet('30 June 1908', 'Just after 7 am', 'Central Siberia · near the\nPodkamennaya Tunguska River\nSeen from far away'); ha = seg(t, T.post + 0.2, T.post + 0.6); }
+  else if (t < T.close) O.hudSet('Speed', '15 km/s', 'A rock about 50 to 80 m wide\nNot to scale');
+  else if (t < T.burst) O.hudSet('Height', Math.max(8, altKm(t)).toFixed(0) + ' km', 'The air in front is squeezed\nand glows · not to scale');
+  else if (t < T.fall) O.hudSet('Airburst', '5–10 km up', 'Hundreds of Hiroshima bombs\nSlowed down · not to scale');
+  else if (t < T.top) O.hudSet('The shock wave', 'Arrives', 'Trees shown far too big\nSlowed down');
+  else if (t < T.europe) O.hudSet('Forest flattened', '2,000 km²', 'Around 80 million trees\nSeen from above · not to scale');
+  else if (t < T.exp) { O.hudSet('Western Europe', 'Bright nights', 'Seismographs recorded the blast\nThe night sky stayed bright'); ha = seg(t, T.europe + 0.1, T.europe + 0.5); }
+  else if (t < T.fin) { O.hudSet('1927 · first expedition', 'No crater', 'A swamp and fallen trees\nNo piece of the rock found'); ha = seg(t, T.exp + 0.1, T.exp + 0.5); }
+  else if (t < T.end) { O.hudSet('Tunguska, 1908', 'An airburst', 'It never touched the ground'); ha = seg(t, T.fin + 0.2, T.fin + 0.6); }
+  else ha = 1 - seg(t, T.end, T.end + 0.3);
+  O.hud.style.background = 'rgba(6,10,26,.42)'; O.hud.style.boxShadow = '0 0 0 14px rgba(6,10,26,.42)'; O.hud.style.borderRadius = '4px'; O.show(O.hud, ha); O.hud.style.top = ht + 'px';
+  let hh = ''; const L = (px, py, a, small, big, col) => { if (a > 0.01) hh += `<div class="lab" style="left:${Math.round(px)}px;top:${Math.round(py)}px;opacity:${a}${col ? ';color:' + col : ''}">${small}${big ? '<b style="font-size:38px">' + big + '</b>' : ''}</div>`; };
+  if (sc === 'taiga' && t >= T.burst + 3.2 && t < T.fall) { const a0 = seg(t, T.burst + 3.4, T.burst + 3.9) * (1 - seg(t, T.fall - 0.3, T.fall)), [gx, gy] = proj(V(0, 0, 0), cam); L(64, 640, a0, 'The shock wave reaches the ground', 'then spreads outward', '#ffe9b0'); }
+  if (sc === 'taiga' && t >= T.top && t < T.europe) { const a0 = seg(t, T.top + 0.4, T.top + 0.9) * (1 - seg(t, T.europe - 0.3, T.europe)); L(64, 660, a0, 'Fallen trunks point away', 'from the centre', '#ffe9b0'); }
+  if (O.labels._h !== hh) { O.labels._h = hh; O.labels.innerHTML = hh; }
+  let fl = 0; for (const [a, dd, k] of [[T.entry, 0.35, 0.7], [T.close, 0.3, 0.5], [T.burst, 1.6, 1.0], [T.fall, 0.3, 0.5], [T.top, 0.35, 0.6], [T.europe, 0.4, 0.8], [T.exp, 0.4, 0.8], [T.fin, 0.5, 0.7]]) if (t >= a - 0.06 && t < a + dd) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + dd)) ** 1.6 * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { const sc = sceneAt(t); const x = sc === 'post' ? (postFrame(t), null) : (sc === 'europe' ? (europeFrame(t), null) : taigaFrame(t)); overlayFrame(t, sc, x); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>

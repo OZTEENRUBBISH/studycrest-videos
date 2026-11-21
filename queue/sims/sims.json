@@ -249,6 +249,18 @@
     "https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html",
     "https://www.pbs.org/wgbh/nova/article/the-schwarzschild-radius-natures-breaking-point"
    ]
+  },
+  {
+   "file": "sim-20-tunguska.mp4",
+   "title": "Tunguska, second by second",
+   "made": "2026-11-22",
+   "caption": "Tunguska, second by second. In 1908 a rock from space exploded 5 to 10 km above Siberia and flattened around 80 million trees. It left no crater, and no piece of it has ever been found. ☄️\n\nFollow for a new simulation every day.\n\n#tunguska #simulation #science #history #asteroid #physics #studytok",
+   "science": "Every figure was checked against three pages read in this run: Britannica 'Tunguska event' (B1), Britannica 'What Is Known (and Not Known) About the Tunguska Event' (B2) and EarthSky 'What is the Tunguska explosion' (E). Date and place: 30 June 1908, near the Podkamennaya Tunguska River, central Siberia (B1). Time: B1 says about 7:40 am, B2 about 7:13 am local, so the film says only 'just after seven in the morning'. Height: 5 to 10 km (B1, B2, E), drawn at 8 km. Object: 50 to 100 m (B1), 50 to 80 m and most likely a stony asteroid (E); B1 notes some scientists argue for a comet, so the film says 'a rock from space, around sixty metres wide' and the HUD says 'about 50 to 80 m'. Speed: about 54,000 km/h (E) = 15 km/s (arithmetic run). Energy: about 15 megatons, 'a thousand times' Hiroshima (B1, B2); about 4 megatons, 250 times (E); the sources differ, so the film says 'hundreds of times stronger than the Hiroshima bomb', which holds for both. Why it broke up: worked from first principles; the pressure of the air rammed in front of the rock is roughly density x speed squared = 0.41 kg per cubic metre x (15,000 m/s)^2, about 92 MPa at 10 km, far above the strength of stone, said as 'the air ahead of it piles up so hard that the rock breaks apart'. Forest: 'some 2,000 square km' flattened (B1, B2), 2,150 square km and an estimated 80 million trees (E), said as 'around eighty million trees' and 'two thousand square kilometres'; fallen trees lay radially and 'all pointed away' from the centre (B1). No crater and no fragments found (B1: 'no impact crater, and no fragments of the object have yet been found'); a marshy bog at the spot (B1). Seismographs in western Europe recorded it and night skies in Siberia and Europe were abnormally bright 'for some time' (B1, B2). First expedition: Leonid Kulik, 1927 (B1, E). Eyewitnesses at a distance saw a fireball (B1); the opening shot is an invented trading post 'seen from far away'. Illustrative and labelled: 'not to scale' throughout (1 scene unit = 12.5 m for heights and distances, trees drawn far too big); the shock wave is 'slowed down' (it is drawn as a shell growing at a steady speed so the eye can follow it reaching the ground below first and then spreading); the top view shows a circle of 25 km radius (area 2,000 square km; arithmetic run). The idea's planned point survived checking. Left out because no page read in this run stated them: human deaths, the Vanavara eyewitness account, trees left standing under the burst, the butterfly shape of the fall pattern, pressure waves recorded in Britain. Wikipedia could not be opened.",
+   "sources": [
+    "https://www.britannica.com/event/Tunguska-event",
+    "https://www.britannica.com/story/what-is-known-and-not-known-about-the-tunguska-event",
+    "https://earthsky.org/space/what-is-the-tunguska-explosion/"
+   ]
   }
  ]
 }
