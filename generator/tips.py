@@ -107,6 +107,15 @@ TIPS = {
      T("🧮", "Split your time by marks", "More marks, more minutes. Write a finish time next to each section.", "Three. Split your time by marks. More marks, more minutes."),
      T("🚀", "Start with one you can do", "An early win settles the nerves.", "Four. Start with a question you can do. An early win settles the nerves."),
      T("⏭", "Stuck? Move on", "Mark the question, keep going, and come back at the end.", "Five. Stuck? Move on. Mark it, and come back at the end.")]),
+ "study-timetable": dict(title="5 ways to build", accent="a study timetable that sticks", emo="📅", sub="One you'll still be following in week three.", tag="STUDY TIPS",
+    intro_say="Five ways to build a study timetable that sticks.", hashtags="#studytimetable #studyplan #studyroutine",
+    hook="5 ways to build a study timetable that sticks. Save this for Sunday night. 📅",
+    tips=[
+     T("📌", "Block out the fixed things first", "Classes, work, sport and sleep go in before any study.", "One. Block out the fixed things first. Classes, work, sport and sleep."),
+     T("🔋", "Hardest subject, best time", "Put it where you have the most energy, not last.", "Two. Put your hardest subject where you have the most energy."),
+     T("📚", "Spread your subjects out", "Two or three a day, so nothing waits until Sunday.", "Three. Spread your subjects out. Two or three a day, across the week."),
+     T("🔮", "End the week with a test", "StudyCrest's Test Predictor builds a practice test like your real one.", "Four. End the week with a practice test from StudyCrest's Test Predictor.", SC_TAG),
+     T("🧺", "Leave a catch-up slot", "One empty block a week for whatever ran over.", "Five. Leave one empty slot a week, to catch up on whatever ran over.")]),
  # ── StudyCrest Business (@studycrestbusiness): keys start with "biz-" ──
  "biz-study-accounting": dict(title="5 ways to study", accent="accounting properly", emo="🧮", sub="Reading the textbook isn't one of them.", tag="ACCOUNTING",
     intro_say="Five ways to study accounting properly.", hashtags="#accountingstudent #accounting #businessstudent",
