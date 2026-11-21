@@ -316,6 +316,30 @@
    "hook": "What if you made tea on top of Mount Everest?",
    "the surprising true point": "Water boils at only about 70 degrees there, because the air pressure is about a third of sea level: boiling tells you about pressure, not just heat",
    "status": "planned"
+  },
+  {
+   "title": "What if everyone on Earth jumped at the same time?",
+   "kind": "what-if",
+   "setting": "A packed stadium, then the whole planet seen from space with every person gathered in one place",
+   "hook": "What if everyone on Earth jumped at the same time?",
+   "the surprising true point": "The planet would not notice: Earth is so much heavier than all of us together that it moves by far less than the width of an atom, and it moves straight back when we land",
+   "status": "planned"
+  },
+  {
+   "title": "The Vasa, minute by minute",
+   "kind": "second-by-second",
+   "setting": "Stockholm harbour, 10 August 1628: a brand-new warship setting sail in front of the city",
+   "hook": "The warship that sank on its first voyage, minute by minute",
+   "the surprising true point": "It sailed barely more than a kilometre: the ship was too tall and too narrow for its weight, a gust of wind leaned it over, and water poured in through the open gun ports",
+   "status": "planned"
+  },
+  {
+   "title": "What if raindrops fell with no air to slow them down?",
+   "kind": "what-if",
+   "setting": "A rainy city street with umbrellas, and a cutaway of one drop falling from the cloud",
+   "hook": "What if raindrops fell with no air to slow them down?",
+   "the surprising true point": "Air is what makes rain gentle: a real raindrop lands at only a few metres a second, but from a cloud two kilometres up with no air it would arrive at about 700 km/h",
+   "status": "planned"
   }
  ]
 }
