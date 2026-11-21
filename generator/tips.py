@@ -116,6 +116,15 @@ TIPS = {
      T("📚", "Spread your subjects out", "Two or three a day, so nothing waits until Sunday.", "Three. Spread your subjects out. Two or three a day, across the week."),
      T("🔮", "End the week with a test", "StudyCrest's Test Predictor builds a practice test like your real one.", "Four. End the week with a practice test from StudyCrest's Test Predictor.", SC_TAG),
      T("🧺", "Leave a catch-up slot", "One empty block a week for whatever ran over.", "Five. Leave one empty slot a week, to catch up on whatever ran over.")]),
+ "group-study": dict(title="5 ways to make", accent="group study actually work", emo="👥", sub="So it isn't just a catch-up.", tag="STUDY TIPS",
+    intro_say="Five ways to make group study actually work.", hashtags="#groupstudy #studygroup #studywithfriends",
+    hook="5 ways to make group study actually work. Send this to your study group. 👥",
+    tips=[
+     T("🤝", "Keep the group small", "Three or four people. Enough to help, few enough to stay on track.", "One. Keep the group small. Three or four people is plenty."),
+     T("✏️", "Try the questions alone first", "Bring your attempts, so the time goes on the hard ones.", "Two. Try the questions alone first, and bring your attempts."),
+     T("🔁", "Swap fresh questions", "StudyCrest's Practice Questions writes a new question from one you've already done.", "Three. Swap fresh questions. StudyCrest's Practice Questions writes new ones.", SC_TAG),
+     T("☕", "Save the chat for the break", "Work first, catch up after. Decide when the break is before you start.", "Four. Save the chat for the break. Work first, catch up after."),
+     T("📌", "Plan the next one before you leave", "Pick the day, the topic and the questions for next time.", "Five. Plan the next one before you leave. Pick the day and the topic.")]),
  # ── StudyCrest Business (@studycrestbusiness): keys start with "biz-" ──
  "biz-study-accounting": dict(title="5 ways to study", accent="accounting properly", emo="🧮", sub="Reading the textbook isn't one of them.", tag="ACCOUNTING",
     intro_say="Five ways to study accounting properly.", hashtags="#accountingstudent #accounting #businessstudent",
