@@ -158,6 +158,9 @@ POSTS = {
     salary("paper", "🏥", "Registered Nurse", "$97,550", "Provides and coordinates patient care. Usually needs a bachelor's degree.", 4, n),
     salary("paper", "📋", "Licensed Practical Nurse", "$64,400", "Provides basic care under registered nurses and doctors. A shorter course, not a degree.", 5, n),
     cta_slide("paper", 6, n, kicker="First, you have to pass the degree.")],
+ "I-where-do-you-lose-marks": lambda n=2: [
+    question("ink", "🧐", "Do you know where you lose marks?", "Try StudyCrest free for 30 days and find out."),
+    cta_slide("ink", 1, n, kicker="It checks every line of your working.")],
 }
 
 if __name__ == "__main__":
