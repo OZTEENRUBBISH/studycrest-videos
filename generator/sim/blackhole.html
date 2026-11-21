@@ -1,0 +1,173 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// What if the Earth were crushed into a black hole?  Space (Earth radius 10 units, Moon's orbit drawn closer than scale), a park (1 unit = 1 m), one metre from the hole (1 unit = 1 m).
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, mat, box, shadowAll, person, cloud, stars, globe, skyDome, arrow, overlay, capAt, makePost, proj, tower } from './common.js';
+const W = 1080, H = 1920, DUR = 48.0;
+const O = overlay(); O.show(O.chip, 0); { const st = document.createElement('style'); st.textContent = '#cap{padding:26px 0;background:radial-gradient(ellipse 60% 70% at center,rgba(3,5,14,.55) 0,rgba(3,5,14,.32) 55%,rgba(3,5,14,0) 100%)}'; document.head.appendChild(st); }
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(40, W / H, 0.05, 6000);
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const T = { hand: 3.1, moonT: 4.85, crush: 7.2, go: 10.0, pop: 12.4, macro: 14.0, expect: 18.3, nope: 20.7, same: 22.0, moon: 26.9, close: 32.6, yank: 38.7, fin: 39.9, end: 45.3 };
+const basic = (c, o = {}) => new THREE.MeshBasicMaterial({ color: c, ...o });
+const glowMat = (r, g, b, pw = 2.4, k = 1) => new THREE.ShaderMaterial({ side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { k: { value: k }, c: { value: new THREE.Vector3(r, g, b) } },
+  vertexShader: 'varying vec3 n; varying vec3 v; void main(){ n = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); v = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+  fragmentShader: `varying vec3 n; varying vec3 v; uniform float k; uniform vec3 c; void main(){ float f = pow(clamp(-dot(n, v), 0.0, 1.0), ${pw.toFixed(1)}); gl_FragColor = vec4(c * f * k, 1.0); }` });
+// a black hole you can see: black ball, a thin bright ring that always faces the camera, a soft glow (both added for visibility)
+function blackHole(r) { const g = new THREE.Group(); const core = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 20), basic(0x000000)); g.add(core);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 1.75, r * 0.13, 8, 72), basic(0xffffff)); ring.material.color.setRGB(1.35, 1.12, 0.8); g.add(ring);
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(r * 2.5, r * 0.035, 6, 72), basic(0xffffff, { transparent: true, opacity: 0.5 })); ring2.material.color.setRGB(0.8, 1.0, 1.6); g.add(ring2);
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(r * 5, 32, 20), glowMat(0.45, 0.6, 1.0, 3.6, 0.5)); g.add(halo); g.userData = { core, ring, ring2, halo }; return g; }
+const faceCam = (b) => { b.userData.ring.quaternion.copy(cam.quaternion); b.userData.ring2.quaternion.copy(cam.quaternion); };
+function moonMesh(r) { const geo = new THREE.IcosahedronGeometry(r, 5).toNonIndexed(), pos = geo.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color();
+  for (let i = 0; i < pos.count; i += 3) { const x = (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3 / r, y = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3 / r, z = (pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3 / r;
+    const n = fbm(x * 1.6 + 9, y * 1.6 + 2, z * 1.6 + 4, 4), cr = fbm(x * 6 + 1, y * 6 + 5, z * 6 + 3, 2); let v = lerp(0.5, 0.86, smooth(seg(n, 0.35, 0.65))); if (n < 0.43) v = 0.36 + (n - 0.3) * 0.5; if (cr > 0.62) v *= 0.8; if (cr < 0.3) v *= 1.1;
+    c.setRGB(v, v * 0.985, v * 0.95); for (let k = 0; k < 3; k++) { col[(i + k) * 3] = c.r; col[(i + k) * 3 + 1] = c.g; col[(i + k) * 3 + 2] = c.b; } }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.computeVertexNormals(); return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })); }
+function satellite(c = 0xd9dde4) { const g = new THREE.Group(); g.add(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 1.0), new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 0.5, metalness: 0.4, emissive: 0x30343c })));
+  for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.06, 0.8), new THREE.MeshStandardMaterial({ color: 0x2f56d6, flatShading: true, roughness: 0.4, emissive: 0x16307a })); p.position.x = s * 1.25; g.add(p); }
+  const d = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.3, 10), new THREE.MeshStandardMaterial({ color: 0xf2f2f2, flatShading: true, emissive: 0x555555 })); d.position.z = 0.65; d.rotation.x = -Math.PI / 2; g.add(d); return g; }
+
+// =====================================================  SPACE: two copies of the Earth-Moon system (one keeps its Earth for the comparison)
+const space = new THREE.Scene(); space.background = new THREE.Color(0x04050c); const starPts = stars(rng(7), 3200); space.add(starPts);
+space.add(new THREE.HemisphereLight(0x8fb4ff, 0x10131f, 0.6)); const sun = new THREE.DirectionalLight(0xffffff, 2.7); sun.position.set(-40, 26, 45); space.add(sun);
+{ const r = rng(99), n = 5200, p = new Float32Array(n * 3), c = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const a = r() * Math.PI * 2, w = (r() + r() + r() - 1.5) * 0.3, rad = 760; const v = V(Math.cos(a) * rad, w * rad, Math.sin(a) * rad).applyAxisAngle(V(1, 0, 0), 1.0).applyAxisAngle(V(0, 0, 1), 0.5); p[i * 3] = v.x; p[i * 3 + 1] = v.y; p[i * 3 + 2] = v.z; const k = 0.35 + r() * 0.5, tint = r(); c[i * 3] = k * (tint < 0.3 ? 1.0 : 0.75); c[i * 3 + 1] = k * 0.8; c[i * 3 + 2] = k * (tint > 0.6 ? 1.0 : 0.8); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('color', new THREE.BufferAttribute(c, 3)); const mw = new THREE.Points(g, new THREE.PointsMaterial({ vertexColors: true, size: 1.7, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.75 })); starPts.add(mw); }
+const RO = 40;
+function system() { const g = new THREE.Group(); const E = globe(10, 24); E.rotation.set(0.25, -0.6, 0); g.add(E); const B = blackHole(0.5); g.add(B); const M = moonMesh(2.7); g.add(M);
+  const orb = new THREE.Mesh(new THREE.TorusGeometry(RO, 0.09, 6, 200).rotateX(Math.PI / 2), basic(0x9fb8e8, { transparent: true, opacity: 0.55 })); g.add(orb);
+  const pull = arrow(9, 0xffd64a, 0.42); g.add(pull); space.add(g); return { g, E, B, M, orb, pull, a: 0 }; }
+const S1 = system(), S2 = system();
+const setMoon = (S, a) => { S.a = a; S.M.position.set(Math.cos(a) * RO, 0, Math.sin(a) * RO); S.M.rotation.y = -a + 1.2; };
+const UP = V(0, 1, 0); const aim = (ar, from, to, back = 0) => { const d = to.clone().sub(from).normalize(); ar.quaternion.setFromUnitVectors(UP, d); ar.position.copy(from).addScaledVector(d, back); };
+const setPull = (S, off = 4.2) => { S.pull.visible = true; aim(S.pull, S.M.position, V(0, 0, 0), off); };
+const sats = []; for (const [r, inc, ph, sp] of [[15, 0.5, 0.3, 1.0], [19, -0.9, 2.2, 0.72], [24, 0.15, 4.4, 0.5]]) { const s = satellite(); s.userData = { r, inc, ph, sp }; S1.g.add(s); sats.push(s); const o = new THREE.Mesh(new THREE.TorusGeometry(r, 0.045, 5, 120).rotateX(Math.PI / 2), basic(0x6f86c9, { transparent: true, opacity: 0.4 })); o.rotation.z = inc; S1.g.add(o); s.userData.orb = o; }
+const satPos = (s, t) => { const a = s.userData.ph + t * s.userData.sp * 0.55; return V(Math.cos(a) * s.userData.r, 0, Math.sin(a) * s.userData.r).applyAxisAngle(V(0, 0, 1), s.userData.inc); };
+// gold arrows that squeeze the Earth, red arrows for the wrong guess
+const inA = []; for (let i = 0; i < 6; i++) { const a = arrow(6.0, 0xffd64a, 0.32); a.userData.th = [0.2, 0.95, 2.75, 3.3, 3.8, 5.9][i]; space.add(a); inA.push(a); }
+const redA = []; for (let i = 0; i < 4; i++) { const a = arrow(9, 0xff4a3a, 0.55); S1.g.add(a); redA.push(a); }
+const flashBall = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20), glowMat(0.8, 0.9, 1.0, 1.4, 2.0)); space.add(flashBall);
+// one metre from the hole (1 unit = 1 m), kept far from the systems
+const CL = V(0, 3000, 0); const closeG = new THREE.Group(); closeG.position.copy(CL); space.add(closeG);
+const cBH = blackHole(0.00887); cBH.userData.halo.scale.setScalar(2.2); cBH.userData.ring.scale.setScalar(1.6); cBH.userData.ring2.scale.setScalar(2.0); closeG.add(cBH);
+const probe = new THREE.Group(); { const s = satellite(0xe9edf2); s.scale.setScalar(0.11); s.rotation.set(0.5, 0.6, 0.2); probe.add(s); } closeG.add(probe);
+const bar = new THREE.Group(); { bar.add(new THREE.Mesh(new THREE.BoxGeometry(0.008, 1, 0.004), basic(0xffd64a))); for (let i = 0; i <= 10; i++) { const k = new THREE.Mesh(new THREE.BoxGeometry(i % 5 === 0 ? 0.07 : 0.035, 0.006, 0.004), basic(0xffd64a)); k.position.set((i % 5 === 0 ? 0.035 : 0.0175), -0.5 + i * 0.1, 0); bar.add(k); } bar.position.set(-0.2, 0.5, 0); } closeG.add(bar);
+const cA = []; for (let i = 0; i < 3; i++) { const a = arrow(0.2, 0xff6a4a, 0.012); a.rotation.z = Math.PI; closeG.add(a); cA.push(a); }
+const streak = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1, 0.02), basic(0xffffff, { transparent: true })); streak.material.color.setRGB(1.6, 1.7, 2.0); closeG.add(streak);
+
+// =====================================================  PARK (day): a hand, a glass marble and the Earth as a black hole, to scale with each other
+const park = new THREE.Scene(); park.fog = new THREE.Fog(0xcfe3f2, 120, 700); park.add(skyDome(0x2a78d8, 0xcfe7f8, 0xbfd6e6)); park.add(new THREE.HemisphereLight(0xdcecff, 0x8fa07a, 1.25));
+const pSun = new THREE.DirectionalLight(0xffe9c8, 2.9); pSun.position.set(-3, 5.2, 3.2); pSun.castShadow = true; pSun.shadow.mapSize.set(2048, 2048); Object.assign(pSun.shadow.camera, { left: -0.3, right: 0.3, top: 0.3, bottom: -0.3, near: 1, far: 14 }); pSun.shadow.bias = -0.0004; pSun.target.position.set(0, 1.3, 0); park.add(pSun); park.add(pSun.target);
+const HY = 1.3, SKIN = 0xe0ac7e;
+{ const r = rng(515); const g = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600).rotateX(-Math.PI / 2), mat(0x74b25c)); g.receiveShadow = true; park.add(g);
+  const path = box(5, 0.04, 400, 0xdccba4, -7, 0.02, -150); path.rotation.y = 0.12; park.add(path); const pond = new THREE.Mesh(new THREE.CircleGeometry(16, 28).rotateX(-Math.PI / 2), mat(0x4f9ad6)); pond.scale.z = 0.55; pond.position.set(16, 0.05, -52); park.add(pond);
+  for (let i = 0; i < 70; i++) { const x = -110 + r() * 220, z = -26 - r() * 170; if (Math.abs(x + 7 + z * 0.12) < 6 || (Math.abs(x - 16) < 19 && Math.abs(z + 52) < 12)) continue; const s = 2.6 + r() * 3.2, tr = new THREE.Group(); const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, s * 0.8, 6), mat(0x7a5a3c)); tk.position.y = s * 0.4; tr.add(tk);
+    if (r() < 0.55) { const c = new THREE.Mesh(new THREE.ConeGeometry(s * 0.5, s * 1.7, 6), mat(r() < 0.5 ? 0x2f7a43 : 0x3c8f4f)); c.position.y = s * 1.45; tr.add(c); } else { const c = new THREE.Mesh(new THREE.IcosahedronGeometry(s * 0.72, 1), mat(r() < 0.5 ? 0x4f9a4a : 0x63ad55)); c.position.y = s * 1.35; c.scale.y = 0.85; tr.add(c); } tr.position.set(x, 0, z); park.add(tr); }
+  for (let i = 0; i < 16; i++) { const h = 30 + r() * 70, t = tower(r, 16 + r() * 12, h, 16 + r() * 12); t.position.set(-170 + i * 23 + r() * 8, 0, -230 - r() * 60); park.add(t); }
+  for (let i = 0; i < 8; i++) { const c = cloud(r); c.position.set(-320 + r() * 640, 110 + r() * 90, -330 - r() * 160); c.scale.setScalar(1.6 + r() * 1.6); park.add(c); }
+  for (const [x, z, ry] of [[-3.6, -17, 0.5], [3.4, -24, -0.4]]) { const b = new THREE.Group(); b.add(box(1.9, 0.08, 0.5, 0x9a7146, 0, 0.48, 0)); b.add(box(1.9, 0.5, 0.07, 0x9a7146, 0, 0.83, -0.24)); for (const s of [-0.8, 0.8]) b.add(box(0.08, 0.48, 0.46, 0x3a3f47, s, 0.24, 0)); b.position.set(x, 0, z); b.rotation.y = ry; park.add(b); }
+  const pp = rng(88); for (const [x, z, ry, k] of [[-6.6, -12, 0.3, 'walk'], [-8.4, -30, 3.3, 'walk'], [-3.6, -16.75, 0.5, 'sit'], [5.5, -15, -0.6, 'stand'], [6.3, -14.6, 2.3, 'stand'], [-9.5, -55, 0.2, 'walk'], [10, -34, 1.0, 'stand']]) { const p = person(pp, k); p.position.set(x, k === 'sit' ? 0.36 : 0, z); p.rotation.y = ry; p.userData.pose(pp() * 6); park.add(p); }
+  const kite = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.6, 4), mat(0xe2574c, { emissive: 0x551510 })); kite.position.set(12, 17, -42); kite.rotation.set(0.6, 0.3, 0.5); park.add(kite); }
+const hand = new THREE.Group(); { const sk = (w, h, d, x, y, z) => box(w, h, d, SKIN, x, y, z); hand.add(sk(0.088, 0.022, 0.095, 0, -0.011, 0));
+  for (let i = 0; i < 4; i++) { const x = -0.0335 + i * 0.0223, L = [0.036, 0.042, 0.04, 0.032][i]; hand.add(sk(0.019, 0.019, L, x, -0.0105, -0.0475 - L / 2)); const j = new THREE.Group(); j.position.set(x, -0.0105, -0.0475 - L); j.rotation.x = 0.5; j.add(sk(0.018, 0.017, 0.034, 0, 0, -0.017)); const j2 = new THREE.Group(); j2.position.set(0, 0, -0.034); j2.rotation.x = 0.45; j2.add(sk(0.017, 0.015, 0.024, 0, 0, -0.012)); j.add(j2); hand.add(j); }
+  const th = new THREE.Group(); th.position.set(0.046, -0.012, 0.022); th.rotation.set(0.25, -0.75, 0); th.add(sk(0.022, 0.021, 0.05, 0.012, 0, -0.022)); const t2 = new THREE.Group(); t2.position.set(0.012, 0, -0.047); t2.rotation.x = 0.35; t2.add(sk(0.02, 0.018, 0.03, 0, 0, -0.015)); th.add(t2); hand.add(th);
+  hand.add(sk(0.064, 0.026, 0.06, 0, -0.014, 0.075)); hand.add(box(0.074, 0.036, 0.03, 0xf5f1e6, 0, -0.014, 0.115)); hand.add(box(0.07, 0.034, 0.34, 0x2f56d6, 0, -0.014, 0.29));
+  hand.position.set(0, HY, 0); hand.rotation.set(0.4, 0.12, 0); shadowAll(hand); park.add(hand); }
+const marble = new THREE.Mesh(new THREE.SphereGeometry(0.008, 28, 20), new THREE.MeshStandardMaterial({ color: 0x38c7b5, roughness: 0.12, metalness: 0.05, emissive: 0x0d4a44, emissiveIntensity: 0.6 })); marble.position.set(-0.02, 0.008, 0.004); marble.castShadow = true; hand.add(marble);
+{ const sw = new THREE.Mesh(new THREE.TorusGeometry(0.0052, 0.0012, 6, 24), basic(0xfff3c8)); sw.rotation.set(1.0, 0.4, 0); marble.add(sw); }
+const pBH = blackHole(0.00887); pBH.position.set(0.02, 0.00887, 0.004); pBH.userData.halo.scale.setScalar(0.42); pBH.userData.halo.material = glowMat(0.5, 0.65, 1.0, 3.0, 0.8); pBH.userData.ring.scale.setScalar(0.86); pBH.userData.ring2.visible = false; hand.add(pBH);
+{ const sh = new THREE.Mesh(new THREE.CircleGeometry(0.0085, 20).rotateX(-Math.PI / 2), basic(0x7a4f30, { transparent: true, opacity: 0.55 })); sh.position.set(0.02, 0.0004, 0.004); hand.add(sh); }
+
+const postSpace = makePost(renderer, space, cam, { ao: false, bloom: 0.36, bloomThreshold: 0.8, bloomRadius: 0.55, sat: 1.1 }), postPark = makePost(renderer, park, cam, { ao: true, aoRadius: 0.06, aoIntensity: 0.7, bloom: 0.22, bloomThreshold: 0.92, warm: 0.03, sat: 1.15 });
+const CAPS = /*CAPS*/[[3.3, 4.83, "It would be the size<br>of a <em>marble</em>."], [4.85, 6.55, "And the Moon<br>wouldn't even <em>notice</em>."], [7.4, 9.09, "Every black hole has a size"], [9.11, 10.25, "set by its <em>mass</em>."], [10.27, 11.6, "For the Earth, that's a ball"], [11.62, 13.31, "under <em>two centimetres</em><br>across."], [14.2, 15.02, "The whole planet,"], [15.04, 16.57, "every mountain<br>and every ocean,"], [16.59, 17.58, "squeezed into <em>that</em>."], [18.5, 20.66, "You'd expect it to swallow<br>everything nearby."], [20.68, 21.3, "It <em>wouldn't</em>."], [22.2, 24.79, "From far away, gravity<br>only cares about <em>mass</em>."], [24.81, 25.48, "Same mass,"], [25.5, 26.22, "<em>same pull</em>."], [27.1, 28.46, "So the Moon keeps circling,"], [28.48, 30.19, "once every<br><em>twenty-seven days</em>,"], [30.21, 31.84, "around a speck<br>too small to see."], [32.8, 34.87, "Only up close<br>does it turn <em>deadly</em>."], [34.89, 35.86, "One metre away,"], [35.88, 38.14, "the pull is about<br><em>forty trillion times</em>"], [38.16, 39.16, "what you feel now."], [40.1, 42.06, "A black hole isn't<br>a <em>vacuum cleaner</em>."], [42.08, 43.06, "It's just gravity,"], [43.08, 44.64, "with nothing left<br>to <em>stand on</em>."]]/*END*/;
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const sceneAt = (t) => t < T.hand ? 'title' : (t < T.moonT ? 'hand' : (t < T.crush ? 'moonT' : (t < T.macro ? 'crush' : (t < T.expect ? 'macro' : (t < T.same ? 'expect' : (t < T.moon ? 'same' : (t < T.close ? 'moon' : (t < T.fin ? 'close' : 'fin'))))))));
+// the diameter the HUD shows during the crush: 12,742 km down to 1.77 cm
+const D0 = 12742e3, D1 = 0.01774; const crushU = (t) => easeIO(seg(t, T.go, T.pop)); const diamAt = (t) => D0 * Math.pow(D1 / D0, crushU(t));
+const fmtD = (d) => d >= 1e4 ? Math.round(d / 1000).toLocaleString('en-US') + ' km' : (d >= 1000 ? (d / 1000).toFixed(1) + ' km' : (d >= 10 ? Math.round(d) + ' m' : (d >= 1 ? d.toFixed(1) + ' m' : (d * 100 >= 10 ? Math.round(d * 100) + ' cm' : (d * 100).toFixed(1) + ' cm'))));
+const WIDE_A = V(0, 205, 96), WIDE_L = V(0, 0, 4);
+function spaceFrame(t, sc) {
+  cam.near = 0.5; cam.far = 4000; renderer.toneMappingExposure = 1.05; cam.up.set(0, 1, 0); starPts.rotation.y = t * 0.004; starPts.position.set(0, 0, 0);
+  S2.g.visible = sc === 'same'; S1.g.visible = sc !== 'close'; closeG.visible = sc === 'close'; S1.g.position.set(0, 0, 0); S1.pull.visible = false; flashBall.visible = false;
+  for (const a of inA) a.visible = false; for (const a of redA) a.visible = false; for (const s of sats) { s.visible = s.userData.orb.visible = false; }
+  S1.E.visible = true; S1.E.scale.setScalar(1); S1.B.visible = false; S1.B.scale.setScalar(1); S1.M.visible = S1.orb.visible = true; S1.E.userData.mesh.rotation.y = t * 0.05; S1.orb.material.opacity = 0.55;
+  const showSats = () => { for (const s of sats) { s.visible = s.userData.orb.visible = true; s.position.copy(satPos(s, t)); s.rotation.set(t * 0.3, t * 0.2 + s.userData.ph, 0); } };
+  if (sc === 'title') { setMoon(S1, -1.22 + t * 0.02); S1.orb.visible = false; camPath([[0, V(4, 34, 92), V(0, 3.4, 0), 40], [T.hand, V(0, 30, 84), V(0, 3.2, 0), 40]], t); }
+  else if (sc === 'moonT') { S1.E.visible = false; S1.B.visible = true; S1.B.scale.setScalar(2.2); setMoon(S1, -2.3 + (t - T.moonT) * 0.5); camPath([[T.moonT, WIDE_A, WIDE_L, 40], [T.crush, V(0, 196, 92), WIDE_L, 40]], t); }
+  else if (sc === 'crush') { S1.M.visible = S1.orb.visible = false; const u = crushU(t), gone = t >= T.pop, vs = gone ? 0.0001 : Math.pow(0.03, u) * (1 - 0.7 * easeIn(seg(t, T.pop - 0.35, T.pop)));
+    S1.E.visible = !gone; S1.E.scale.setScalar(vs); S1.E.userData.mesh.rotation.y = t * 0.05 + u * u * 9; S1.B.visible = gone; S1.B.scale.setScalar(gone ? 0.5 + 0.9 * easeOut(seg(t, T.pop, T.pop + 0.5)) : 1);
+    const aa = smooth(seg(t, T.crush + 0.5, T.crush + 1.0)) * (1 - seg(t, T.pop - 0.2, T.pop)); for (const a of inA) { const th = a.userData.th, r = Math.max(10 * vs, 0.6) + 8.8 - 2.6 * ((t * 1.1 + th) % 1) * (0.4 + 0.6 * (t >= T.go ? 1 : 0.5)); a.visible = aa > 0.01; a.position.set(Math.cos(th) * r, Math.sin(th) * r, 0); a.rotation.z = th + Math.PI / 2; a.userData.mat.opacity = aa; a.scale.setScalar(lerp(1, 0.55, u)); }
+    const q = seg(t, T.pop - 0.08, T.pop + 0.9); flashBall.visible = t > T.pop - 0.08 && q < 1; flashBall.scale.setScalar(1 + q * 26); flashBall.material.uniforms.k.value = 2.2 * (1 - q) * (1 - q);
+    camPath([[T.crush, V(0, 6, 90), V(0, -5.5, 0), 40], [T.go, V(0, 5, 84), V(0, -5.0, 0), 40], [T.pop, V(0, 2.5, 54), V(0, -0.9, 0), 40], [T.macro, V(0, 0.8, 21), V(0, -0.5, 0), 40]], t);
+    if (t > T.go && t < T.pop + 0.5) { const k = (t < T.pop ? u : 1 - seg(t, T.pop, T.pop + 0.5)) * 0.22; cam.position.x += Math.sin(t * 170) * k; cam.position.y += Math.sin(t * 213) * k; } }
+  else if (sc === 'expect') { S1.E.visible = false; S1.B.visible = true; S1.B.scale.setScalar(2.2); setMoon(S1, -0.75 + (t - T.expect) * 0.18); showSats(); camPath([[T.expect, V(0, 200, 94), WIDE_L, 40], [T.same, V(0, 190, 90), WIDE_L, 40]], t);
+    const ra = smooth(seg(t, T.expect + 0.5, T.expect + 1.0)) * (1 - seg(t, T.nope, T.nope + 0.3)); const src = [S1.M.position, ...sats.map(s => s.position)];
+    redA.forEach((a, i) => { a.visible = ra > 0.01; const off = (i === 0 ? 4.2 : 1.6) + 1.8 * ((t * 1.2 + i * 0.3) % 1); a.scale.setScalar(i === 0 ? 1 : 0.7); aim(a, src[i], V(0, 0, 0), off); a.userData.mat.opacity = ra; }); }
+  else if (sc === 'same') { S1.g.position.set(0, 37, 0); S2.g.position.set(0, -3, 0); S2.E.visible = false; S2.B.visible = true; S2.B.scale.setScalar(2.2); const a = -0.95 + (t - T.same) * 0.16; setMoon(S1, a); setMoon(S2, a);
+    const pa = smooth(seg(t, T.same + 0.4, T.same + 0.9)), pl = 4.2 + 0.8 * Math.sin(t * 5); setPull(S1, pl); setPull(S2, pl); S1.pull.userData.mat.opacity = S2.pull.userData.mat.opacity = pa; S2.orb.material.opacity = 0.55; S2.pull.visible = S1.pull.visible = pa > 0.01;
+    camPath([[T.same, V(0, 76, 262), V(0, 10, 0), 40], [T.moon, V(0, 72, 250), V(0, 10, 0), 40]], t); faceCam(S2.B); }
+  else if (sc === 'moon') { S1.E.visible = false; S1.B.visible = true; S1.B.scale.setScalar(1.3); const a = 2.2 + (t - T.moon) * 0.075; setMoon(S1, a); S1.M.rotation.y = -a + 1.2 + (t - T.moon) * 0.02; const P = S1.M.position, out = P.clone().normalize(), tan = V(-Math.sin(a), 0, Math.cos(a));
+    cam.fov = 40; cam.position.copy(P).addScaledVector(out, 14).addScaledVector(tan, -2.5).add(V(0, 4, 0)); cam.lookAt(V(0, -1.7, 0).addScaledVector(tan, 3)); cam.updateProjectionMatrix(); S1.orb.visible = false; }
+  else if (sc === 'close') { cam.near = 0.05; const q = seg(t, T.yank, T.yank + 0.16), gone = t >= T.yank + 0.16; probe.visible = !gone; probe.position.set(0, 1 - easeIn(q) * 0.97, 0); probe.scale.set(1 - q * 0.75, 1 + q * 2.5, 1 - q * 0.75); probe.rotation.y = t * 0.25;
+    streak.visible = q > 0 && t < T.yank + 0.5; streak.scale.set(1, Math.max(0.01, easeIn(q) * 0.97), 1); streak.position.set(0, 1 - easeIn(q) * 0.97 / 2, 0); streak.material.opacity = 0.9 * (1 - seg(t, T.yank + 0.12, T.yank + 0.5));
+    const ca = smooth(seg(t, T.close + 2.2, T.close + 2.7)) * (gone ? 0 : 1); cA.forEach((a, i) => { a.visible = ca > 0.01; const ph = (t * 1.8 + i / 3) % 1; a.position.set(0, 0.8 - ph * 0.55, 0); a.userData.mat.opacity = ca * Math.sin(ph * Math.PI); });
+    const fl = t >= T.yank + 0.14 ? 1 - seg(t, T.yank + 0.14, T.yank + 0.9) : 0; cBH.userData.halo.material.uniforms.k.value = 0.9 + 3 * fl; cBH.userData.halo.scale.setScalar(2.2 + 2.5 * fl); starPts.position.copy(CL);
+    camPath([[T.close, V(0.06, 0.72, 5.6).add(CL), V(0.0, 0.34, 0).add(CL), 40], [T.fin, V(-0.04, 0.68, 5.3).add(CL), V(0.0, 0.34, 0).add(CL), 40]], t); faceCam(cBH); if (fl > 0) { cam.position.x += Math.sin(t * 190) * 0.01 * fl; cam.position.y += Math.sin(t * 230) * 0.01 * fl; } }
+  else { S1.E.visible = false; S1.B.visible = true; S1.B.scale.setScalar(2.2); setMoon(S1, 3.6 + (t - T.fin) * 0.16); showSats(); camPath([[T.fin, V(0, 188, 88), WIDE_L, 40], [DUR, V(0, 214, 112), WIDE_L, 40]], t); }
+  faceCam(S1.B); postSpace.render();
+}
+const BHW = () => { const v = V(0.02, 0.00887, 0.004); hand.updateWorldMatrix(true, false); return hand.localToWorld(v); };
+function parkFrame(t, sc) { cam.near = 0.02; cam.far = 1500; renderer.toneMappingExposure = 1.0; const p = BHW(), sw = Math.sin(t * 1.3) * 0.0015; hand.position.y = HY + sw;
+  if (sc === 'hand') camPath([[T.hand, V(0.03, HY + 0.075, 0.31), V(0.0, HY - 0.004, 0), 55], [T.moonT, V(0.025, HY + 0.07, 0.285), V(0.0, HY - 0.004, 0), 55]], t);
+  else camPath([[T.macro, V(0.055, HY + 0.095, 0.215), V(0.008, HY - 0.006, 0), 40], [T.expect, V(0.045, HY + 0.08, 0.175), V(0.01, HY - 0.006, 0), 40]], t);
+  pBH.userData.ring.quaternion.copy(hand.quaternion).invert().multiply(cam.quaternion); pBH.userData.halo.material.uniforms.k.value = 0.8 + 0.12 * Math.sin(t * 5); postPark.render(); }
+const mmss = (s) => { s = Math.floor(s); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+const wp = new THREE.Vector3(); const pix = (obj, off) => { obj.updateWorldMatrix(true, false); wp.copy(off || V(0, 0, 0)); obj.localToWorld(wp); return proj(wp, cam); };
+function overlayFrame(t) {
+  const sc = sceneAt(t);
+  const ta = t < 3.0 ? Math.min(seg(t, 0.12, 0.5), 1 - seg(t, 2.65, 3.0)) : 0; O.set(O.title, 'What if the Earth<br>were crushed into<br>a <em>black hole</em>?'); O.title.style.fontSize = '86px'; O.title.style.top = '340px'; O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.12, 0.8))) * 26}px)`;
+  const [chh, ca] = capAt(CAPS, t); if (chh) O.set(O.cap, chh); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  let ha = 1, top = 330;
+  if (sc === 'title') ha = 0;
+  else if (sc === 'hand') { O.hudSet('Earth as a black hole', '1.8 cm across', 'Marble for scale'); ha = seg(t, T.hand, T.hand + 0.3); }
+  else if (sc === 'moonT') O.hudSet('The Moon’s orbit', 'Unchanged', 'Day ' + (1 + (t - T.moonT) * 1.4).toFixed(1) + ' after the crush');
+  else if (sc === 'crush') O.hudSet(t < T.pop ? 'Earth’s diameter' : 'Earth as a black hole', fmtD(diamAt(t)), t < T.go ? 'Mass: 5.97 million billion billion kg' : (t < T.pop ? 'Same mass · smaller and smaller' : 'Schwarzschild radius: 8.9 mm'));
+  else if (sc === 'macro') O.hudSet('Squeezed into', '1.8 cm', 'All of the Earth’s mass\n5.97 million billion billion kg');
+  else if (sc === 'expect') O.hudSet('Days after the crush', (3 + (t - T.expect) * 1.2).toFixed(1), t < T.nope ? 'Does it swallow everything?' : 'Nothing falls in');
+  else if (sc === 'same') O.hudSet('Pull on the Moon', 'Identical', 'Gravity depends on mass and distance\nBoth are unchanged');
+  else if (sc === 'moon') O.hudSet('One orbit of the Moon', 'Day ' + Math.min(27.3, (t - T.moon) * 27.3 / 5.0).toFixed(1), 'Still 27.3 days · sped up');
+  else if (sc === 'close') O.hudSet('Pull at one metre', t < T.close + 2.2 ? 'How strong?' : '40 trillion g', t < T.close + 2.2 ? 'On the old surface, 6,371 km out: 1 g' : 'About 400 trillion m/s² · to scale');
+  else if (t < T.end) O.hudSet('Days after the crush', (30 + (t - T.fin) * 1.5).toFixed(1), 'Moon and satellites\nkeep their orbits');
+  else ha = 0;
+  O.show(O.hud, ha); O.hud.style.top = top + 'px'; const day = sc === 'hand' || sc === 'macro'; O.hud.style.background = day ? 'linear-gradient(90deg,rgba(6,9,26,.62) 0,rgba(6,9,26,.45) 70%,rgba(6,9,26,0) 100%)' : 'none'; O.hud.style.padding = day ? '14px 90px 16px 22px' : '0 0 0 22px'; O.hud.style.marginTop = day ? '-14px' : '0';
+  let lab = ''; const L = (x, y, a, html, al) => `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${clamp(a).toFixed(3)};${al || ''}">${html}</div>`;
+  const C = (x, y, a, html, w = 400) => L(x - w / 2, y, a, html, `width:${w}px;text-align:center`);
+  if (sc === 'title') { const p = pix(S1.M); lab += C(p[0], p[1] + 60, seg(t, 0.5, 0.9) * (1 - seg(t, 2.65, 3.0)), 'The Moon', 260); }
+  if (sc === 'hand' || sc === 'macro') { const t0 = sc === 'hand' ? T.hand : T.macro, a = seg(t, t0 + 0.25, t0 + 0.6), pb = proj(BHW(), cam), pm = pix(marble);
+    const r = Math.abs(proj(BHW().add(V(0.00887, 0, 0).applyQuaternion(cam.quaternion)), cam)[0] - pb[0]);
+    lab += L(pm[0] - r - 290, pm[1] - 18, a, 'A marble', 'width:260px;text-align:right;text-shadow:0 2px 10px #000,0 0 4px #000'); lab += L(pb[0] + r + 34, pb[1] - 18, a, '<span style="color:#fff;text-shadow:0 2px 10px #000,0 0 4px #000">The Earth</span>');
+    if (sc === 'macro') { const y = pb[1] - r - 34; lab += `<div style="position:absolute;left:${Math.round(pb[0] - r)}px;top:${Math.round(y)}px;width:${Math.round(2 * r)}px;height:4px;background:#ffd64a;opacity:${a.toFixed(3)};box-shadow:0 0 10px rgba(0,0,0,.7)"></div>`;
+      for (const s of [-1, 1]) lab += `<div style="position:absolute;left:${Math.round(pb[0] + s * r - 2)}px;top:${Math.round(y - 12)}px;width:4px;height:28px;background:#ffd64a;opacity:${a.toFixed(3)}"></div>`;
+      lab += C(pb[0], y - 78, a, '<b style="color:#ffd64a">1.8 cm</b>', 300); }
+    lab += L(64, 1150, seg(t, t0 + 0.5, t0 + 0.9), 'Size only · glow added<br>It still weighs as much as the Earth'); }
+  if (sc === 'moonT') { const p = pix(S1.M), b = pix(S1.B); lab += C(p[0], p[1] + 44, seg(t, T.moonT + 0.2, T.moonT + 0.5), 'The Moon', 260); lab += C(b[0], b[1] + 50, seg(t, T.moonT + 0.2, T.moonT + 0.5), '<span style="color:#ffd64a">The Earth</span>', 300); lab += L(64, 1150, seg(t, T.moonT + 0.4, T.moonT + 0.8), 'Not to scale · glow added'); }
+  if (sc === 'crush') { lab += L(64, 1150, seg(t, T.crush + 0.6, T.crush + 1.0) * (1 - seg(t, T.pop - 0.3, T.pop)), 'Arrows: an imaginary squeeze<br>Nothing in nature could do this');
+    if (t >= T.pop) { const b = pix(S1.B), rr = Math.abs(pix(S1.B, V(1.45, 0, 0).applyQuaternion(cam.quaternion))[0] - b[0]); lab += C(b[0], Math.min(b[1] + rr + 16, 1075), seg(t, T.pop + 0.35, T.pop + 0.7), '<b style="color:#ffd64a">Under 2 cm across</b>', 560); lab += L(64, 1175, seg(t, T.pop + 0.5, T.pop + 0.9), 'Drawn larger · glow added'); } }
+  if (sc === 'expect') { const b = pix(S1.B), p = pix(S1.M); lab += C(p[0], p[1] + 44, 1, 'The Moon', 260);
+    lab += C(b[0], b[1] + 60, seg(t, T.expect + 0.8, T.expect + 1.2) * (1 - seg(t, T.nope, T.nope + 0.2)), '<span style="color:#ff8a7a">Swallowed?</span>', 400); lab += C(b[0], b[1] + 54, seg(t, T.nope + 0.1, T.nope + 0.4), '<b style="color:#ffd64a">It wouldn’t.</b>', 400); lab += L(64, 1150, 1, 'Not to scale · satellites enlarged'); }
+  if (sc === 'same') { const e = pix(S1.E), b = pix(S2.B), a = seg(t, T.same + 0.3, T.same + 0.7); lab += L(e[0] + 130, e[1] - 150, a, 'Earth today'); lab += C(b[0], b[1] - 150, a, '<span style="color:#ffd64a">Earth as a black hole</span>', 560);
+    const m1 = pix(S1.M), m2 = pix(S2.M), k = seg(t, T.same + 2.9, T.same + 3.3); lab += C(Math.min(m1[0], 760), m1[1] + 40, k, '<b>Same pull</b>', 340); lab += C(Math.min(m2[0], 760), m2[1] + 40, k, '<b>Same pull</b>', 340); lab += L(64, 1175, a, 'Not to scale'); }
+  if (sc === 'moon') { const b = pix(S1.B), a = seg(t, T.moon + 0.4, T.moon + 0.8); lab += C(b[0], b[1] - 130, a, 'Where the Earth was', 520); lab += `<div style="position:absolute;left:${Math.round(b[0] - 1)}px;top:${Math.round(b[1] - 84)}px;width:3px;height:52px;background:#fff;opacity:${(a * 0.8).toFixed(3)}"></div>`; lab += L(64, 600, a, 'Not to scale<br>Glow added'); }
+  if (sc === 'close') { const pb = pix(cBH), pp = pix(probe), a = seg(t, T.close + 0.3, T.close + 0.7), gone = t >= T.yank; lab += L(pb[0] + 70, pb[1] - 34, a, '<span style="color:#ffd64a">The Earth<br>1.8 cm</span>'); lab += L(pp[0] + 80, pp[1] - 34, a * (gone ? 0 : 1), 'A small probe<br>held still');
+    const pm = proj(V(-0.2, 0.5, 0).add(CL), cam); lab += L(pm[0] - 250, pm[1] - 40, a, '<b style="color:#ffd64a">1 metre</b>', 'width:220px;text-align:right'); lab += L(pp[0] + 80, pp[1] + 150, seg(t, T.yank + 0.25, T.yank + 0.5), '<span style="color:#ff8a7a">Let go: gone in<br>under a millisecond</span>'); }
+  if (sc === 'fin' && t < T.end) { const p = pix(S1.M), b = pix(S1.B); lab += C(p[0], p[1] + 44, 1, 'The Moon', 260); lab += C(b[0], b[1] + 50, 1, '<span style="color:#ffd64a">The Earth</span>', 300); lab += L(64, 1175, 1, 'Not to scale · glow added'); }
+  if (O.labels._h !== lab) { O.labels._h = lab; O.labels.innerHTML = lab; }
+  let fl = 0; for (const [a, d, k] of [[0.02, 0.45, 0.8], [T.hand, 0.3, 0.7], [T.moonT, 0.3, 0.7], [T.crush, 0.3, 0.7], [T.pop, 0.45, 0.95], [T.macro, 0.3, 0.7], [T.expect, 0.3, 0.7], [T.same, 0.3, 0.6], [T.moon, 0.3, 0.6], [T.close, 0.3, 0.7], [T.yank + 0.14, 0.4, 0.7], [T.fin, 0.35, 0.7]]) if (t >= a - 0.06 && t < a + d) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + d)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { const s = sceneAt(t); if (s === 'hand' || s === 'macro') parkFrame(t, s); else spaceFrame(t, s); overlayFrame(t); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>

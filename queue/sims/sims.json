@@ -236,6 +236,19 @@
     "https://sealevel.nasa.gov/faq/11/how-much-rise-should-we-expect-from-greenland-and-antarctica",
     "https://pubs.usgs.gov/fs/fs2-00/"
    ]
+  },
+  {
+   "file": "sim-19-blackhole.mp4",
+   "title": "What if the Earth were crushed into a black hole?",
+   "made": "2026-11-22",
+   "caption": "What if the Earth were crushed into a black hole? It would be the size of a marble, under 2 cm across, and the Moon would keep circling as if nothing had happened. Same mass, same pull. 🌍\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #blackhole #space #studytok",
+   "science": "Worked from first principles and run in Python (G = 6.6743e-11, c = 299,792,458 m/s, Earth mass 5.9722e24 kg). Schwarzschild radius r = 2GM/c^2 = 8.87 mm, so the event horizon is 1.77 cm across: said as 'under two centimetres across' and 'the size of a marble' (a common glass marble is about 1.6 cm), shown as '1.8 cm' and 'Schwarzschild radius: 8.9 mm'. Wikipedia's table gives the same 8.87e-3 m; PBS NOVA rounds it to 'approximately one inch', which the film does not repeat. Mass shown as '5.97 million billion billion kg' (5.97e24). Gravity outside a spherical mass depends only on the mass and the distance (Newton's shell theorem; Birkhoff's theorem in general relativity), so the pull on the Moon is unchanged: GM/a^2 = 0.0027 m/s^2 at 384,400 km before and after, and the orbit period stays 27.3 days (computed 27.28; NASA NSSDC Moon Fact Sheet: 27.3217 days, semimajor axis 0.3844 million km), said as 'once every twenty-seven days'. NASA says the same of the Sun: replaced by a black hole of equal mass, 'this would not affect the orbits of the planets, because its gravitational influence on the solar system would be the same'. Satellites would likewise keep orbiting. Pull at one metre: GM/r^2 = 3.99e14 m/s^2 = 4.06e13 g, said as 'about forty trillion times what you feel now' and shown as '40 trillion g' and 'about 400 trillion m/s2'. 'Let go: gone in under a millisecond': free fall from rest at 1 m takes (pi/2) x sqrt(r^3 / 2GM) = about 56 nanoseconds (Newtonian). The idea's planned point survived checking. The film states that nothing in nature could squeeze the Earth this far (only stars of several solar masses collapse on their own). Illustrative and labelled: the Moon's orbit and the satellites are 'not to scale'; an Earth-mass black hole with nothing falling in would be invisible, so its ring and glow are labelled 'glow added' and it is 'drawn larger' in the space views; the hand-and-marble shot is a size comparison only and says 'it still weighs as much as the Earth'; the one-metre shot is to scale (1.8 cm hole, 1 m rule). Not mentioned: Hawking radiation (about 0.02 K for this mass, colder than the cosmic background, so no visible effect).",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Schwarzschild_radius",
+    "https://science.nasa.gov/universe/10-questions-you-might-have-about-black-holes",
+    "https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html",
+    "https://www.pbs.org/wgbh/nova/article/the-schwarzschild-radius-natures-breaking-point"
+   ]
   }
  ]
 }

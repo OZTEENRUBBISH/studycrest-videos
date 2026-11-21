@@ -170,8 +170,9 @@
    "setting": "Earth from space, then a hand holding a marble",
    "hook": "What if the Earth were crushed into a black hole?",
    "the surprising true point": "It would be about the size of a marble, and the Moon would keep orbiting as if nothing happened",
-   "status": "making",
-   "claimed_at": "2026-11-22T03:14:00+11:00"
+   "status": "made",
+   "claimed_at": "2026-11-22T03:14:00+11:00",
+   "file": "sim-19-blackhole.mp4"
   },
   {
    "title": "What if the lift cable snapped?",
