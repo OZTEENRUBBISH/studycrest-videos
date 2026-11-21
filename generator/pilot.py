@@ -57,6 +57,11 @@ SPOTS = {
  "practice-questions": dict(feature=True, scenes=[
     (5.4, Q("One question in.", "A fresh one out."), ("pq.png", [(30, 30, 736, 208), (832, 30, 1538, 208)]), "Same topic and skills. New situation, new numbers.", "Give StudyCrest a question you've already done, and it writes you a fresh one!"),
     (4.0, Q("Never run out of", "practice questions."), ("pq.png", [(30, 30, 736, 208), (832, 30, 1538, 208)]), "Pick how many, and how hard.", "Same skills, new numbers. You'll never run out of practice questions!")]),
+ "physics-speed": dict(tag="PHYSICS · SPEED AND UNITS", q="A car travels 90 km in 1.5 hours. Find its average speed in metres per second.",
+    lines=["speed = distance ÷ time", "= 90 ÷ 1.5 = 60 km/h", "= 60 × 3.6 = 216 m/s"], wrong=2,
+    hint="Hint: from km/h to m/s, do you multiply or divide by 3.6?", fix="= 60 ÷ 3.6", final="≈ 16.7 m/s",
+    say_flag="It's line three! For metres per second, you divide by three point six!",
+    intro=Q3("Right method,", "wrong answer,", "again?"), intro_say="Right method, wrong answer, again?")
 }
 # timeline (seconds)
 T_WRITE = [0.4, 1.4, 2.4]; T_COUNT = (3.4, 5.6); T_CHECK = [5.8, 6.2, 6.6]; T_HINT = 6.9; T_FIX = 8.3; T_FINAL = 9.3
