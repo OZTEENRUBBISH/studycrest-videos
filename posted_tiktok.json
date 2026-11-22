@@ -186,6 +186,12 @@
    "kind": "sim",
    "due_at": "2026-11-23T00:00:00+11:00",
    "buffer_post_id": "6b01d6b08bd84d59660809f4"
+  },
+  {
+   "file": "studycrest-24-maths-percentages",
+   "kind": "spot",
+   "due_at": "2026-11-24T12:00:00+11:00",
+   "buffer_post_id": "6b0318dad864a01105daba11"
   }
  ]
 }
