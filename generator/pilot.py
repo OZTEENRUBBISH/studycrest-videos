@@ -61,7 +61,12 @@ SPOTS = {
     lines=["speed = distance ÷ time", "= 90 ÷ 1.5 = 60 km/h", "= 60 × 3.6 = 216 m/s"], wrong=2,
     hint="Hint: from km/h to m/s, do you multiply or divide by 3.6?", fix="= 60 ÷ 3.6", final="≈ 16.7 m/s",
     say_flag="It's line three! For metres per second, you divide by three point six!",
-    intro=Q3("Right method,", "wrong answer,", "again?"), intro_say="Right method, wrong answer, again?")
+    intro=Q3("Right method,", "wrong answer,", "again?"), intro_say="Right method, wrong answer, again?"),
+ "maths-percentages": dict(tag="MATHS · PERCENTAGES", q="A jacket costs $80 after a 20% discount. Find its original price.",
+    lines=["after 20% off, you pay 80%", "original = 80 × 1.20", "= $96"], wrong=1,
+    hint="Hint: is $80 the full 100%, or the 80%?", fix="original = 80 ÷ 0.80", final="= $100",
+    say_flag="It's line two! Eighty dollars is eighty percent of the price!",
+    intro=Q3("One small slip,", "the whole answer", "gone?"), intro_say="One small slip, and the whole answer's gone?")
 }
 # timeline (seconds)
 T_WRITE = [0.4, 1.4, 2.4]; T_COUNT = (3.4, 5.6); T_CHECK = [5.8, 6.2, 6.6]; T_HINT = 6.9; T_FIX = 8.3; T_FINAL = 9.3
