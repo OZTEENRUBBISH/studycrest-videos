@@ -161,6 +161,11 @@ POSTS = {
  "I-where-do-you-lose-marks": lambda n=2: [
     question("ink", "🧐", "Do you know where you lose marks?", "Try StudyCrest free for 30 days and find out."),
     cta_slide("ink", 1, n, kicker="It checks every line of your working.")],
+ "J-test-coming-up": lambda n=4: [
+    cover("blue", "🎯", "Got a test", "StudyCrest's Test Predictor builds a practice test from your test notice and a past paper.", 0, n, accent="coming up?"),
+    shot_slide("blue", "Built like your real test", "tp_sample.png", (0, 570, 1316, 910), "Same number of questions and marks as your test notice.", 1, n),
+    steps_slide("blue", "Then sit it properly", [("Sit it on the clock", "A timer shows the time you'd have"), ("Answer your way", "Type, write with your pen, or photograph it"), ("Get it marked", "Question by question"), ("Know what to fix", "Your mistakes and what to study next")], 2, n),
+    cta_slide("blue", 3, n)],
 }
 
 if __name__ == "__main__":
