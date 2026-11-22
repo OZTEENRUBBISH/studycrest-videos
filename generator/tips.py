@@ -125,6 +125,15 @@ TIPS = {
      T("🔁", "Swap fresh questions", "StudyCrest's Practice Questions writes a new question from one you've already done.", "Three. Swap fresh questions. StudyCrest's Practice Questions writes new ones.", SC_TAG),
      T("☕", "Save the chat for the break", "Work first, catch up after. Decide when the break is before you start.", "Four. Save the chat for the break. Work first, catch up after."),
      T("📌", "Plan the next one before you leave", "Pick the day, the topic and the questions for next time.", "Five. Plan the next one before you leave. Pick the day and the topic.")]),
+ "after-a-bad-mark": dict(title="5 things to do", accent="after a bad mark", emo="📈", sub="How to make the next one better.", tag="STUDY TIPS",
+    intro_say="Five things to do after a bad mark.", hashtags="#badgrade #exams #studymotivation",
+    hook="5 things to do after a bad mark. Save this for the next time a test goes badly. 📈",
+    tips=[
+     T("🌙", "Give it a night", "Be annoyed today. Look at the paper properly tomorrow.", "One. Give it a night. Look at the paper properly tomorrow."),
+     T("🔎", "Read the feedback, not just the mark", "The comments tell you more than the number does.", "Two. Read the feedback, not just the mark."),
+     T("📋", "Sort the marks you lost", "Didn't know it, made a slip, or ran out of time? Each one needs a different fix.", "Three. Sort the marks you lost. Didn't know it, a slip, or out of time?"),
+     T("✅", "Catch slips while you practise", "StudyCrest checks every line as you write and flags the wrong one, with a hint.", "Four. Use StudyCrest. It flags a wrong line while you practise, with a hint.", SC_TAG),
+     T("🎯", "Set one goal for next time", "One thing to change, not ten. Write it at the top of your notes.", "Five. Set one goal for next time. One thing to change, not ten.")]),
  # ── StudyCrest Business (@studycrestbusiness): keys start with "biz-" ──
  "biz-study-accounting": dict(title="5 ways to study", accent="accounting properly", emo="🧮", sub="Reading the textbook isn't one of them.", tag="ACCOUNTING",
     intro_say="Five ways to study accounting properly.", hashtags="#accountingstudent #accounting #businessstudent",
