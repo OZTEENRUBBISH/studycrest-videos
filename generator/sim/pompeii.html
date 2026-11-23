@@ -1,0 +1,169 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// Pompeii, hour by hour (AD 79).  A Roman town under a low-poly Vesuvius: the eruption column, about 18 hours of falling pumice,
+// then the pyroclastic surges of the second morning. Distances and heights are compressed and labelled not to scale.
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, mat, box, shadowAll, person, cloud, skyDome, overlay, capAt, proj, makePost } from './common.js';
+const W = 1080, H = 1920, DUR = 48.6, MZ = -1000, MH = 430, MR = 760, CRY = MH - 8;
+const O = overlay();
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.1, 12000);
+const R = rng(79), V = (x, y, z) => new THREE.Vector3(x, y, z);
+
+// =====================================================  WORLD
+const scn = new THREE.Scene(); scn.fog = new THREE.Fog(0xd6e7f3, 400, 5000);
+const sky = skyDome(0x2a74d6, 0xcfe6f7, 0xc3d7e4); sky.scale.setScalar(9); scn.add(sky);
+const hemi = new THREE.HemisphereLight(0xdcecff, 0xcfc4b0, 1.3); scn.add(hemi);
+const sun = new THREE.DirectionalLight(0xffe7c4, 3.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.05; scn.add(sun); scn.add(sun.target);
+const setSun = (c, r) => { sun.target.position.copy(c); sun.position.set(c.x + r * 0.9, c.y + r * 1.4, c.z + r * 0.9); Object.assign(sun.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 0.5, far: r * 6 }); sun.shadow.camera.updateProjectionMatrix(); };
+const world = new THREE.Group(); scn.add(world);
+{ const g = new THREE.Mesh(new THREE.PlaneGeometry(16000, 16000).rotateX(-Math.PI / 2), mat(0x9aa86a)); g.receiveShadow = true; world.add(g);
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(8000, 16000).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x2f7fb8, roughness: 0.35, metalness: 0.2, flatShading: true })); sea.position.set(-4420, 0.4, 0); world.add(sea); world.userData.sea = sea; }
+// Vesuvius: a broad cone with a crater, coloured by height
+const mtnH = (d) => d < 70 ? CRY - 6 : MH * Math.pow(clamp(1 - (d - 70) / (MR - 70)), 1.25);
+{ const geo = new THREE.CylinderGeometry(70, MR, MH, 40, 12, true).toNonIndexed(), pos = geo.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), z = pos.getZ(i), d = Math.hypot(x, z), n = fbm(x * 0.006 + 2, 0.5, z * 0.006 + 7, 4); const y = mtnH(d) * (0.82 + 0.36 * n) + (d > 700 ? 0 : (n - 0.5) * 30); pos.setY(i, Math.max(-2, y)); }
+  for (let i = 0; i < pos.count; i += 3) { const y = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3, n = fbm(pos.getX(i) * 0.02, 1, pos.getZ(i) * 0.02, 2); c.set(y > 330 ? 0x6b655d : (y > 220 ? (n > 0.5 ? 0x7d7663 : 0x6f7a52) : (y > 90 ? (n > 0.52 ? 0x5f8a4c : 0x6f9a55) : (n > 0.5 ? 0x86a85e : 0x93b266)))); for (let k = 0; k < 3; k++) { col[(i + k) * 3] = c.r; col[(i + k) * 3 + 1] = c.g; col[(i + k) * 3 + 2] = c.b; } }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.computeVertexNormals(); const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })); m.position.set(0, 0, MZ); m.receiveShadow = true; world.add(m);
+  const cr = new THREE.Mesh(new THREE.CylinderGeometry(72, 60, 10, 20), mat(0x3a3430)); cr.position.set(0, CRY - 6, MZ); world.add(cr); }
+const glow = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, depthWrite: false, fog: false })); glow.position.set(0, CRY + 10, MZ); world.add(glow);
+// vineyards and cypresses between the town and the mountain
+{ const vine = new THREE.InstancedMesh(new THREE.BoxGeometry(26, 1.6, 1.4), mat(0x4f8a45), 420), m4 = new THREE.Matrix4(); let k = 0; for (let f = 0; f < 14; f++) { const fx = (R() - 0.5) * 900, fz = -230 - R() * 300, rot = R() * 0.6; for (let r = 0; r < 30; r++) { m4.makeRotationY(rot); m4.setPosition(fx + Math.sin(rot) * r * 4, 0.8 + mtnH(Math.hypot(fx, fz - MZ)) * 0.0, fz + Math.cos(rot) * r * 4); vine.setMatrixAt(k++, m4); } } vine.receiveShadow = true; world.add(vine);
+  const cyG = new THREE.ConeGeometry(1.5, 11, 6); cyG.translate(0, 5.5, 0); const cy = new THREE.InstancedMesh(cyG, mat(0x2f6a3c), 130); for (let i = 0; i < 130; i++) { const a = R() * 6.28, d = 215 + R() * 260; m4.makeScale(1, 0.7 + R() * 0.7, 1); m4.setPosition(Math.cos(a) * d * 1.3, 0, Math.sin(a) * d); cy.setMatrixAt(i, m4); } cy.castShadow = true; world.add(cy); world.userData.cy = cy; world.userData.vine = vine; }
+// Pompeii: a grid of blocks inside a wall, a forum with a temple at the north end
+const town = new THREE.Group(); world.add(town); const WALLS = [0xe9dcc0, 0xe3cfa5, 0xd9b98a, 0xf0e6d2, 0xd8a67a, 0xc98a62], roofs = [], BL = 30;
+const roofM = mat(0xb5482f), roofM2 = mat(0xa33f2a);
+function house(x, z, w, d, h) { const g = new THREE.Group(); g.add(box(w, h, d, WALLS[Math.floor(R() * 6)], 0, h / 2, 0)); const rf = new THREE.Group(); const slab = new THREE.Mesh(new THREE.BoxGeometry(w + 0.8, 0.35, d + 0.8), R() < 0.5 ? roofM : roofM2); slab.position.y = 0.17; rf.add(slab);
+  const pg = new THREE.ConeGeometry(Math.max(w, d) * 0.72, 1.5, 4); pg.rotateY(Math.PI / 4); pg.scale(w / Math.max(w, d), 1, d / Math.max(w, d)); const py = new THREE.Mesh(pg, roofM); py.position.y = 1.05; rf.add(py); rf.position.y = h; g.add(rf);
+  if (R() < 0.6) g.add(box(0.9, 1.9, 0.12, 0x5a3d26, (R() - 0.5) * w * 0.5, 0.95, d / 2 + 0.03)); if (R() < 0.7) g.add(box(0.7, 0.7, 0.12, 0x33414f, (R() - 0.5) * w * 0.6, h * 0.7, d / 2 + 0.03));
+  g.position.set(x, 0, z); shadowAll(g); town.add(g); roofs.push({ rf, h, k: R(), x, z }); return g; }
+for (let gx = -5; gx <= 5; gx++) for (let gz = -5; gz <= 5; gz++) { if (Math.abs(gx) <= 1 && gz >= -2 && gz <= 0) continue; const cx = gx * BL, cz = gz * BL, n = 2;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const w = 10 + R() * 2.5, d = 10 + R() * 2.5; house(cx + (i - 0.5) * 12.4, cz + (j - 0.5) * 12.4, w, d, 4.2 + R() * 3.4); } }
+{ const pave = box(11 * BL + 20, 0.1, 11 * BL + 20, 0xa8a195, 0, 0.05, 0); pave.castShadow = false; town.add(pave); const fr = box(3 * BL - 6, 0.16, 3 * BL - 6, 0xd9d2c2, 0, 0.08, -BL); fr.castShadow = false; town.add(fr);
+  // temple at the north end of the forum
+  town.add(box(22, 2.4, 30, 0xe6dfd0, 0, 1.2, -BL - 22)); for (let s = 0; s < 6; s++) town.add(box(22 - s * 0.01, 0.4, 1, 0xd9d2c2, 0, 0.2 + s * 0.4, -BL - 6.6 + s * -0.0 + (5 - s) * 0.8 - 4));
+  const colG = new THREE.CylinderGeometry(0.75, 0.85, 9, 10), colM = mat(0xf2ede2); for (let i = 0; i < 6; i++) { const c = new THREE.Mesh(colG, colM); c.position.set(-9 + i * 3.6, 6.9, -BL - 9); c.castShadow = true; town.add(c); } for (const sx of [-9, 9]) for (let k = 1; k < 6; k++) { const c = new THREE.Mesh(colG, colM); c.position.set(sx, 6.9, -BL - 9 - k * 4.4); c.castShadow = true; town.add(c); }
+  town.add(box(16, 9, 20, 0xe9dcc0, 0, 6.9, -BL - 24)); town.add(box(23, 1.2, 30, 0xe6dfd0, 0, 12, -BL - 22)); const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 13.2, 4.2, 4, 1), roofM); ped.rotation.y = Math.PI / 4; ped.scale.set(1, 1, 1.6); ped.position.set(0, 14.7, -BL - 22); ped.castShadow = true; town.add(ped);
+  // colonnades along the forum, statues, a fountain
+  const sc = new THREE.CylinderGeometry(0.4, 0.45, 5, 8); for (const sx of [-1, 1]) { for (let k = 0; k < 15; k++) { const c = new THREE.Mesh(sc, colM); c.position.set(sx * 38, 2.6, -BL - 2 + k * 5 - 30); c.castShadow = true; town.add(c); } town.add(box(2.2, 0.6, 76, 0xe6dfd0, sx * 38, 5.4, -BL + 3)); town.add(box(4, 0.3, 76, 0xb5482f, sx * 39.4, 5.8, -BL + 3)); }
+  for (const [x, z] of [[-14, -BL + 16], [14, -BL + 16]]) { town.add(box(1.6, 2.4, 1.6, 0xd9d2c2, x, 1.2, z)); const st = person(rng(x + 50), 'stand', { shirt: 0xcfcabd, sleeve: 0xcfcabd, pants: 0xcfcabd, skin: 0xcfcabd, hair: 0xcfcabd, shorts: false, shoe: 0xcfcabd }); st.position.set(x, 2.4, z); st.scale.setScalar(1.5); town.add(st); }
+  // town wall with a south gate
+  const WR = 5.5 * BL + 14; for (const [x, z, w, d] of [[0, -WR, 2 * WR, 3], [-WR, 0, 3, 2 * WR], [WR, 0, 3, 2 * WR], [-WR / 2 - 4, WR, WR - 8, 3], [WR / 2 + 4, WR, WR - 8, 3]]) town.add(box(w, 8, d, 0xb9ad98, x, 4, z)); for (const sx of [-1, 1]) town.add(box(5, 12, 5, 0xb0a48e, sx * 9, 6, WR)); town.add(box(23, 2.6, 4, 0xb0a48e, 0, 10.7, WR));
+  const road = box(8, 0.12, 900, 0x9a9388, 0, 0.06, WR + 450); road.castShadow = false; world.add(road); world.userData.WR = WR; }
+const WR = world.userData.WR;
+// the pumice layer that buries the streets
+const pum = new THREE.Mesh(new THREE.BoxGeometry(2400, 1, 2400), mat(0x8f8a80)); pum.receiveShadow = true; world.add(pum);
+// people: the forum crowd (day one), the column leaving by the south gate (night)
+const TUN = [0xf0e6d2, 0xe9dcc0, 0xc98a62, 0x9b3b2f, 0x5f7fa6, 0xd9b98a, 0xffffff, 0x6f8a55];
+const folk = []; for (let i = 0; i < 46; i++) { const c = TUN[Math.floor(R() * 8)], p = person(R, 'walk', { shirt: c, pants: c, shorts: true, shoe: 0x8a6d3b }); p.userData.f = { x: (R() - 0.5) * 66, z: -BL + (R() - 0.5) * 70, a: R() * 6.28, sp: R() < 0.4 ? 0 : 0.9 + R() * 0.6 }; town.add(p); folk.push(p); }
+const flee = []; for (let i = 0; i < 40; i++) { const c = TUN[Math.floor(R() * 8)], p = person(R, 'walk', { shirt: c, pants: c, shorts: true, shoe: 0x8a6d3b }); p.userData.f = { x: (R() - 0.5) * 6, z0: R() * 150, sp: 1.6 + R() * 0.9 }; if (i % 3 === 0) { const tc = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffb347 })); tc.position.set(0.35, 1.75, 0.1); p.add(tc); p.add(box(0.05, 0.6, 0.05, 0x5a3d26, 0.35, 1.4, 0.1)); const pl = new THREE.PointLight(0xffa040, i % 6 === 0 ? 14 : 0, 16, 1.6); pl.position.set(0.35, 1.9, 0.1); p.add(pl); } else if (i % 3 === 1) p.add(box(0.5, 0.4, 0.4, 0xb08a55, 0, 1.9, 0)); world.add(p); flee.push(p); }
+// falling pumice
+const PN = 2600, pGeo = new THREE.BufferGeometry(), pPos = new Float32Array(PN * 3), PD = []; for (let i = 0; i < PN; i++) PD.push([R(), R(), R(), 0.6 + R() * 0.8]); pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+const rain = new THREE.Points(pGeo, new THREE.PointsMaterial({ color: 0xd9d2c2, size: 5, sizeAttenuation: false, transparent: true, opacity: 0.9, depthWrite: false })); rain.frustumCulled = false; world.add(rain);
+// the eruption column, its spreading top, and the surge cloud
+const blobG = new THREE.IcosahedronGeometry(1, 1), colM1 = new THREE.MeshLambertMaterial({ color: 0x9a948a, flatShading: true }), colM2 = new THREE.MeshLambertMaterial({ color: 0x77726a, flatShading: true }), surM = new THREE.MeshLambertMaterial({ color: 0x8a847a, flatShading: true });
+const NC = 96, NU = 64, NS = 90, colB = [], umbB = [], surB = [];
+for (let i = 0; i < NC; i++) { const m = new THREE.Mesh(blobG, i % 3 ? colM1 : colM2); m.userData = { h: (i + R()) / NC, a: R() * 6.28, r: R(), s: 0.7 + R() * 0.6, p: R() * 6.28 }; world.add(m); colB.push(m); }
+for (let i = 0; i < NU; i++) { const m = new THREE.Mesh(blobG, i % 3 ? colM1 : colM2); m.userData = { a: R() * 6.28, r: Math.sqrt(R()), s: 0.7 + R() * 0.6, p: R() * 6.28, y: R() }; world.add(m); umbB.push(m); }
+for (let i = 0; i < NS; i++) { const m = new THREE.Mesh(blobG, surM); m.userData = { f: Math.pow(R(), 0.6), l: (R() - 0.5) * 2, s: 0.7 + R() * 0.7, p: R() * 6.28, y: R() }; world.add(m); surB.push(m); }
+const HMAX = 1750;   // drawn height of the column (stands for about 30 km: not to scale)
+function column(hc, ru, t, sag = 0) { for (const m of colB) { const u = m.userData, y = CRY + u.h * hc, wdt = 26 + u.h * 120; m.visible = hc > 8; m.position.set(Math.cos(u.a + t * 0.25) * u.r * wdt, y, MZ + Math.sin(u.a + t * 0.25) * u.r * wdt + u.h * 60); const s = (34 + u.h * 85) * u.s * (1 + 0.1 * Math.sin(t * 1.6 + u.p)) * clamp(hc / 300, 0.25, 1); m.scale.set(s, s * 1.1, s); }
+  for (const m of umbB) { const u = m.userData; m.visible = ru > 5; const rr = u.r * ru; m.position.set(Math.cos(u.a) * rr * 1.25, CRY + hc + (u.y - 0.5) * 70 - sag * u.r * 200, MZ + 60 + Math.sin(u.a) * rr * 0.9 + ru * 0.45); const s = (110 + 90 * u.s) * (1 + 0.08 * Math.sin(t * 1.2 + u.p)) * clamp(ru / 260, 0.3, 1.25); m.scale.set(s, s * 0.42, s); } }
+function surge(d, t) { for (const m of surB) { const u = m.userData; m.visible = d > 4; const dd = 60 + (d - 60) * u.f, lat = u.l * (50 + dd * 0.42), gy = mtnH(dd) * 0.92; const s = (30 + 40 * u.s + dd * 0.035) * (1 + 0.14 * Math.sin(t * 2.6 + u.p)) * clamp(d / 160, 0.3, 1) * (0.6 + 0.6 * u.f); m.position.set(lat, gy + s * (0.35 + 0.5 * u.y), MZ + dd); m.scale.set(s, s * 0.8, s); } }
+// Misenum: a villa terrace across the bay, and the boy who watched
+const MX = -3400, MIZ = 900, mis = new THREE.Group(); mis.position.set(MX, 0, MIZ); world.add(mis);
+{ const hill = new THREE.Mesh(new THREE.CylinderGeometry(34, 150, 40, 14, 1), mat(0x8fa862)); hill.position.set(-2, 20, 0); hill.receiveShadow = true; mis.add(hill); mis.add(box(46, 1.2, 30, 0xe6dfd0, 0, 40.4, 0)); for (let k = 0; k < 13; k++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 1.5, 8), mat(0xf2ede2)); c.position.set(22.4, 41.75, -13 + k * 2.2); c.castShadow = true; mis.add(c); } mis.add(box(1.2, 0.3, 30, 0xf2ede2, 22.4, 42.65, 0));
+  mis.add(box(18, 9, 26, 0xe9dcc0, -12, 45.5, 0)); mis.add(box(20, 0.5, 28, 0xb5482f, -12, 50.2, 0)); for (let k = 0; k < 4; k++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.56, 8, 10), mat(0xf2ede2)); c.position.set(-1.6, 45, -9 + k * 6); c.castShadow = true; mis.add(c); } mis.add(box(4, 0.5, 26, 0xe6dfd0, -1.6, 49.2, 0));
+  for (const [x, z] of [[14, -11], [15, 11]]) { const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.55, 1.3, 8), mat(0xb5603a)); pot.position.set(x, 41.65, z); mis.add(pot); const b = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 0), mat(0x3f8a45)); b.position.set(x, 43.2, z); mis.add(b); }
+  mis.add(box(3.2, 0.25, 1.3, 0xd9d2c2, 14.5, 41.9, 2)); mis.add(box(0.3, 0.9, 1.1, 0xd9d2c2, 13.2, 41.45, 2)); mis.add(box(0.3, 0.9, 1.1, 0xd9d2c2, 15.8, 41.45, 2)); shadowAll(mis); }
+const pliny = person(rng(17), 'stand', { shirt: 0xffffff, sleeve: 0xffffff, pants: 0xffffff, shorts: true, skin: 0xe0ac7e, hair: 0x2b1b12, shoe: 0x8a6d3b }); pliny.scale.setScalar(0.95); pliny.position.set(20.2, 41, 4.4); pliny.rotation.y = Math.PI / 2 - 0.25; mis.add(pliny); pliny.userData.aR.add(box(0.5, 0.09, 0.09, 0xf5efe0, 0, -0.62, 0.12));
+const boats = []; for (let i = 0; i < 5; i++) { const b = new THREE.Group(); b.add(box(9, 1.2, 2.6, 0x7a5a3c, 0, 0.6, 0)); b.add(box(0.2, 6, 0.2, 0x5a3d26, 0, 3.6, 0)); b.add(box(0.1, 3.6, 4.4, 0xf0e6d2, 0.2, 4.4, 0)); b.position.set(MX + 300 + i * 260 + R() * 80, 0.4, MIZ - 240 + (R() - 0.5) * 500); b.rotation.y = R() * 3; world.add(shadowAll(b)); boats.push(b); }
+const clouds = []; for (let i = 0; i < 12; i++) { const c = cloud(R), a = R() * 6.28, r = 900 + R() * 1800; c.position.set(Math.cos(a) * r, 520 + R() * 500, Math.sin(a) * r); c.scale.setScalar(3 + R() * 4); scn.add(c); clouds.push(c); }
+
+const post = makePost(renderer, scn, cam, { bloom: 0.2, bloomThreshold: 0.9, warm: 0.04, sat: 1.12 });
+// =====================================================  TIMELINE
+const T = { day: 6.3, boom: 8.7, dark: 15.2, gate: 20.5, morn: 23.9, coll: 26.3, street: 33.6, bay: 38.4, fin: 43.5, end: 46.9 };
+const CAPS = /*CAPS*/[[2.0, 3.81, "<em>No lava</em> ever<br>reached Pompeii."], [3.83, 5.98, "And most of its people<br>got out <em>alive</em>."], [6.5, 7.96, "About <em>one in the afternoon</em>,"], [7.98, 9.48, "Vesuvius <em>explodes</em>."], [9.5, 11.14, "A column of<br>ash and pumice"], [11.16, 12.97, "climbs about<br><em>30 kilometres</em>,"], [12.99, 14.85, "and spreads out<br>like a <em>pine tree</em>."], [15.3, 16.58, "The town goes <em>dark</em>."], [16.6, 19.19, "Pumice rains down<br>for about <em>18 hours</em>."], [19.21, 20.71, "Roofs cave in<br>under the weight."], [20.73, 22.04, "But <em>thousands</em> of people"], [22.06, 23.49, "use that time to <em>leave</em>."], [24.0, 25.09, "Then, the next morning,"], [25.11, 26.47, "the column <em>collapses</em>."], [26.49, 27.91, "A cloud of gas and ash,"], [27.93, 29.71, "as hot as <em>300 degrees</em>,"], [29.73, 30.94, "pours down the mountain"], [30.96, 33.18, "at over <em>100 km/h</em>."], [33.7, 35.96, "It reaches Pompeii<br>soon after <em>seven</em>."], [35.98, 37.91, "No one still in the town<br>survives."], [38.5, 40.57, "A <em>teenager</em> watched<br>from across the bay,"], [40.59, 42.05, "and later wrote<br>it all down."], [42.07, 43.0, "That's how we know."], [43.6, 45.14, "<em>Lava</em> never<br>touched Pompeii."], [45.16, 46.52, "It was buried<br>by a <em>cloud</em>."]]/*END*/;
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+function look(sat, warm, fogC, near, far, top, mid, bot, hi, si, sunC, ex = 1.0) { post.grade.uniforms.sat.value = sat; post.grade.uniforms.warm.value = warm; scn.fog.color.set(fogC); scn.fog.near = near; scn.fog.far = far; sky.material.uniforms.top.value.set(top); sky.material.uniforms.mid.value.set(mid); sky.material.uniforms.bot.value.set(bot); hemi.intensity = hi; sun.intensity = si; sun.color.set(sunC); renderer.toneMappingExposure = ex; }
+// clock: day one 1:00 pm at the first explosion; the pumice phase runs about 18 hours to the second morning
+const clockAt = (t) => t < T.day ? 31.2 : (t < T.boom ? 13 : (t < T.dark ? 13 + seg(t, T.boom, T.dark) * 1.0 : (t < T.morn ? 14 + seg(t, T.dark, T.morn) * 16.3 : (t < T.street ? 30.3 + seg(t, T.morn, T.street) * 0.8 : 31.1 + seg(t, T.street, T.bay) * 0.25))));
+const clockStr = (h) => { const d = h >= 24 ? 2 : 1, hh = Math.floor(h % 24), mm = Math.floor((h % 1) * 60 / 5) * 5, ap = hh >= 12 ? 'pm' : 'am', h12 = hh % 12 === 0 ? 12 : hh % 12; return [`${h12}:${String(mm).padStart(2, '0')} ${ap}`, d]; };
+let sunK = '';
+function frame(t) {
+  const open = t < T.day, day1 = t >= T.day && t < T.dark, night = t >= T.dark && t < T.morn, morn = (t >= T.morn && t < T.bay) || open, bay = t >= T.bay && t < T.fin, fin = t >= T.fin;
+  const dk = smooth(seg(t, T.boom + 3.2, T.dark));
+  if (day1) look(1.14, 0.05, 0xd6e7f3, 500, 6000, 0x2a74d6, 0xcfe6f7, 0xc3d7e4, lerp(1.3, 1.0, dk), lerp(3.0, 1.9, dk), 0xffe7c4);
+  else if (night) look(0.75, 0.1, 0x25211e, 40, 420, 0x14110f, 0x2a2420, 0x1a1614, 0.55, 0.25, 0xffb070, 1.15);
+  else if (morn) look(0.7, 0.05, 0x7d7870, 300, 3600, 0x4a4743, 0x8a857c, 0x6a665e, 0.95, 0.9, 0xffe0c0);
+  else if (bay) look(0.95, 0.09, 0xb9b3a8, 800, 9000, 0x56616e, 0xc9b9a0, 0x9a948a, 1.15, 1.7, 0xffd0a0);
+  else look(0.55, 0.06, 0x8a857c, 300, 3000, 0x5a5650, 0x9a958c, 0x7a766e, 1.1, 1.2, 0xffe0c0);
+  for (const c of clouds) c.visible = day1 || bay; mis.visible = bay; for (const b of boats) b.visible = bay || day1;
+  // eruption state
+  let hc = 0, ru = 0, sd = 0, sag = 0, depth = 0, gl = 0;
+  if (open) { hc = HMAX * 0.5; ru = 900; sd = lerp(600, 730, seg(t, 0, T.day)); depth = 2.8; sag = 0.6; gl = 0.5; }
+  else if (day1) { const q = t - T.boom; hc = q < 0 ? 0 : HMAX * easeOut(q / 4.6); ru = q < 2.6 ? 0 : 1000 * easeOut((q - 2.6) / 5.5); gl = q < 0 ? 0 : 0.9; }
+  else if (night) { hc = HMAX; ru = 1300; depth = 2.8 * seg(t, T.dark - 0.3, T.morn - 0.4); gl = 0; }
+  else if (t < T.bay) { const q = seg(t, T.coll, T.coll + 2.6); hc = HMAX * lerp(1, 0.42, easeIn(q)); ru = 1300; sag = easeIn(q); depth = 2.8; sd = t < T.coll ? 0 : (t < T.street ? lerp(40, 760, Math.pow(seg(t, T.coll, T.street), 1.15)) : lerp(690, 1010, seg(t, T.street, T.bay - 0.6))); gl = 0.8; }
+  else if (bay) { const k = seg(t, T.bay, T.fin); hc = HMAX * lerp(0.85, 0.5, smooth(seg(k, 0.35, 0.75))); ru = 1250; sag = smooth(seg(k, 0.35, 0.8)) * 0.8; sd = k < 0.4 ? 0 : lerp(60, 700, seg(k, 0.4, 1)); gl = 0.7; depth = 2.8; }
+  else { hc = HMAX * 0.3; ru = 900; sag = 0.5; depth = 7.6; sd = 0; gl = 0.25; }
+  column(hc, ru, t, sag); surge(sd, t); glow.visible = gl > 0.01; glow.scale.set(80, 46, 80); glow.material.opacity = gl * (0.75 + 0.2 * Math.sin(t * 9));
+  pum.position.y = depth - 0.5; pum.visible = depth > 0.02; pum.material.color.set(fin ? 0x9a958c : 0x8f8a80);
+  // roofs give way under the pumice during the night; some are gone by morning
+  for (const r of roofs) { const tc = T.dark + 1.6 + r.k * 14; const gone = r.k < 0.42 && ((t >= tc && !day1 && !open) || open || fin || bay); const q = clamp((t - tc) / 0.5); r.rf.position.y = gone ? (night ? r.h - easeIn(q) * (r.h - 1.2) : 1.2) : r.h; r.rf.rotation.z = gone ? (night ? q : 1) * (r.k - 0.2) * 0.5 : 0; }
+  for (const p of folk) { const f = p.userData.f; p.visible = day1; if (!p.visible) continue; const run = t > T.boom + 1.0; const sp = f.sp * (run ? 3.2 : 1), tt = t - T.day; const a = run ? Math.PI / 2 + (f.x > 0 ? -0.25 : 0.25) : f.a; const x = f.x + Math.cos(f.a) * f.sp * Math.min(tt, T.boom + 1 - T.day) + (run ? Math.cos(a) * sp * (t - T.boom - 1) : 0), z = f.z + Math.sin(f.a) * f.sp * Math.min(tt, T.boom + 1 - T.day) + (run ? Math.sin(a) * sp * (t - T.boom - 1) : 0); p.position.set(clamp(x, -36, 36), 0.16, Math.min(z, WR - 10)); p.rotation.y = Math.atan2(Math.cos(a), Math.sin(a)); const still = f.sp === 0 && !run; p.userData.pose(t * (run ? 9 : 5) + p.userData.seed, still ? 'stand' : (run ? 'run' : 'walk')); if (t > T.boom + 0.2 && t < T.boom + 1.0) p.rotation.y = Math.PI; }
+  for (const p of flee) { const f = p.userData.f; p.visible = night; if (!p.visible) continue; const z = WR - 40 + ((f.z0 + (t - T.dark) * f.sp * 2.2) % 190); p.position.set(f.x + Math.sin(z * 0.05 + f.z0) * 0.8, depth + 0.05, z); p.rotation.y = 0; p.userData.pose(t * 7 + p.userData.seed, 'walk'); p.userData.hips.rotation.x = 0.18; }
+  rain.visible = night || (day1 && dk > 0.5) || open || (morn && t < T.coll + 1);
+  let r = 120, sc = V(0, 0, 0);
+  if (open) { camPath([[0, V(16, 9.5, 30), V(0, 150, -700), 62], [T.day, V(10, 8.2, 12), V(0, 135, -700), 56]], t); r = 130; sc.set(0, 0, -20); }
+  else if (t < T.boom + 0.9) { camPath([[T.day, V(22, 4.2, 12), V(0, 60, -500), 58], [T.boom + 0.9, V(16, 4.6, 6), V(0, 90, -600), 56]], t); r = 110; sc.set(0, 0, -10); }
+  else if (day1) { camPath([[T.boom + 0.9, V(16, 4.6, 6), V(0, 90, -600), 56], [T.boom + 3.4, V(40, 20, 170), V(0, 560, -900), 70], [T.dark, V(70, 46, 330), V(0, 900, -900), 76]], t); r = 260; sc.set(0, 0, 0); const q = t - T.boom; if (q > 0 && q < 1.6) cam.position.y += Math.sin(q * 38) * 0.25 * (1 - q / 1.6); }
+  else if (t < T.gate) { camPath([[T.dark, V(-15, 6.0, 118), V(-15, 6.5, -40), 62], [T.gate, V(-15, 6.6, 92), V(-15, 6.0, -40), 56]], t); r = 70; sc.set(-15, 0, 60); }
+  else if (night) { camPath([[T.gate, V(13, 7.5, WR + 46), V(0, 5.5, WR - 4), 56], [T.morn, V(10, 6.6, WR + 34), V(0, 5.6, WR - 4), 52]], t); r = 60; sc.set(0, 0, WR + 20); }
+  else if (t < T.street) { camPath([[T.morn, V(150, 60, 290), V(0, 560, -900), 72], [T.coll + 1.5, V(160, 70, 300), V(0, 360, -800), 70], [T.street, V(175, 80, 315), V(0, 190, -560), 66]], t); r = 300; sc.set(0, 0, -100); }
+  else if (t < T.bay) { camPath([[T.street, V(-15, 7.4, 96), V(-15, 16, -160), 62], [T.bay, V(-15, 6.6, 110), V(-15, 12, -160), 58]], t); r = 120; sc.set(-15, 0, 20); const q = seg(t, T.street + 2.6, T.bay); cam.position.y += Math.sin(t * 34) * 0.12 * q; }
+  else if (bay) { camPath([[T.bay, V(MX + 12.5, 43.5, MIZ + 8.6), V(MX + 900, 120, MIZ - 420), 48], [T.fin, V(MX + 14.5, 43.3, MIZ + 7.8), V(MX + 900, 140, MIZ - 440), 44]], t); r = 40; sc.set(MX + 10, 41, MIZ); pliny.userData.pose(t * 1.2, 'stand'); pliny.userData.aR.rotation.x = -0.9; }
+  else { camPath([[T.fin, V(120, 150, 300), V(0, 0, -60), 54], [DUR + 2, V(150, 260, 420), V(0, 40, -250), 54]], t); r = 300; sc.set(0, 0, 0); }
+  if (rain.visible) { const cx = cam.position.x, cz = cam.position.z - 30, fl = t * 26; for (let i = 0; i < PN; i++) { const D = PD[i]; pPos[i * 3] = cx + (D[0] - 0.5) * 150 + Math.sin(i) * 2; pPos[i * 3 + 1] = 70 - ((D[1] * 70 + fl * D[3]) % 70); pPos[i * 3 + 2] = cz + (D[2] - 0.5) * 150; } pGeo.attributes.position.needsUpdate = true; rain.material.opacity = night ? 0.9 : (open ? 0.5 : 0.55); }
+  sky.position.copy(cam.position); const k2 = r + '|' + Math.round(sc.x) + '|' + Math.round(sc.z); if (k2 !== sunK) { setSun(sc, r); sunK = k2; }
+  post.render();
+}
+function overlayFrame(t) {
+  const ta = t < 2.1 ? Math.min(seg(t, 0.12, 0.5), 1 - seg(t, 1.75, 2.1)) : 0; O.set(O.title, '<em>Pompeii</em>,<br>hour by hour'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.12, 0.8))) * 26}px)`;
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  const fade = (a, b) => Math.min(seg(t, a, a + 0.35), 1 - seg(t, b - 0.3, b));
+  let chip = '', cha = 0; if (t >= 2.2 && t < T.day) { chip = 'The second morning'; cha = fade(2.2, T.day); } else if (t >= T.day + 0.2 && t < T.dark) { chip = 'Day one · AD 79'; cha = fade(T.day + 0.2, T.dark); } else if (t >= T.dark + 0.2 && t < T.morn) { chip = 'Day one · the long night'; cha = fade(T.dark + 0.2, T.morn); } else if (t >= T.morn + 0.2 && t < T.bay) { chip = 'Day two · morning'; cha = fade(T.morn + 0.2, T.bay); } else if (t >= T.bay + 0.2 && t < T.fin) { chip = 'Misenum · across the bay'; cha = fade(T.bay + 0.2, T.fin); }
+  O.set(O.chip, chip); O.show(O.chip, cha);
+  let ha = 1; const [cs, cd] = clockStr(clockAt(t));
+  if (t < 2.2) ha = 0;
+  else if (t < T.day) { O.hudSet('Day two', 'about 7 am', 'No lava. A cloud.'); ha = seg(t, 2.2, 2.6); }
+  else if (t < T.boom) O.hudSet('Day one', 'about 1 pm', 'Pompeii, under Vesuvius');
+  else if (t < T.dark) { const q = t - T.boom, km = Math.round(30 * easeOut(q / 4.6)); O.hudSet('Column height', (q > 4.4 ? 'about 30' : km) + ' km', 'Ash and pumice\nDrawn not to scale'); }
+  else if (t < T.morn) { const hrs = Math.round(seg(t, T.dark, T.morn - 0.3) * 18); O.hudSet('Day ' + cd, cs, `${hrs} h of falling pumice\nDepth in the streets: ${(2.8 * seg(t, T.dark - 0.3, T.morn - 0.4)).toFixed(1)} m`); }
+  else if (t < T.coll) O.hudSet('Day two', 'early morning', 'The column gives way');
+  else if (t < T.street) O.hudSet('Surge', '100+ km/h', 'Gas and ash, up to about 300 °C\nDistance drawn not to scale');
+  else if (t < T.bay) O.hudSet('Day two', 'soon after 7 am', 'The surge reaches Pompeii');
+  else if (t < T.fin) O.hudSet('Eyewitness', 'aged 17', 'Pliny the Younger\nAbout 30 km away');
+  else if (t < T.end) O.hudSet('Pompeii', 'buried', 'Under metres of pumice and ash');
+  else ha = 0;
+  O.show(O.hud, ha); O.hud.style.top = '1010px';
+  let lab = ''; const L = (x, y, a, html, al) => `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${clamp(a).toFixed(3)};${al || ''}">${html}</div>`;
+  if (t >= 2.4 && t < T.day) lab += L(90, 540, fade(2.4, T.day), 'What buried Pompeii<b>was not lava</b>');
+  if (t >= T.day + 0.5 && t < T.boom) lab += L(90, 540, fade(T.day + 0.5, T.boom), 'More than 10,000 people<b>lived here</b>');
+  if (t >= T.boom + 5.0 && t < T.dark) lab += L(90, 540, fade(T.boom + 5.0, T.dark), '“Like a pine tree”<b>wrote Pliny</b>');
+  if (t >= T.dark + 1.0 && t < T.gate) lab += L(90, 540, fade(T.dark + 1.0, T.gate), 'Roofs give way<b>under the weight</b>');
+  if (t >= T.gate + 0.6 && t < T.morn) lab += L(90, 540, fade(T.gate + 0.6, T.morn), 'Most of the town<b>got away</b>');
+  if (t >= T.street + 0.5 && t < T.bay - 1.6) lab += L(90, 540, fade(T.street + 0.5, T.bay - 1.6), 'More than 1,100 victims<b>found so far</b>');
+  if (t >= T.fin + 0.4 && t < T.end) lab += L(90, 540, fade(T.fin + 0.4, T.end), 'No lava flow<b>ever reached it</b>');
+  if (O.labels._h !== lab) { O.labels._h = lab; O.labels.innerHTML = lab; }
+  // the surge closes over the camera in the street
+  const grey = t >= T.street && t < T.bay ? smooth(seg(t, T.street + 2.9, T.bay - 0.5)) * 0.93 : 0; O.tint.style.background = `rgba(118,112,104,${grey})`;
+  let fl = 0; for (const [a, d, k] of [[T.day, 0.45, 0.9], [T.boom, 0.5, 0.8], [T.dark, 0.3, 0.3], [T.gate, 0.25, 0.25], [T.morn, 0.35, 0.6], [T.street, 0.3, 0.5], [T.bay, 0.45, 0.85], [T.fin, 0.4, 0.7]]) if (t >= a - 0.06 && t < a + d) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + d)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { frame(t); overlayFrame(t); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>
