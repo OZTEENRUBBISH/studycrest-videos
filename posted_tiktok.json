@@ -210,6 +210,12 @@
    "kind": "sim",
    "due_at": "2026-11-24T18:00:00+11:00",
    "buffer_post_id": "6b0468331a3966b48a9781b5"
+  },
+  {
+   "file": "sim-23-ocean",
+   "kind": "sim",
+   "due_at": "2026-11-25T00:00:00+11:00",
+   "buffer_post_id": "6b04786cb61d3bfe62336038"
   }
  ]
 }
