@@ -143,6 +143,15 @@ TIPS = {
      T("🌬", "Three slow breaths", "Before you turn the page over. Then start.", "Three. Take three slow breaths before you turn the page over."),
      T("📝", "Mind gone blank? Write something", "Jot down the formulas and facts you do remember. It gets you moving.", "Four. Mind gone blank? Jot down the formulas and facts you do remember."),
      T("🙈", "Ignore the room", "Someone asking for more paper doesn't mean you're behind.", "Five. Ignore the room. Someone asking for more paper doesn't mean you're behind.")]),
+ "more-out-of-class": dict(title="5 ways to get", accent="more out of class", emo="🏫", sub="So you're not teaching yourself later.", tag="STUDY TIPS",
+    intro_say="Five ways to get more out of class.", hashtags="#school #uni #learning",
+    hook="5 ways to get more out of class. Save this for tomorrow's lesson. 🏫",
+    tips=[
+     T("👀", "Preview the topic", "Five minutes the night before, so class isn't the first time you see it.", "One. Preview the topic the night before, so class isn't the first time you see it."),
+     T("🪑", "Sit near the front", "Fewer distractions between you and the board.", "Two. Sit near the front. Fewer distractions between you and the board."),
+     T("✍️", "Copy the full working", "Write down every step of the teacher's examples, not just the answer.", "Three. Copy the full working of each example, not just the answer."),
+     T("🙋", "Ask before you leave", "Unsure about something? Ask today, not next week.", "Four. Unsure about something? Ask before you leave, not next week."),
+     T("✅", "Redo one question that night", "Do it in StudyCrest. It checks every line as you write.", "Five. Redo one class question that night, in StudyCrest. It checks every line as you write.", SC_TAG)]),
  # ── StudyCrest Business (@studycrestbusiness): keys start with "biz-" ──
  "biz-study-accounting": dict(title="5 ways to study", accent="accounting properly", emo="🧮", sub="Reading the textbook isn't one of them.", tag="ACCOUNTING",
     intro_say="Five ways to study accounting properly.", hashtags="#accountingstudent #accounting #businessstudent",
