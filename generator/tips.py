@@ -134,6 +134,15 @@ TIPS = {
      T("📋", "Sort the marks you lost", "Didn't know it, made a slip, or ran out of time? Each one needs a different fix.", "Three. Sort the marks you lost. Didn't know it, a slip, or out of time?"),
      T("✅", "Catch slips while you practise", "StudyCrest checks every line as you write and flags the wrong one, with a hint.", "Four. Use StudyCrest. It flags a wrong line while you practise, with a hint.", SC_TAG),
      T("🎯", "Set one goal for next time", "One thing to change, not ten. Write it at the top of your notes.", "Five. Set one goal for next time. One thing to change, not ten.")]),
+ "stay-calm-in-an-exam": dict(title="5 ways to stay", accent="calm in an exam", emo="🧘", sub="For when your mind goes blank.", tag="EXAM TIPS",
+    intro_say="Five ways to stay calm in an exam.", hashtags="#examnerves #exams #examday",
+    hook="5 ways to stay calm in an exam. Save this for exam day. 🧘",
+    tips=[
+     T("🕗", "Get there early", "Arrive with time to spare, so you don't walk in already rushed.", "One. Get there early, so you don't walk in already rushed."),
+     T("🔁", "Make it feel familiar", "StudyCrest's Practice Questions writes a fresh question from one you've already done.", "Two. Make the questions feel familiar. StudyCrest's Practice Questions writes fresh ones.", SC_TAG),
+     T("🌬", "Three slow breaths", "Before you turn the page over. Then start.", "Three. Take three slow breaths before you turn the page over."),
+     T("📝", "Mind gone blank? Write something", "Jot down the formulas and facts you do remember. It gets you moving.", "Four. Mind gone blank? Jot down the formulas and facts you do remember."),
+     T("🙈", "Ignore the room", "Someone asking for more paper doesn't mean you're behind.", "Five. Ignore the room. Someone asking for more paper doesn't mean you're behind.")]),
  # ── StudyCrest Business (@studycrestbusiness): keys start with "biz-" ──
  "biz-study-accounting": dict(title="5 ways to study", accent="accounting properly", emo="🧮", sub="Reading the textbook isn't one of them.", tag="ACCOUNTING",
     intro_say="Five ways to study accounting properly.", hashtags="#accountingstudent #accounting #businessstudent",
