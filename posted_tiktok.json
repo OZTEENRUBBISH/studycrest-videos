@@ -198,6 +198,12 @@
    "kind": "spot",
    "due_at": "2026-11-25T12:00:00+11:00",
    "buffer_post_id": "6b04502cfb49201520e51ada"
+  },
+  {
+   "file": "sim-21-lift",
+   "kind": "sim",
+   "due_at": "2026-11-24T06:00:00+11:00",
+   "buffer_post_id": "6b04603aa17868cf45bb962c"
   }
  ]
 }
