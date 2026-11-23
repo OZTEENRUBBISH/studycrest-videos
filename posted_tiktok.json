@@ -192,6 +192,12 @@
    "kind": "spot",
    "due_at": "2026-11-24T12:00:00+11:00",
    "buffer_post_id": "6b0318dad864a01105daba11"
+  },
+  {
+   "file": "studycrest-26-physics-energy",
+   "kind": "spot",
+   "due_at": "2026-11-25T12:00:00+11:00",
+   "buffer_post_id": "6b04502cfb49201520e51ada"
   }
  ]
 }

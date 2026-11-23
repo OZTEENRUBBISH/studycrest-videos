@@ -345,6 +345,30 @@
    "hook": "What if raindrops fell with no air to slow them down?",
    "the surprising true point": "Air is what makes rain gentle: a real raindrop lands at only a few metres a second, but from a cloud two kilometres up with no air it would arrive at about 700 km/h",
    "status": "planned"
+  },
+  {
+   "title": "What if you opened a plane door mid-flight?",
+   "kind": "what-if",
+   "setting": "The cabin of an airliner at cruising height, with a cutaway of the door and the thin air outside",
+   "hook": "What if you opened a plane door mid-flight?",
+   "the surprising true point": "You could not: the door is a plug that opens inward first, and the cabin air presses on it with a force of several tonnes, far more than any person can pull",
+   "status": "planned"
+  },
+  {
+   "title": "What if you tried to swim in a pool of mercury?",
+   "kind": "what-if",
+   "setting": "A laboratory tank of liquid mercury beside an ordinary swimming pool, with you stepping into each",
+   "hook": "What if you tried to swim in a pool of mercury?",
+   "the surprising true point": "You could not sink: mercury is about thirteen times denser than water, so you would float on top with most of your body above the surface (and its vapour is poisonous, so nobody should try)",
+   "status": "planned"
+  },
+  {
+   "title": "What if you shouted in space?",
+   "kind": "what-if",
+   "setting": "Two astronauts outside a space station, a few metres apart, with the sound drawn as waves",
+   "hook": "What if you shouted in space?",
+   "the surprising true point": "Nobody would hear you, even a metre away: sound is a wave in matter and there is almost none out there, but touch your helmets together and your voice travels through the glass",
+   "status": "planned"
   }
  ]
 }
