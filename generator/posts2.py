@@ -166,6 +166,14 @@ POSTS = {
     shot_slide("blue", "Built like your real test", "tp_sample.png", (0, 570, 1316, 910), "Same number of questions and marks as your test notice.", 1, n),
     steps_slide("blue", "Then sit it properly", [("Sit it on the clock", "A timer shows the time you'd have"), ("Answer your way", "Type, write with your pen, or photograph it"), ("Get it marked", "Question by question"), ("Know what to fix", "Your mistakes and what to study next")], 2, n),
     cta_slide("blue", 3, n)],
+ "K-5-ways-to-get-assignments-done-early": lambda n=7: [
+    cover("ink", "📝", "5 ways to get assignments", "No more finishing at 2am the night before.", 0, n, accent="done early"),
+    point("ink", 1, "🚀", "Start the day you get it", "Read the task and write a rough plan that day, even if it only takes ten minutes.", 1, n),
+    point("ink", 2, "📋", "Read the marking guide first", "It shows where the marks are. Plan your answer around it.", 2, n),
+    point("ink", 3, "🧩", "Break it into small jobs", "Research, plan, draft, check. Give each one its own day.", 3, n),
+    point("ink", 4, "📅", "Set your own deadline", "Aim to finish two days early so you have time to fix things.", 4, n),
+    point("ink", 5, "✅", "Check it with StudyCrest", "It checks every line of your working as you write: a tick, a flag or a hint.", 5, n, tag="Free for 30 days"),
+    cta_slide("ink", 6, n)],
 }
 
 if __name__ == "__main__":
