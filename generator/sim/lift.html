@@ -1,0 +1,213 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// What if the lift cable snapped?  A glass-fronted lift shaft on an invented 330 m tower, the movie version (free fall), what really happens
+// (several ropes, governor, safety jaws), Otis's demonstration in the 1850s, and the one famous fall: Empire State Building, 28 July 1945.
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, mat, box, shadowAll, person, cloud, skyDome, overlay, capAt, proj, tower, lamp, windowTex, makePost, skyEnv } from './common.js';
+const W = 1080, H = 1920, DUR = 47.6, G = 9.81, HT = 330, Y0 = 200, CZ = 23.4;
+const O = overlay();
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.05, 3000);
+const R = rng(20261124), V = (x, y, z) => new THREE.Vector3(x, y, z);
+
+// =====================================================  WORLD
+const city = new THREE.Scene(); city.fog = new THREE.Fog(0xd6e7f3, 300, 1900);
+const sky = skyDome(0x2a74d6, 0xcfe6f7, 0xc3d7e4); city.add(sky); const ENV = skyEnv(renderer, 0x2a74d6, 0xcfe6f7, 0xb9b3a8);
+const hemi = new THREE.HemisphereLight(0xdcecff, 0xcfc4b0, 1.3); city.add(hemi);
+const sun = new THREE.DirectionalLight(0xffe7c4, 3.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.05; city.add(sun); city.add(sun.target);
+const setSun = (c, r) => { sun.target.position.copy(c); sun.position.set(c.x + r * 0.7, c.y + r * 1.5, c.z + r * 1.1); Object.assign(sun.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 0.5, far: r * 6 }); sun.shadow.camera.updateProjectionMatrix(); };
+const world = new THREE.Group(); city.add(world);
+{ const g = new THREE.Mesh(new THREE.PlaneGeometry(14000, 6000).rotateX(-Math.PI / 2), mat(0xc6c1b6)); g.receiveShadow = true; world.add(g); }
+const flat = (w, d, col, x, z, y = 0.03, h = 0.06) => { const m = box(w, h, d, col, x, y, z); m.castShadow = false; world.add(m); return m; };
+for (let k = -5; k <= 5; k++) { flat(14, 900, 0x3b3f46, 41 + k * 80, 0, 0.03); flat(900, 12, 0x3b3f46, 0, 40 + k * 80, 0.028); }
+function glassTex() { const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d'), Rt = rng(9); x.fillStyle = '#31506f'; x.fillRect(0, 0, 512, 512);
+  for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) { const r = Rt(); x.fillStyle = r < 0.1 ? '#ffeec2' : (r < 0.7 ? '#7fb0dc' : '#a8d3f3'); x.fillRect(i * 64 + 3, j * 64 + 5, 58, 52); const g = x.createLinearGradient(i * 64, j * 64, i * 64 + 64, j * 64 + 64); g.addColorStop(0, 'rgba(255,255,255,.3)'); g.addColorStop(0.55, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(i * 64 + 3, j * 64 + 5, 58, 52); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t; }
+const GT = glassTex();
+function glassBox(w, h, d, x, y, z) { const t = GT.clone(); t.needsUpdate = true; t.repeat.set(Math.round(w / 3.2) / 8, Math.round(h / 4) / 8); const m = new THREE.MeshStandardMaterial({ map: t, roughness: 0.22, metalness: 0.5, envMap: ENV, envMapIntensity: 1.15 }), rf = mat(0x59626e);
+  const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [m, m, rf, rf, m, m]); b.position.set(x, y, z); b.castShadow = true; b.receiveShadow = true; world.add(b); return b; }
+const STEEL = { metalness: 0.7, roughness: 0.32, envMap: ENV };
+// the tower and its shaft, open to the camera on the +z face
+glassBox(44, HT, 44, 0, HT / 2, 0);
+for (const [x, z] of [[-22, 22], [22, 22], [-22, -22], [22, -22]]) world.add(box(1.4, HT, 1.4, 0xe9edf2, x, HT / 2, z, STEEL));
+world.add(box(3.6, HT + 8, 0.12, 0x232830, 0, HT / 2 + 4, 22.1));
+for (const s of [-1, 1]) world.add(box(0.2, HT + 8, 3.1, 0x3a4048, s * 1.8, HT / 2 + 4, 23.6));
+{ const beam = new THREE.InstancedMesh(new THREE.BoxGeometry(3.4, 0.22, 0.24), mat(0x5d6775), 84), door = new THREE.InstancedMesh(new THREE.BoxGeometry(1.5, 2.5, 0.06), mat(0x8f99a6), 84), strip = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.12, 0.05), new THREE.MeshBasicMaterial({ color: 0xffe9a8 }), 84), m4 = new THREE.Matrix4();
+  for (let i = 0; i < 84; i++) { m4.makeTranslation(0, i * 4, 22.28); beam.setMatrixAt(i, m4); m4.makeTranslation(0, i * 4 + 1.45, 22.2); door.setMatrixAt(i, m4); m4.makeTranslation(0, i * 4 + 3.0, 22.2); strip.setMatrixAt(i, m4); } beam.receiveShadow = door.receiveShadow = true; world.add(beam); world.add(door); world.add(strip); }
+for (const s of [-1, 1]) world.add(box(0.1, HT + 6, 0.14, 0xc9d1da, s * 1.5, HT / 2 + 3, CZ, STEEL));
+// machine room on the roof: back wall, drive sheave, motor
+world.add(box(8, 9, 0.3, 0x4a525c, 0, HT + 4.5, 22.0)); world.add(box(8, 0.3, 4, 0x6d737b, 0, HT + 9, 23.9)); world.add(box(1.6, 1.4, 1.2, 0x2f56d6, -1.9, HT + 5.0, 23.0));
+const sheave = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 1.1, 18), mat(0x394049, STEEL)); sheave.rotation.z = Math.PI / 2; sheave.position.set(0, HT + 5.0, CZ); world.add(sheave);
+// the car
+const car = new THREE.Group(); world.add(car); car.position.set(0, Y0, CZ);
+car.add(box(2.6, 0.14, 2.4, 0x6b7078, 0, 0.07, 0)); car.add(box(2.6, 0.14, 2.4, 0xdfe5ec, 0, 2.73, 0)); car.add(box(2.6, 2.6, 0.08, 0xd9dee6, 0, 1.4, -1.16)); for (const s of [-1, 1]) { car.add(box(0.08, 2.6, 2.4, 0xc4cad3, s * 1.26, 1.4, 0)); car.add(box(0.05, 0.06, 2.2, 0xe9edf2, s * 1.2, 1.05, 0, STEEL)); }
+car.add(box(2.4, 0.06, 0.05, 0xe9edf2, 0, 1.05, -1.1, STEEL)); car.add(box(3.0, 0.22, 0.3, 0x7d8792, 0, 2.93, 0, STEEL)); car.add(box(3.0, 0.2, 0.3, 0x7d8792, 0, -0.1, 0, STEEL));
+{ const l = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.04, 1.4), new THREE.MeshBasicMaterial({ color: 0xfff3d0 })); l.position.set(0, 2.64, 0); car.add(l); const p = new THREE.PointLight(0xfff0d0, 9, 7, 1.6); p.position.set(0, 2.3, 0.4); car.add(p); }
+const jaws = []; for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const j = box(0.16, 0.34, 0.09, 0xe2372c, sx * 1.5, -0.1, sz * 0.2); j.userData.sz = sz; car.add(j); jaws.push(j); }
+const lever = box(0.46, 0.07, 0.07, 0xffd64a, 1.3, 1.6, 0.9); car.add(lever);
+const hero = person(R, 'stand', { shirt: 0xf2c94c, pants: 0x1e3aa8, shorts: false, skin: 0xe0ac7e, hair: 0x2b1b12 }); hero.scale.setScalar(1.0); hero.position.set(-0.45, 0.14, 0.35); car.add(hero);
+const riders = [hero]; for (const [x, z, c] of [[0.6, -0.1, { shirt: 0xe2574c, shorts: false }], [-0.1, -0.65, { shirt: 0x2bb673, shorts: false }], [0.85, 0.55, { shirt: 0xffffff, sleeve: 0xffffff, pants: 0x34495e, shorts: false }]]) { const p = person(R, 'stand', c); p.position.set(x, 0.14, z); p.rotation.y = (R() - 0.5) * 0.8; car.add(p); riders.push(p); }
+const oper = person(rng(45), 'stand', { shirt: 0x7a2230, sleeve: 0x7a2230, pants: 0x2a2630, shorts: false, skin: 0xf1c9a5, hair: 0x5a3825, shoe: 0x222222 }); oper.position.set(0.2, 0.14, 0.1); car.add(oper);
+// ropes (6), stubs left on the car roof, the governor and its rope
+const ropeM = mat(0xbfc7d1, STEEL), ropes = [], stubs = [];
+for (let i = 0; i < 6; i++) { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 1, 6), ropeM); r.castShadow = true; world.add(r); ropes.push(r); const s = new THREE.Group(), sm = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.8, 6), ropeM); sm.position.y = 0.4; s.add(sm); s.position.set((i - 2.5) * 0.17, 3.04, 0); car.add(s); stubs.push(s); }
+function setRope(i, yb, yt, wob = 0) { const r = ropes[i]; r.visible = yt > yb + 0.05; r.position.set((i - 2.5) * 0.17 + wob, (yb + yt) / 2, CZ); r.scale.y = Math.max(0.05, yt - yb); }
+const GX = 0.95, GZ = 24.45, GY = HT + 3.2;
+const gov = new THREE.Group(); gov.position.set(GX, GY, GZ); world.add(gov);
+const gwheel = new THREE.Group(); gov.add(gwheel); { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.07, 28), mat(0x394049, STEEL)); w.rotation.x = Math.PI / 2; gwheel.add(w); const rim = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.03, 8, 28), mat(0xc9d1da, STEEL)); gwheel.add(rim); for (let k = 0; k < 4; k++) { const sp = box(0.62, 0.04, 0.09, 0xc9d1da, 0, 0, 0, STEEL); sp.rotation.z = k * Math.PI / 4; gwheel.add(sp); } }
+const fly = []; for (const s of [-1, 1]) { const f = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10), new THREE.MeshStandardMaterial({ color: 0xe2372c, roughness: 0.35, metalness: 0.3, envMap: ENV })); f.userData.s = s; f.position.z = 0.09; gwheel.add(f); fly.push(f); }
+gov.add(box(0.5, 0.9, 0.3, 0x2b313a, 0, -0.1, -0.25)); const gcatch = box(0.14, 0.2, 0.12, 0xe2372c, 0.6, -0.42, 0); gov.add(gcatch);
+const grope = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 1, 6), new THREE.MeshStandardMaterial({ color: 0xffd64a, roughness: 0.4, metalness: 0.4, emissive: 0x6a5200 })); grope.position.set(GX + 0.34, GY / 2, GZ); grope.scale.y = GY; world.add(grope);
+// sparks at the jaws
+const SPN = 70, spGeo = new THREE.BufferGeometry(), spPos = new Float32Array(SPN * 3); spGeo.setAttribute('position', new THREE.BufferAttribute(spPos, 3)); const sparks = new THREE.Points(spGeo, new THREE.PointsMaterial({ color: 0xffc04a, size: 11, sizeAttenuation: false, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); sparks.frustumCulled = false; world.add(sparks);
+const SPD = []; { const Rs = rng(77); for (let i = 0; i < SPN; i++) SPD.push([Rs() < 0.5 ? -1 : 1, Rs(), (Rs() - 0.5) * 3, 1.5 + Rs() * 4, (Rs() - 0.5) * 3, Rs() < 0.5 ? -0.1 : 2.9]); }
+// coil of fallen cable and a dust puff in the pit (1945)
+const coil = new THREE.Group(); for (let k = 0; k < 7; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(0.85 - (k % 2) * 0.12, 0.07, 6, 22), ropeM); t.rotation.x = Math.PI / 2 + (k % 3 - 1) * 0.06; t.position.set((k % 2 ? 0.08 : -0.06), 0.1 + k * 0.2, 0); coil.add(t); } coil.position.set(0, 0, CZ); world.add(coil);
+const puff = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial({ color: 0xd9d2c2, transparent: true, opacity: 0.5, depthWrite: false })); world.add(puff);
+// the rest of the city
+for (let gx = -5; gx <= 5; gx++) for (let gz = -5; gz <= 5; gz++) { if (gx === 0 && gz === 0) continue; const near = Math.max(Math.abs(gx), Math.abs(gz)), front = gz >= 1 && Math.abs(gx) <= 2;
+  const w = 36 + R() * 14, d = 36 + R() * 16, h = front ? 30 + R() * 50 : 40 + Math.pow(R(), 1.5) * (near <= 1 ? 120 : 230);
+  const b = tower(R, w, h, d, { env: ENV }); b.position.set(gx * 80 + (R() - 0.5) * 6, 0.3, gz * 80 + (R() - 0.5) * 4); world.add(b); }
+const clouds = []; for (let i = 0; i < 14; i++) { const c = cloud(R), a = R() * 6.28, r = 300 + R() * 700; c.position.set(Math.cos(a) * r, 240 + R() * 300, Math.sin(a) * r); c.scale.setScalar(1.8 + R() * 2.2); city.add(c); clouds.push(c); }
+function carM(col) { const c = new THREE.Group(); c.add(box(1.9, 0.7, 4.2, col, 0, 0.6, 0)); c.add(box(1.7, 0.6, 2.2, 0x26313f, 0, 1.2, -0.2)); return shadowAll(c); }
+const CC = [0xe2574c, 0xffffff, 0x2f56d6, 0x49c6d8, 0xf2c94c, 0x9aa3ad, 0x2bb673], cars = [];
+for (let i = 0; i < 20; i++) { const dir = i % 2 ? 1 : -1, c = carM(CC[i % 7]); c.userData = { x0: -300 + i * 30 + R() * 8, dir, sp: 9 + R() * 3 }; c.position.z = dir > 0 ? 37.4 : 42.6; c.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2; world.add(c); cars.push(c); }
+
+// =====================================================  THE EXHIBITION HALL (1850s)
+const OX = 5000, hall = new THREE.Group(); hall.position.set(OX, 0, 0); world.add(hall); const PY = 8.4;
+{ const f = box(90, 0.3, 70, 0x8a6d4b, 0, 0.15, 0); hall.add(f); hall.add(box(90, 40, 1, 0xd9cfbb, 0, 20, -22)); const cl = box(90, 1, 70, 0xe9e2d0, 0, 40, 0); cl.castShadow = false; hall.add(cl);
+  for (let i = -4; i <= 4; i++) { const wdw = new THREE.Mesh(new THREE.BoxGeometry(4.6, 17, 0.2), new THREE.MeshBasicMaterial({ color: 0xdff0fb })); wdw.position.set(i * 9, 15, -21.4); hall.add(wdw); const top = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 0.2, 18, 1, false, 0, Math.PI), new THREE.MeshBasicMaterial({ color: 0xdff0fb })); top.rotation.set(Math.PI / 2, Math.PI / 2, 0); top.position.set(i * 9, 23.5, -21.4); hall.add(top); for (const yy of [9, 13, 17, 21]) hall.add(box(4.6, 0.14, 0.3, 0x39424d, i * 9, yy, -21.3)); hall.add(box(0.14, 17, 0.3, 0x39424d, i * 9, 15, -21.3)); }
+  for (let i = -4; i <= 5; i++) { hall.add(box(0.5, 40, 0.5, 0x2f4a43, i * 9 - 4.5, 20, -12)); }
+  for (const yy of [26, 33]) hall.add(box(90, 0.5, 0.5, 0x2f4a43, 0, yy, -12));
+  for (const s of [-1, 1]) { hall.add(box(0.36, 15, 0.36, 0x7a5a3c, s * 1.95, 7.5, 0)); for (let y = 0.6; y < 14.4; y += 0.5) hall.add(box(0.14, 0.12, 0.3, 0x3d2c1c, s * 1.72, y, 0)); hall.add(box(0.3, 4.2, 0.3, 0x7a5a3c, s * 2.6, 2.0, 0).rotateZ(s * 0.33)); }
+  hall.add(box(4.6, 0.45, 0.6, 0x7a5a3c, 0, 15.1, 0)); const pl = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.25, 14), mat(0x394049)); pl.rotation.x = Math.PI / 2; pl.position.set(0, 14.5, 0); hall.add(pl);
+  for (let i = 0; i < 4; i++) hall.add(box(12, 0.5, 0.2, i % 2 ? 0xb5332c : 0xe9e2d0, -30 + i * 20, 30, -11.6)); }
+const plat = new THREE.Group(); plat.position.set(0, PY, 0); hall.add(plat);
+plat.add(box(3.3, 0.2, 2.5, 0x9b7a4f, 0, 0, 0)); for (const [x, z] of [[-1.05, -0.6], [-0.95, 0.5], [-0.3, -0.8]]) { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.95, 10), mat(0x7a4f2c)); b.position.set(x, 0.58, z); plat.add(b); const hp = new THREE.Mesh(new THREE.CylinderGeometry(0.375, 0.375, 0.08, 10), mat(0x2b2b2b)); hp.position.set(x, 0.8, z); plat.add(hp); } plat.add(box(0.8, 0.7, 0.8, 0xb08a55, 1.1, 0.45, -0.7));
+plat.add(box(0.1, 2.6, 0.1, 0x5a4530, 0, 1.3, -1.0)); plat.add(box(2.6, 0.1, 0.1, 0x5a4530, 0, 2.6, -1.0)); const pawls = []; for (const s of [-1, 1]) { const p = box(0.36, 0.1, 0.22, 0xc9d1da, s * 1.5, 0.02, 0, STEEL); p.userData.s = s; plat.add(p); pawls.push(p); }
+function hat(p) { p.userData.hips.add(box(0.36, 0.035, 0.36, 0x111111, 0, 1.03, 0)); p.userData.hips.add(box(0.23, 0.27, 0.23, 0x111111, 0, 1.16, 0)); }
+const otis = person(rng(5), 'stand', { shirt: 0x23272f, sleeve: 0x23272f, pants: 0x2a2a2e, shorts: false, skin: 0xf1c9a5, hair: 0x5a3825, shoe: 0x111111 }); hat(otis); otis.position.set(0.35, 0.1, 0.35); plat.add(otis);
+const axeman = person(rng(6), 'stand', { shirt: 0xd8cdb8, sleeve: 0xd8cdb8, pants: 0x4a3b2a, shorts: false, skin: 0xe0ac7e, hair: 0x2b1b12, shoe: 0x111111 }); axeman.position.set(0.75, 0.1, -0.75); axeman.rotation.y = -0.9; plat.add(axeman); { const ax = new THREE.Group(); ax.add(box(0.05, 0.9, 0.05, 0x8a6d3b, 0, -0.75, 0.2)); ax.add(box(0.06, 0.2, 0.28, 0xc9d1da, 0, -1.15, 0.3, STEEL)); axeman.userData.aR.add(ax); }
+const hrope = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1, 6), mat(0xcbb891)); hall.add(hrope); const hstub = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1, 6), mat(0xcbb891)); hall.add(hstub);
+const crowd = []; { const Rc = rng(1854), DK = [0x23272f, 0x3a2f2a, 0x2f3a4a, 0x4a3b2a, 0x5a2a2a, 0x2a4a3a, 0x555555], LT = [0xd8cdb8, 0xb9c4cf, 0xc9a9a0, 0xe9e2d0]; for (let i = 0; i < 64; i++) { const c = Rc() < 0.75 ? DK[Math.floor(Rc() * 7)] : LT[Math.floor(Rc() * 4)], p = person(Rc, 'stand', { shirt: c, sleeve: c, pants: DK[Math.floor(Rc() * 7)], shorts: false, shoe: 0x111111 }); if (Rc() < 0.55) hat(p);
+  const row = Math.floor(i / 13), x = (i % 13 - 6) * 1.25 + (Rc() - 0.5) * 0.7 + (row % 2) * 0.5, z = 4.6 + row * 1.5 + (Rc() - 0.5) * 0.5; p.position.set(x, 0.3, z); p.rotation.y = Math.PI + Math.atan2(x, z) * 0.6; hall.add(p); crowd.push(p); } }
+
+// =====================================================  NEW YORK, 1945 (invented skyline around a stepped tower)
+const EX = -5000, ny = new THREE.Group(); ny.position.set(EX, 0, 0); world.add(ny);
+{ const Rn = rng(1945); const stepB = (w, h, d, y) => { const tx = windowTex(Rn, Math.round(w / 2.4), Math.round(h / 3.6), '#b9ad98'), m = new THREE.MeshLambertMaterial({ map: tx }), rf = mat(0x8c8272), b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [m, m, rf, rf, m, m]); b.position.y = y + h / 2; b.castShadow = b.receiveShadow = true; ny.add(b); };
+  stepB(70, 60, 60, 0); stepB(56, 130, 48, 60); stepB(44, 110, 38, 190); stepB(32, 50, 28, 300); stepB(18, 22, 18, 350); ny.add(box(7, 40, 7, 0xa7a091, 0, 392, 0)); ny.add(box(1.2, 30, 1.2, 0x8c8272, 0, 427, 0));
+  for (let gx = -4; gx <= 4; gx++) for (let gz = -4; gz <= 3; gz++) { if (gx === 0 && gz === 0) continue; const b = tower(Rn, 40 + Rn() * 16, 40 + Math.pow(Rn(), 1.4) * 150, 40 + Rn() * 14, { style: ['sand', 'brick', 'office', 'white'][Math.floor(Rn() * 4)] }); b.position.set(gx * 84 + (Rn() - 0.5) * 8, 0, gz * 84 + (Rn() - 0.5) * 6); ny.add(b); } }
+const plane = new THREE.Group(); { const c = 0x5d6b4a; plane.add(box(16, 2.0, 2.0, c, 0, 0, 0)); plane.add(box(3.6, 0.3, 21, c, 1, 0.2, 0)); for (const s of [-1, 1]) { plane.add(box(4, 1.3, 1.3, 0x4a563b, 2, -0.1, s * 4)); plane.add(box(0.2, 3.2, 0.2, 0x222222, 4.1, -0.1, s * 4)); plane.add(box(1.8, 2.4, 0.2, c, -7.4, 1.3, s * 3.2)); } plane.add(box(2.2, 0.25, 6.8, c, -7.4, 0.5, 0)); plane.add(box(2.4, 0.9, 1.5, 0x9fc3e8, 5.6, 0.7, 0)); shadowAll(plane); plane.scale.setScalar(1.6); } ny.add(plane);
+const fire = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), new THREE.MeshBasicMaterial({ color: 0xffa23a, transparent: true, depthWrite: false })); ny.add(fire);
+const smoke = []; { const Rs = rng(3); for (let i = 0; i < 9; i++) { const s = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshLambertMaterial({ color: 0x4a4a4a, transparent: true, opacity: 0.85, flatShading: true })); s.userData = { a: Rs() * 6.28, r: Rs(), s: 5 + Rs() * 6, d: i * 0.1 }; ny.add(s); smoke.push(s); } }
+
+const post = makePost(renderer, city, cam, { bloom: 0.16, bloomThreshold: 0.95, warm: 0.03, sat: 1.15 });
+// =====================================================  TIMELINE
+const T = { in: 2.2, snap: 4.5, mend: 8.7, real: 9.1, ropes: 11.7, one: 14.5, gov: 17.3, cut: 18.0, jaw: 20.5, stop: 21.9, otis: 23.7, ocut: 28.0, ny: 30.8, hit: 35.3, shaft: 36.7, land: 40.7, fin: 42.4, end: 45.8 };
+const CAPS = /*CAPS*/[[2.3, 3.64, "You're <em>200 metres</em> up"], [3.66, 4.85, "when the cable <em>snaps</em>."], [4.87, 5.65, "In the movies,"], [5.67, 6.64, "you'd hit the bottom"], [6.66, 8.79, "at over <em>200 km/h</em>."], [9.2, 10.73, "In real life,<br>you'd <em>barely move</em>."], [10.75, 11.35, "Here's why."], [11.8, 13.74, "A lift doesn't hang<br>from <em>one</em> cable."], [13.76, 15.75, "It hangs from several<br><em>steel ropes</em>,"], [15.77, 16.97, "far more than it needs."], [17.4, 18.49, "And if they <em>all</em> failed,"], [18.51, 20.67, "a <em>governor</em> would feel<br>the car speeding up,"], [20.69, 21.99, "and trip <em>steel jaws</em>"], [22.01, 23.29, "that clamp onto the rails."], [23.8, 27.1, "<em>Elisha Otis</em> proved it<br>in the 1850s."], [27.12, 28.15, "He stood on a platform,"], [28.17, 29.02, "had the rope <em>cut</em>,"], [29.04, 30.37, "and dropped just<br>a <em>few inches</em>."], [30.9, 34.46, "The one famous fall<br>was in <em>1945</em>."], [34.48, 36.5, "A plane hit the<br>Empire State Building,"], [36.52, 38.66, "and cut the ropes and<br>the <em>brake line</em> too."], [38.68, 40.77, "The car fell<br><em>75 floors</em>."], [40.79, 41.98, "The operator <em>lived</em>."], [42.5, 44.01, "The <em>safety brake</em><br>came first."], [44.03, 45.56, "Skyscrapers came after."]]/*END*/;
+const TMOV = 6.2, VTRIP = 3.07, STRIP = VTRIP / G;      // movie fall shown: 6.2 s of free fall; illustration: jaws trip at about 3 m/s
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+function carCam(y, dist, fov, dx = 0, dy = 0, down = 1.15) { cam.position.set(dx, y + 1.4 + dy, CZ + dist); cam.fov = fov; cam.up.set(0, 1, 0); cam.lookAt(V(0, y + 1.4 - down, CZ)); cam.updateProjectionMatrix(); }
+// real drop after every rope is cut (illustration): free fall until the governor trips, then the jaws stop the car at about 1 g
+function realDrop(t) { if (t < T.cut) return [0, 0, 0]; const s = Math.min((t - T.cut) / 8, STRIP), d1 = 0.5 * G * s * s; if (t < T.jaw) return [s, d1, G * s]; const u = Math.min((t - T.jaw) / 4.5, STRIP); return [s + u, d1 + VTRIP * u - 0.5 * G * u * u, VTRIP - G * u]; }
+function look(sat, warm, fogC, near, far, top, mid, bot, hi, si) { post.grade.uniforms.sat.value = sat; post.grade.uniforms.warm.value = warm; city.fog.color.set(fogC); city.fog.near = near; city.fog.far = far; sky.material.uniforms.top.value.set(top); sky.material.uniforms.mid.value.set(mid); sky.material.uniforms.bot.value.set(bot); hemi.intensity = hi; sun.intensity = si; }
+let sunK = '';
+function frame(t) {
+  for (const c of cars) { const u = c.userData; c.position.x = ((u.x0 + u.dir * u.sp * t + 300) % 600 + 600) % 600 - 300; }
+  const modern = t < T.otis || t >= T.fin, inHall = t >= T.otis && t < T.ny, inNY = t >= T.ny && t < T.shaft, pit = t >= T.shaft && t < T.fin;
+  if (inHall) look(0.5, 0.13, 0xe9e2d0, 60, 400, 0xe9e2d0, 0xe9e2d0, 0xd9cfbb, 1.5, 1.6); else if (inNY) look(0.3, 0.06, 0xb4b7ba, 90, 700, 0x9a9ea3, 0xb9bcbf, 0xa9a9a6, 1.5, 0.9); else if (pit) look(0.4, 0.1, 0xb4b7ba, 300, 1900, 0x9a9ea3, 0xb9bcbf, 0xa9a9a6, 1.3, 2.2); else look(1.15, 0.03, 0xd6e7f3, 300, 1900, 0x2a74d6, 0xcfe6f7, 0xc3d7e4, 1.3, 3.0);
+  for (const c of clouds) c.visible = !inNY; hall.visible = inHall; ny.visible = inNY; coil.visible = pit; puff.visible = false; sparks.visible = false;
+  for (const p of riders) { p.visible = !pit && !inHall && !inNY; p.userData.pose(t * 1.3 + p.userData.seed, 'stand'); p.position.y = 0.14; p.rotation.z = 0; } oper.visible = pit; oper.userData.pose(t, 'stand');
+  let y = Y0, r = 9, sc = V(0, Y0, CZ), cutN = 0, jawK = 0, govA = 0, flyR = 0.13, catchK = 0; const wob = [0, 0, 0, 0, 0, 0]; let recoil = -1, stubA = 0;
+  if (t < T.in) { y = lerp(176, Y0, easeOut(seg(t, 0, T.in))); camPath([[0, V(150, 150, 330), V(0, 170, 22), 50], [T.in, V(34, 206, 74), V(0, 198, 23), 46]], t); r = 260; sc.set(0, 180, 0); }
+  else if (t < T.snap) { carCam(y, lerp(13, 10.5, smooth(seg(t, T.in, T.snap))), 42); }
+  else if (t < T.mend) { // the movie version: every rope gone at once, nothing to stop it
+    const s = (t - T.snap) / (T.mend - T.snap) * TMOV; y = Y0 - 0.5 * G * s * s; cutN = 6; recoil = t - T.snap; stubA = smooth(seg(t, T.snap, T.snap + 0.5));
+    const k = smooth(seg(t, T.snap, T.snap + 0.6)); for (const p of riders) { p.userData.pose(t * 5 + p.userData.seed, 'float'); p.position.y = 0.14 + k * (0.35 + 0.25 * Math.sin(t * 2.2 + p.userData.seed)); p.rotation.z = k * 0.35 * Math.sin(t * 1.7 + p.userData.seed * 3); }
+    carCam(y, 10.5, lerp(42, 50, k), Math.sin(t * 47) * 0.05 * k, Math.sin(t * 61) * 0.06 * k); }
+  else if (t < T.real) { y = lerp(Y0 - 0.5 * G * TMOV * TMOV, Y0, easeIO(seg(t, T.mend, T.real - 0.05))); carCam(y, 10.5, 46); }
+  else if (t < T.ropes) { carCam(y, lerp(10.5, 11.5, smooth(seg(t, T.real, T.ropes))), 42); }
+  else if (t < T.gov) { // the ropes: one snaps, the rest hold
+    cutN = t >= T.one ? 1 : 0; recoil = t - T.one; stubA = smooth(seg(t, T.one, T.one + 0.5)); const jolt = t >= T.one ? Math.exp(-(t - T.one) * 5) * Math.sin((t - T.one) * 30) * 0.03 : 0; y = Y0 - jolt;
+    camPath([[T.ropes, V(0, y + 2.55, CZ + 11.5), V(0, y + 0.25, CZ), 42], [T.ropes + 1.0, V(1.6, y + 5.6, CZ + 5.2), V(0, y + 4.3, CZ), 40], [T.gov, V(1.2, y + 5.9, CZ + 4.6), V(0, y + 4.4, CZ), 38]], t); r = 12; }
+  else if (t < T.jaw) { // every rope cut (it does not happen): the governor feels the speed
+    const [s, d, v] = realDrop(t); y = Y0 - d; cutN = t >= T.cut ? 6 : 0; recoil = t - T.cut; stubA = smooth(seg(t, T.cut, T.cut + 0.5)); govA = 0.5 * G * s * s / 0.34; flyR = 0.13 + 0.15 * smooth(v / VTRIP); catchK = seg(t, T.jaw - 0.25, T.jaw - 0.05);
+    if (t < T.cut + 0.5) camPath([[T.gov, V(0.8, y + 5.9, CZ + 4.6), V(0, y + 4.4, CZ), 38], [T.cut + 0.5, V(0.5, y + 6.2, CZ + 5.0), V(0, y + 4.2, CZ), 42]], t);
+    else { cam.position.set(GX + 0.5, GY + 0.25, GZ + 2.5); cam.fov = 40; cam.up.set(0, 1, 0); cam.lookAt(V(GX + 0.08, GY - 0.38, GZ)); cam.updateProjectionMatrix(); sc.set(GX, GY, GZ); r = 6; } }
+  else if (t < T.otis) { // the jaws
+    const [s, d, v] = realDrop(t); y = Y0 - d; cutN = 6; recoil = 9; stubA = 1; flyR = 0.28; catchK = 1; jawK = smooth(seg(t, T.jaw, T.jaw + 0.25)); sparks.visible = t < T.stop + 0.1;
+    if (sparks.visible) { const q = t - T.jaw, k = clamp(v / VTRIP); for (let i = 0; i < SPN; i++) { const D = SPD[i], a = ((q * 2.2 + D[1]) % 1), on = k > 0.03; spPos[i * 3] = D[0] * 1.5 + D[2] * a * 0.5; spPos[i * 3 + 1] = on ? y + D[5] + D[3] * a * 0.5 * k + a * a * -0.6 : -99; spPos[i * 3 + 2] = CZ + D[4] * a * 0.4 + 0.2; } spGeo.attributes.position.needsUpdate = true; }
+    const sh = t < T.stop ? Math.sin(t * 55) * 0.02 : 0;
+    camPath([[T.jaw, V(0.75, y + 0.0, CZ + 3.3), V(1.38, y - 0.2, CZ), 36], [T.stop + 0.5, V(0.7, y + 0.05, CZ + 3.1), V(1.38, y - 0.22, CZ), 34], [T.otis, V(0.3, y + 1.2, CZ + 9.5), V(0.3, y + 0.4, CZ), 42]], t); cam.position.y += sh; }
+  else if (inHall) { // Elisha Otis, New York, 1850s
+    const q = t - T.ocut, drop = q < 0 ? 0 : 0.1 * (1 - Math.exp(-q * 30)) + 0.03 * Math.exp(-q * 6) * Math.sin(q * 28); const py = PY + lerp(-1.6, 0, easeOut(seg(t, T.otis, T.otis + 3.2))) - drop; plat.position.y = py;
+    for (const p of pawls) p.position.x = p.userData.s * (1.5 + 0.13 * (q > 0 ? 1 : 0.2)); otis.userData.pose(t * 1.2, 'stand'); axeman.userData.pose(t, 'stand'); const sw = seg(t, T.ocut - 1.0, T.ocut - 0.25), dn = seg(t, T.ocut - 0.25, T.ocut); axeman.userData.aR.rotation.x = -2.6 * smooth(sw) + 1.5 * easeIn(dn) - (q > 0 ? 0.4 * smooth(seg(q, 0.3, 1.2)) * -1 : 0); axeman.userData.aR.rotation.z = 0.3;
+    const up = q > 0.5 ? smooth(seg(q, 0.5, 1.1)) : 0; otis.userData.aR.rotation.x = -2.7 * up; otis.userData.aR.rotation.z = 0.35 * up; otis.userData.aL.rotation.x = -2.5 * up; otis.userData.aL.rotation.z = -0.35 * up;
+    hrope.visible = q < 0; hrope.position.set(0, (py + 2.65 + 14.3) / 2, -1.0); hrope.scale.y = 14.3 - py - 2.65; hstub.visible = q >= 0; const re = Math.min(1, Math.max(0, q) * 3); hstub.position.set(0.05 * Math.sin(q * 9) * Math.exp(-q), 14.3 - (1 - re * 0.6) * 2.2, -1.0); hstub.scale.y = (1 - re * 0.6) * 4.4;
+    for (const p of crowd) { p.userData.pose(t * 1.1 + p.userData.seed, 'stand'); const g = q > 0.15 && q < 0.9 ? Math.sin((q - 0.15) / 0.75 * Math.PI) : 0; p.userData.hips.rotation.x = -0.2 - 0.1 * g; }
+    camPath([[T.otis, V(5.5, 2.6, 19), V(0, 6.0, 0), 56], [T.ocut - 0.8, V(4.2, 3.4, 15.5), V(0, 7.6, 0), 50], [T.ocut + 0.9, V(3.2, 6.2, 9.6), V(0.1, 8.9, 0), 40], [T.ny, V(2.8, 6.6, 9.0), V(0.1, 9.0, 0), 38]], t); cam.position.x += OX; cam.lookAt(V(OX + lerp(0, 0.1, seg(t, T.ocut - 0.8, T.ocut + 0.9)), t < T.ocut - 0.8 ? lerp(6.0, 7.6, easeIO(seg(t, T.otis, T.ocut - 0.8))) : lerp(7.6, 8.95, easeIO(seg(t, T.ocut - 0.8, T.ocut + 0.9))), 0)); if (q > 0 && q < 0.4) cam.position.y += Math.sin(q * 60) * 0.03 * (1 - q / 0.4);
+    sc.set(OX, 6, 4); r = 26; }
+  else if (inNY) { // 28 July 1945
+    const u = seg(t, T.ny, T.hit), px = lerp(-250, -30, u); plane.visible = t < T.hit; plane.position.set(px, 296 + Math.sin(t * 1.3) * 1.2, 4); plane.rotation.z = 0.04 * Math.sin(t * 1.1); plane.rotation.x = 0.12 * Math.sin(t * 0.8);
+    const q = t - T.hit; fire.visible = q >= 0 && q < 0.9; if (fire.visible) { fire.position.set(-24, 296, 6); fire.scale.setScalar(4 + easeOut(q / 0.9) * 16); fire.material.opacity = 0.9 * (1 - q / 0.9); }
+    for (const s of smoke) { const U = s.userData, qq = q - U.d; s.visible = qq > 0; if (s.visible) { s.position.set(-24 + Math.cos(U.a) * U.r * 6 - qq * 5, 298 + qq * (7 + U.r * 6), 8 + Math.sin(U.a) * U.r * 6); s.scale.setScalar(U.s * (0.5 + easeOut(qq / 1.4))); } }
+    camPath([[T.ny, V(-150, 215, 330), V(-45, 270, 0), 54], [T.hit, V(-120, 238, 255), V(-42, 286, 0), 52], [T.shaft, V(-112, 242, 240), V(-36, 290, 0), 50]], t); cam.position.x += EX; const l = t < T.hit ? V(lerp(-45, -42, easeIO(u)), lerp(270, 286, easeIO(u)), 0) : V(lerp(-42, -36, easeIO(seg(t, T.hit, T.shaft))), lerp(286, 290, easeIO(seg(t, T.hit, T.shaft))), 0); l.x += EX; cam.lookAt(l); if (q > 0 && q < 0.6) cam.position.y += Math.sin(q * 50) * 0.5 * (1 - q / 0.6);
+    sc.set(EX, 200, 0); r = 280; }
+  else if (pit) { // the fall: 75 floors, ropes and brake line cut; coiled cable and trapped air at the bottom
+    const u = seg(t, T.shaft, T.land - 0.55), v2 = seg(t, T.land - 0.55, T.land); y = t < T.land - 0.55 ? lerp(300, 9, u * u * (0.35 + 0.65 * u)) : lerp(9, 1.15, easeOut(v2)); cutN = 6; recoil = -2; stubA = 1;
+    for (let i = 0; i < 6; i++) wob[i] = Math.sin(t * 9 + i * 1.7) * 0.25;
+    const sq = t >= T.land ? 1 : smooth(seg(y, 2.4, 1.15) ); coil.scale.y = 1 - 0.3 * (t >= T.land ? 1 : seg(1 - (y - 1.15) / 1.25, 0, 1));
+    const q = t - T.land + 0.1; puff.visible = q > 0 && q < 1.4; if (puff.visible) { puff.position.set(0, 0.8, CZ + 0.6); puff.scale.set(1.2 + easeOut(q / 1.4) * 3.2, 0.8 + easeOut(q / 1.4) * 1.6, 1.5); puff.material.opacity = 0.5 * (1 - q / 1.4); }
+    if (t < T.land - 1.3) carCam(y, 13, 46, Math.sin(t * 43) * 0.04, Math.sin(t * 57) * 0.05, 1.0);
+    else { camPath([[T.land - 1.3, V(0, 0, 0), V(0, 0, 0), 46], [T.fin, V(0, 0, 0), V(0, 0, 0), 40]], t); const k = easeIO(seg(t, T.land - 1.3, T.land - 0.3)); cam.position.set(lerp(0, 1.2, k), Math.max(3.6, y + 1.4), CZ + lerp(13, 11, k)); cam.lookAt(V(0, Math.max(1.6, y + 0.4), CZ)); if (t > T.land - 0.1 && t < T.land + 0.4) cam.position.y += Math.sin(t * 60) * 0.03; }
+    r = 14; }
+  else { y = lerp(150, 232, seg(t, T.fin, DUR) * 0.6 + 0.2 * smooth(seg(t, T.fin, DUR))); camPath([[T.fin, V(30, 196, 66), V(0, 190, 23), 44], [DUR + 2, V(150, 150, 330), V(0, 172, 22), 50]], t); r = 260; r = 16; }
+  car.position.y = y; if (modern || pit) sc.set(0, y, CZ); if (t < T.in || t >= T.fin) sc.set(0, 180, 0); if (t >= T.jaw - 2.0 && t < T.jaw && t >= T.cut + 0.5) sc.set(GX, GY, GZ);
+  // ropes
+  for (let i = 0; i < 6; i++) { const isCut = (cutN === 6) || (cutN === 1 && i === 4); stubs[i].visible = isCut && !pit; stubs[i].rotation.z = isCut ? (i % 2 ? 1 : -1) * (0.5 + 0.9 * stubA) : 0; stubs[i].rotation.x = isCut ? 0.6 * stubA * ((i % 3) - 1) : 0;
+    if (!isCut) setRope(i, y + 3.04, HT + 5.0); else if (pit) setRope(i, y + 3.04, y + 3.04 + 16 + i * 2.2, wob[i]); else { const yb = y + 3.9 + Math.max(0, recoil) * 60; setRope(i, Math.min(yb, HT + 5), HT + 5.0, recoil > 0 ? Math.sin(recoil * 30 + i) * 0.05 * Math.exp(-recoil * 3) : 0); } }
+  for (const j of jaws) j.position.z = j.userData.sz * lerp(0.2, 0.115, jawK);
+  lever.rotation.z = -0.5 * catchK; gwheel.rotation.z = -govA; for (const f of fly) { f.position.x = f.userData.s * flyR; } gcatch.position.x = lerp(0.6, 0.43, catchK); grope.visible = !pit; grope.material.emissive.set(catchK > 0.5 ? 0xb03000 : 0x6a5200);
+  sheave.rotation.x = t < T.in ? t * 3 : 0;
+  const k2 = r + '|' + Math.round(sc.x) + '|' + Math.round(sc.y * 2) + '|' + Math.round(sc.z); if (k2 !== sunK) { setSun(sc, r); sunK = k2; }
+  sky.position.copy(cam.position); post.render();
+}
+const kmh = (v) => Math.round(v * 3.6);
+function overlayFrame(t) {
+  const ta = t < 2.3 ? Math.min(seg(t, 0.12, 0.5), 1 - seg(t, 1.95, 2.3)) : 0; O.set(O.title, 'What if the<br><em>lift cable</em><br>snapped?'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.12, 0.8))) * 26}px)`;
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  const fade = (a, b) => Math.min(seg(t, a, a + 0.35), 1 - seg(t, b - 0.3, b));
+  let chip = '', cha = 0; if (t >= T.snap + 0.2 && t < T.mend) { chip = 'The movie version'; cha = fade(T.snap + 0.2, T.mend); } else if (t >= T.real + 0.1 && t < T.ropes) { chip = 'What really happens'; cha = fade(T.real + 0.1, T.ropes); } else if (t >= T.gov + 0.2 && t < T.jaw) { chip = 'If every rope failed'; cha = fade(T.gov + 0.2, T.jaw); } else if (t >= T.otis + 0.3 && t < T.ny) { chip = 'New York, 1850s'; cha = fade(T.otis + 0.3, T.ny); } else if (t >= T.ny + 0.3 && t < T.fin) { chip = '28 July 1945'; cha = fade(T.ny + 0.3, T.fin); }
+  O.set(O.chip, chip); O.show(O.chip, cha);
+  let ha = 1; const f1 = (x) => x.toFixed(1), f2 = (x) => x.toFixed(2);
+  if (t < T.in) ha = 0;
+  else if (t < T.snap) { O.hudSet('Height', '200 m', 'Floor 50'); ha = seg(t, T.in, T.in + 0.4); }
+  else if (t < T.mend) { const s = (t - T.snap) / (T.mend - T.snap) * TMOV; O.hudSet('Speed', kmh(G * s) + ' km/h', `${f1(s)} s since the snap\nFree fall, nothing to stop it`); }
+  else if (t < T.ropes) { O.hudSet('Height', '200 m', 'Floor 50\nStill here'); ha = seg(t, T.real - 0.1, T.real + 0.3); }
+  else if (t < T.gov) O.hudSet('Steel ropes', t < T.one ? '6' : '5', t < T.one ? 'On this lift\nFar more than it needs' : 'One gone\nThe car does not fall');
+  else if (t < T.otis) { const [s, d, v] = realDrop(t); O.hudSet('Since the snap', f2(s) + ' s', t < T.cut ? 'Safety brake: ready' : (t < T.jaw ? 'Slow motion\nGovernor spinning up' : (t < T.stop ? 'Slow motion\nJaws gripping the rails' : 'Stopped\nIllustration: it varies by lift'))); }
+  else if (t < T.ny) O.hudSet('Crystal Palace', t < T.ocut ? 'Rope on' : 'Rope cut', t < T.ocut ? "Elisha Otis's safety hoist" : 'A spring pushes catches\ninto the toothed rails');
+  else if (t < T.shaft) O.hudSet('New York', '1945', 'Empire State Building\nRe-creation');
+  else if (t < T.fin) { const y = car.position.y, fl = Math.max(0, Math.round((y - 1.15) / 298.85 * 75)); O.hudSet('Floors to go', t >= T.land ? '0' : String(fl), t >= T.land ? 'Betty Lou Oliver survived\nBadly hurt, but alive' : 'Ropes cut. Brake line cut.\nRe-creation · time compressed'); }
+  else if (t < T.end) O.hudSet('Safety brake', '1850s', 'Skyscrapers came later');
+  else ha = 0;
+  O.show(O.hud, ha); O.hud.style.top = (t >= T.otis && t < T.shaft) ? '940px' : '1010px';
+  let lab = ''; const L = (x, y, a, html, al) => `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${clamp(a).toFixed(3)};${al || ''}">${html}</div>`;
+  const wp = (o, dy = 0) => { const v = new THREE.Vector3(); o.getWorldPosition(v); v.y += dy; return proj(v, cam); };
+  if (t >= T.in + 0.5 && t < T.snap) { const p = wp(hero, 2.2); lab += L(p[0] - 30, p[1] - 44, fade(T.in + 0.5, T.snap), 'You'); }
+  if (t >= T.ropes + 1.6 && t < T.gov) { const a = fade(T.ropes + 1.6, T.gov); lab += L(90, 520, a, 'Steel ropes<b>' + (t < T.one ? 'six' : 'five hold') + '</b>'); }
+  if (t >= T.cut + 0.7 && t < T.jaw) { const a = fade(T.cut + 0.7, T.jaw); lab += L(90, 520, a, 'Governor<b>spins with the car</b>'); lab += L(560, 1030, a, '<span style="color:#ffd64a">Governor rope</span>', 'font-size:23px'); if (t > T.jaw - 0.9) lab += L(90, 700, seg(t, T.jaw - 0.9, T.jaw - 0.6), '<span style="color:#ff8a7c">Weights fly out<br>and trip the brake</span>'); }
+  if (t >= T.jaw + 0.2 && t < T.otis - 0.4) { const a = fade(T.jaw + 0.2, T.otis - 0.4); lab += L(90, 560, a, '<span style="color:#ff8a7c">Safety jaws</span><b>clamp the rails</b>'); }
+  if (t >= T.ocut + 1.0 && t < T.ny) lab += L(90, 520, fade(T.ocut + 1.0, T.ny), 'It dropped<b>a few inches</b>');
+  if (t >= T.otis + 0.6 && t < T.ny) lab += L(64, 1165, fade(T.otis + 0.6, T.ny) * 0.95, 'Re-creation', 'font-size:21px;letter-spacing:2.5px');
+  if (t >= T.land - 0.2 && t < T.fin) { const a = fade(T.land - 0.2, T.fin); lab += L(90, 500, a, 'Fallen cable, coiled<br>like a spring, and air<br>trapped in the shaft<b>softened the landing</b>', 'font-size:23px'); }
+  if (O.labels._h !== lab) { O.labels._h = lab; O.labels.innerHTML = lab; }
+  let fl = 0; for (const [a, d, k] of [[T.in, 0.3, 0.5], [T.snap, 0.3, 0.7], [T.mend, 0.4, 0.95], [T.real, 0.3, 0.5], [T.ropes, 0.25, 0.3], [T.one, 0.2, 0.5], [T.cut, 0.25, 0.6], [T.jaw, 0.3, 0.5], [T.otis, 0.4, 0.8], [T.ocut, 0.2, 0.5], [T.ny, 0.4, 0.8], [T.hit, 0.5, 0.95], [T.shaft, 0.3, 0.7], [T.land, 0.3, 0.6], [T.fin, 0.4, 0.8]]) if (t >= a - 0.06 && t < a + d) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + d)) * k);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { frame(t); overlayFrame(t); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>

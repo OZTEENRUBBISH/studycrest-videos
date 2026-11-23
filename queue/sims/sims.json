@@ -261,6 +261,22 @@
     "https://www.britannica.com/story/what-is-known-and-not-known-about-the-tunguska-event",
     "https://earthsky.org/space/what-is-the-tunguska-explosion/"
    ]
+  },
+  {
+   "file": "sim-21-lift.mp4",
+   "title": "What if the lift cable snapped?",
+   "made": "2026-11-24",
+   "caption": "What if the lift cable snapped? You'd barely move. A lift hangs from several steel ropes, and if every one failed, a governor would trip steel jaws that clamp the car to its rails. The one famous fall, in 1945, took a plane. 🛗\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #engineering #elevator #studytok",
+   "science": "Movie version: free fall from 200 m gives v = sqrt(2*9.81*200) = 62.6 m/s = 225 km/h after 6.4 s ('over 200 km/h'). Real lifts: high-rise cars hang from many ropes, 'far more than are needed to support a fully loaded car' (Otis); examples: six ropes on the 1945 Empire State car, seven on a 2018 Chicago car where one broke and the car stopped. Overspeed governor: flyweights swing out on overspeed and grip the governor rope, which pulls the car safeties so they clamp the guide rails (Otis, Elevator World). The film's trip speed (about 3 m/s after 0.31 s, 0.48 m of fall, then a stop at about 1 g) is an illustration from first principles and is labelled as such; no stopping distance is stated. Elisha Otis: Crystal Palace exhibition, New York, 1853 or 1854 (sources differ, so 'the 1850s'); he stood on the raised platform, had the rope cut, and it dropped a few inches. 28 July 1945: a B-25 hit the Empire State Building; hoist ropes and the governor rope were severed; a car fell 75 floors (about 300 m); operator Betty Lou Oliver survived with serious injuries; Guinness lists it as the longest fall survived in a lift; coiled cable in the pit and air compressed in the shaft are credited with softening the landing. Sources disagree on whether she was already in that car, so the film does not say. Safety hoist (1850s) predates skyscrapers.",
+   "sources": [
+    "https://www.otis.com/tools-resources/high-rise-safety-systems",
+    "https://elevatorworld.com/?p=77825",
+    "https://elevatorworld.com/?p=24060",
+    "https://elevatorworld.com/?p=15405",
+    "https://www.guinnessworldrecords.com/news/2023/10/How-an-Elevator-attendant-Survived-a-1-000-Ft-Fall-Down-the-Empire-State-Building-759670",
+    "https://en.wikipedia.org/wiki/1945_Empire_State_Building_B-25_crash",
+    "https://www.scientificamerican.com/blog/anecdotes-from-the-archive/hold-the-elevator-how-otis-s-early-systems-worked/"
+   ]
   }
  ]
 }
