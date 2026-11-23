@@ -66,7 +66,11 @@ SPOTS = {
     lines=["after 20% off, you pay 80%", "original = 80 × 1.20", "= $96"], wrong=1,
     hint="Hint: is $80 the full 100%, or the 80%?", fix="original = 80 ÷ 0.80", final="= $100",
     say_flag="It's line two! Eighty dollars is eighty percent of the price!",
-    intro=Q3("One small slip,", "the whole answer", "gone?"), intro_say="One small slip, and the whole answer's gone?")
+    intro=Q3("One small slip,", "the whole answer", "gone?"), intro_say="One small slip, and the whole answer's gone?"),
+ "physics-energy": dict(tag="PHYSICS · ELECTRICAL ENERGY", q="A 12 V battery drives a current of 0.5 A through a lamp for 2 minutes. Find the energy transferred.",
+    lines=["E = V × I × t", "E = 12 × 0.5 × 2", "E = 12 J"], wrong=1,
+    hint="Hint: should the time be in minutes or seconds?", fix="E = 12 × 0.5 × 120", final="E = 720 J",
+    say_flag="It's line two! Two minutes is one hundred and twenty seconds!")
 }
 # timeline (seconds)
 T_WRITE = [0.4, 1.4, 2.4]; T_COUNT = (3.4, 5.6); T_CHECK = [5.8, 6.2, 6.6]; T_HINT = 6.9; T_FIX = 8.3; T_FINAL = 9.3
