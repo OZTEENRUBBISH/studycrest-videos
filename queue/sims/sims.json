@@ -290,6 +290,26 @@
     "https://www.history.com/topics/ancient-history/pompeii",
     "https://www.historyrevealed.com/period/roman/pompeii-facts-vesuvius-volcano-ash-eruption-ancient-romans-archaeology"
    ]
+  },
+  {
+   "file": "sim-23-ocean.mp4",
+   "title": "What if you sank to the deepest point in the ocean?",
+   "made": "2026-11-24",
+   "caption": "What if you sank to the deepest point in the ocean? You wouldn't be crushed flat. Pressure crushes air, not water: your lungs, sinuses and ears would collapse, but the rest of you is mostly water and would keep its shape. 🌊\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #ocean #marianatrench #studytok",
+   "science": "Challenger Deep: 10,935 m, give or take 6 m (Guinness, from June 2020 dives; RMG 'around 10,935 m'), said as 'almost eleven kilometres'. Pressure: about one atmosphere per 10 m (WHOI, NOAA); checked: 1025 to 1050 kg/m3 x 9.81 x 10,935 m = 110 to 113 MPa = 1,086 to 1,113 atm ('about 1,100 atm'; WHOI: '1,100 times greater' in the deepest trenches) = 1.12 to 1.15 tonnes-force per cm2 ('more than a tonne on every square centimetre'). Boyle's law for a held breath: at 10 m the pressure is 2 atm so the air is half its volume; the lung shapes on screen shrink so that their area halves. Light: sunlight zone to 200 m, twilight zone 200 to 1,000 m, no sunlight below 1,000 m (NOAA). Air spaces (lungs, sinuses, ears) are what pressure collapses; bodies are mostly water, which hardly compresses, so a body would be 'crunched a bit but not crushed' (WHOI, UCL, Discover); the film says plainly that you would not survive. No figure is given for how much water compresses. Foam cups lowered on research dives shrink because the air is squeezed out of the foam, to about thimble size (NOAA Ocean Exploration log, Discover); the water balloon beside it is an illustration of the same principle. Snailfish (genus Pseudoliparis) filmed at 8,336 m in the Izu-Ogasawara Trench, expedition of August 2022, announced April 2023 (UWA): the deepest fish ever filmed; hadal snailfish have no swim bladder or other air spaces (WHOI Oceanus, The Conversation). The descent is time-compressed and labelled so; no sinking time is stated. The crushed-flat figure is labelled 'The myth' and 'This does not happen'.",
+   "sources": [
+    "https://www.guinnessworldrecords.com/world-records/deepest-point-in-the-sea",
+    "https://www.rmg.co.uk/stories/ocean/challenger-deep-deepest-point-ocean",
+    "https://www.whoi.edu/know-your-ocean/did-you-know/why-is-pressure-different-in-the-ocean",
+    "https://oceanservice.noaa.gov/facts/light_travel.html",
+    "https://oceanexplorer.noaa.gov/facts/deep-ocean.html",
+    "https://www.oceanexplorer.noaa.gov/explorations/16carolina/logs/sep3-2/sep3-2.html",
+    "https://www.discovermagazine.com/the-physics-of-deep-sea-animals-1575",
+    "https://www.ucl.ac.uk/engage/case-studies/2022/sep/if-ocean-pressure-can-break-human-bones-why-dont-whales-and-other-species-die",
+    "https://uwa.edu.au/news/article/2023/april/scientists-break-new-record-after-finding-worlds-deepest-fish",
+    "https://www.whoi.edu/oceanus/feature/squishy-survivor-snailfish-hadal-zone/",
+    "https://theconversation.edu.au/the-deepest-dwelling-fish-in-the-sea-is-small-pink-and-delicate-88991"
+   ]
   }
  ]
 }
