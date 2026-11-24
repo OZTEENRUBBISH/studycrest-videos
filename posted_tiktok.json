@@ -216,6 +216,12 @@
    "kind": "sim",
    "due_at": "2026-11-25T00:00:00+11:00",
    "buffer_post_id": "6b04786cb61d3bfe62336038"
+  },
+  {
+   "file": "studycrest-29-maths-equations",
+   "kind": "spot",
+   "due_at": "2026-11-26T12:00:00+11:00",
+   "buffer_post_id": "6b059be67214cbdb01aa4e81"
   }
  ]
 }
