@@ -211,7 +211,9 @@
    "setting": "A swimming pool, with a cutaway of the lungs and blood",
    "hook": "What if you held your breath for as long as you could?",
    "the surprising true point": "The desperate urge to breathe comes from carbon dioxide building up, not from running out of oxygen",
-   "status": "planned"
+   "status": "making",
+   "claimed_at": "2026-11-25T01:14:00+11:00",
+   "file": "sim-24-breath.mp4"
   },
   {
    "title": "Mount St. Helens, second by second",
@@ -219,7 +221,9 @@
    "setting": "The mountain and the forest around it, Washington State, 18 May 1980",
    "hook": "Mount St. Helens, second by second",
    "the surprising true point": "It did not blow its top first: the north side slid away in a giant landslide, and that uncorked a blast that shot out sideways",
-   "status": "planned"
+   "status": "making",
+   "claimed_at": "2026-11-25T01:14:00+11:00",
+   "file": "sim-25-sthelens.mp4"
   },
   {
    "title": "What if lightning struck your plane?",
