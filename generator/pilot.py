@@ -70,7 +70,12 @@ SPOTS = {
  "physics-energy": dict(tag="PHYSICS · ELECTRICAL ENERGY", q="A 12 V battery drives a current of 0.5 A through a lamp for 2 minutes. Find the energy transferred.",
     lines=["E = V × I × t", "E = 12 × 0.5 × 2", "E = 12 J"], wrong=1,
     hint="Hint: should the time be in minutes or seconds?", fix="E = 12 × 0.5 × 120", final="E = 720 J",
-    say_flag="It's line two! Two minutes is one hundred and twenty seconds!")
+    say_flag="It's line two! Two minutes is one hundred and twenty seconds!"),
+ "maths-equations": dict(tag="MATHS · SOLVING EQUATIONS", q="Solve 3(x − 4) = 2x + 5.",
+    lines=["3x − 12 = 2x + 5", "3x − 2x = 5 − 12", "x = −7"], wrong=1,
+    hint="Hint: what do you do to both sides to remove −12?", fix="3x − 2x = 5 + 12", final="x = 17",
+    say_flag="It's line two! You add twelve to both sides, not subtract!",
+    intro=Q3("Lost marks", "on a question", "you knew?"), intro_say="Lost marks on a question you knew?")
 }
 # timeline (seconds)
 T_WRITE = [0.4, 1.4, 2.4]; T_COUNT = (3.4, 5.6); T_CHECK = [5.8, 6.2, 6.6]; T_HINT = 6.9; T_FIX = 8.3; T_FINAL = 9.3
