@@ -174,6 +174,11 @@ POSTS = {
     point("ink", 4, "📅", "Set your own deadline", "Aim to finish two days early so you have time to fix things.", 4, n),
     point("ink", 5, "✅", "Check it with StudyCrest", "It checks every line of your working as you write: a tick, a flag or a hint.", 5, n, tag="Free for 30 days"),
     cta_slide("ink", 6, n)],
+ "L-done-every-question": lambda n=4: [
+    cover("paper", "🧩", "Done every question", "StudyCrest's Practice Questions writes new ones from the questions you've already done.", 0, n, accent="in the textbook?"),
+    steps_slide("paper", "Here's how it works", [("Add questions you've done", "Photos, a PDF, or type them in"), ("Pick how many", "3, 5 or 8 at a time"), ("Pick the difficulty", "Easier, the same, or harder"), ("Get new questions", "Same topic and skills, new numbers")], 1, n),
+    shot_slide("paper", "Same skills, a new question", "pq.png", None, "Same topic and skills. New situation, new numbers.", 2, n, stack=[(30, 30, 736, 208), (832, 30, 1538, 208)]),
+    cta_slide("paper", 3, n)],
 }
 
 if __name__ == "__main__":
