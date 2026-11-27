@@ -246,6 +246,12 @@
    "kind": "sim",
    "due_at": "2026-11-28T18:00:00+11:00",
    "buffer_post_id": "6b09a25832c212878fe093d1"
+  },
+  {
+   "file": "sim-26-lightning",
+   "kind": "sim",
+   "due_at": "2026-11-29T00:00:00+11:00",
+   "buffer_post_id": "6b09b4ba015034238d42c454"
   }
  ]
 }
