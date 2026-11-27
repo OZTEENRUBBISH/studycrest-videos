@@ -234,6 +234,18 @@
    "kind": "spot",
    "due_at": "2026-11-29T12:00:00+11:00",
    "buffer_post_id": "6b098fe734d224b14a8bd76e"
+  },
+  {
+   "file": "sim-25-sthelens",
+   "kind": "sim",
+   "due_at": "2026-11-28T06:00:00+11:00",
+   "buffer_post_id": "6b09a25718c8c6749bf7959e"
+  },
+  {
+   "file": "sim-24-breath",
+   "kind": "sim",
+   "due_at": "2026-11-28T18:00:00+11:00",
+   "buffer_post_id": "6b09a25832c212878fe093d1"
   }
  ]
 }
