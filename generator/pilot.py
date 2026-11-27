@@ -75,7 +75,16 @@ SPOTS = {
     lines=["3x − 12 = 2x + 5", "3x − 2x = 5 − 12", "x = −7"], wrong=1,
     hint="Hint: what do you do to both sides to remove −12?", fix="3x − 2x = 5 + 12", final="x = 17",
     say_flag="It's line two! You add twelve to both sides, not subtract!",
-    intro=Q3("Lost marks", "on a question", "you knew?"), intro_say="Lost marks on a question you knew?")
+    intro=Q3("Lost marks", "on a question", "you knew?"), intro_say="Lost marks on a question you knew?"),
+ "chemistry-moles": dict(tag="CHEMISTRY · MOLES AND CONCENTRATION", q="Find the number of moles of NaOH in 250 mL of a 0.40 M solution.",
+    lines=["n = c × V", "n = 0.40 × 250", "n = 100 mol"], wrong=1,
+    hint="Hint: should the volume be in mL or in litres?", fix="n = 0.40 × 0.250", final="n = 0.10 mol",
+    say_flag="It's line two! The volume has to be in litres!",
+    intro=Q3("Sure your", "working", "is right?"), intro_say="Sure your working is right?"),
+ "nursing-dose": dict(tag="NURSING · PAEDIATRIC DOSES", q="An 18 kg child is prescribed paracetamol at 15 mg/kg. The stock is 120 mg in 5 mL. Find the volume to give.",
+    lines=["dose = 15 × 18 = 270 mg", "volume = 270 ÷ 120", "= 2.25 mL"], wrong=1,
+    hint="Hint: 120 mg is in how many mL of the stock?", fix="volume = 270 ÷ 120 × 5", final="= 11.25 mL",
+    say_flag="It's line two! The stock is per five mils, not per one!")
 }
 # timeline (seconds)
 T_WRITE = [0.4, 1.4, 2.4]; T_COUNT = (3.4, 5.6); T_CHECK = [5.8, 6.2, 6.6]; T_HINT = 6.9; T_FIX = 8.3; T_FINAL = 9.3
