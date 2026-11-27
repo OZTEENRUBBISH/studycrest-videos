@@ -161,3 +161,27 @@ What stands out: the posting schedule is back to four a day after the three miss
 | studycrest-21-physics-speed | ad (spot) | 23 Nov 12:02pm | 17 h | 0 | 0 | 0 | 0 | not judged yet |
 
 What stands out: three of four slots were missed again in the last 24 hours (same pattern as 20 Nov), with nothing scheduled for them. The "slow" run is partly an artefact of stale numbers: Buffer last refreshed the metrics at 9:25am on 23 Nov, about 20 hours before this check, so sim-20's 71 views were read 9 hours after it went out, sim-19's 145 at 15 hours and studycrest-08-business's 150 at 21 hours; the zeros for studycrest-21-physics-speed were recorded before it was posted. Even so, sim-16 (220, read at 39 hours) and sim-17 (206, read at 33 hours) are behind where earlier simulations were at a similar age (sim-14 had 650 by 43 hours), so the latest simulations may be travelling less far; tomorrow's refresh will show. Simulations: 15 judged, 71 to 884 views (middle value 574), average watch time 2.5 to 24.3 s. Ads: 6 judged, 135 to 338 views (middle value 169.5), average watch time 1.1 to 3.0 s. Best of the week: sim-10-radiation (884). Worst judged: sim-20-tunguska (71, early reading); worst with a settled reading: studycrest-03-engineering (135).
+
+## 2026-11-28 (checked 5:14am Sydney)
+
+**Overall: problem.** Nothing has been sent in the last 24 hours when four posts are expected: the last post went out at 12:02pm on 26 Nov, 41 hours before this check. Since sim-23-ocean at 12:05am on 25 Nov, only the two midday ads (25 and 26 Nov) were sent; ten slots were missed (6:00am and 6:00pm on 25 Nov; 12:00am, 6:00am and 6:00pm on 26 Nov; all four on 27 Nov; 12:00am on 28 Nov), and posted_tiktok.json shows nothing scheduled for them. No posts with status error. Five posts are scheduled from 6:00am today (sim-25, studycrest-30, sim-24, sim-26, studycrest-31). On views alone: the two judged posts from the last 3 days are both "seen"; across the 15 judged posts this week, 7 are "seen", 8 "slow", none "not travelling". (This log has no entries for 25, 26 or 27 Nov.)
+
+| Post | Kind | Sent (Sydney) | Live for | Views | Likes | Comments | Shares | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| sim-15-coin | simulation | 21 Nov 6:03am | 167 h | 533 | 8 | 1 | 0 | seen |
+| studycrest-05-maths-expanding | ad (spot) | 21 Nov 12:04pm | 161 h | 726 | 2 | 0 | 0 | seen |
+| sim-16-pile | simulation | 21 Nov 6:01pm | 155 h | 222 | 2 | 0 | 0 | slow |
+| sim-17-oxygen | simulation | 22 Nov 12:05am | 149 h | 207 | 6 | 0 | 0 | slow |
+| sim-18-ice | simulation | 22 Nov 6:01am | 143 h | 220 | 12 | 0 | 0 | slow |
+| studycrest-08-business | ad (spot) | 22 Nov 12:02pm | 137 h | 735 | 6 | 0 | 0 | seen |
+| sim-19-blackhole | simulation | 22 Nov 6:01pm | 131 h | 154 | 6 | 0 | 0 | slow |
+| sim-20-tunguska | simulation | 23 Nov 12:03am | 125 h | 72 | 1 | 0 | 0 | slow |
+| studycrest-21-physics-speed | ad (spot) | 23 Nov 12:02pm | 113 h | 1031 | 1 | 0 | 0 | seen |
+| sim-21-lift | simulation | 24 Nov 6:02am | 95 h | 121 | 8 | 0 | 0 | slow |
+| studycrest-24-maths-percentages | ad (spot) | 24 Nov 12:02pm | 89 h | 745 | 1 | 0 | 0 | seen |
+| sim-22-pompeii | simulation | 24 Nov 6:02pm | 83 h | 144 | 6 | 0 | 0 | slow |
+| sim-23-ocean | simulation | 25 Nov 12:05am | 77 h | 67 | 1 | 0 | 0 | slow |
+| studycrest-26-physics-energy | ad (spot) | 25 Nov 12:02pm | 65 h | 875 | 1 | 0 | 0 | seen |
+| studycrest-29-maths-equations | ad (spot) | 26 Nov 12:02pm | 41 h | 503 | 1 | 0 | 0 | seen |
+
+What stands out: the schedule has had gaps for three days, and simulations and ads have swapped places. Ads: 6 judged, all "seen", 503 to 1,031 views (middle value 740); the older ones grew a lot since the 24 Nov check (studycrest-05 176 to 726, studycrest-08 150 to 735). But Buffer's reach figure for them (unique viewers) is far below views: 78 to 191 against 503 to 1,031 views (0 for studycrest-29), with average watch time 1.6 to 2.4 s. Simulations: 9 judged, 1 "seen" and 8 "slow", 67 to 533 views (middle value 154), views and reach about equal, average watch time 2.8 to 24.1 s. Every simulation since sim-16 (21 Nov) has stopped at about 220 or lower and barely moved since 24 Nov (sim-16 220 to 222, sim-20 71 to 72), against 413 to 884 for the simulations of 15 to 20 Nov; the four most recent sit at 72, 121, 144 and 67 after four to five days, close to but not under the "not travelling" line. Metrics were refreshed at 4:30am on 28 Nov, so these readings are current. Best of the week: studycrest-21-physics-speed (1,031). Worst: sim-23-ocean (67).
