@@ -1,0 +1,184 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// Mount St. Helens, second by second  (Washington State, 18 May 1980). North is +x. Heights, tree sizes and distances are stylised.
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, mat, box, shadowAll, cloud, skyDome, overlay, capAt, makePost, skyEnv, proj } from './common.js';
+const W = 1080, H = 1920, DUR = 53.2;
+const O = overlay();
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 1, 16000);
+const R = rng(19800518), V = (x, y, z) => new THREE.Vector3(x, y, z), C = (h) => new THREE.Color(h);
+const T = { hook: 2.4, hSlide: 5.5, hBlast: 7.2, date: 9.6, bulge: 11.6, quake: 16.4, slide: 20.0, uncork: 25.2, rush: 28.6, flat: 33.2, col: 38.9, toll: 42.75, eve: 44.9, close: 48.5, end: 51.0 };
+
+// =====================================================  LIGHT AND SKY
+const st = new THREE.Scene(); st.fog = new THREE.Fog(0xcfe3f2, 900, 5200);
+const SKY = { day: [C(0x2d7fdc), C(0xcfe7f8), C(0x9fc8e6)], ash: [C(0x4d4a46), C(0x8f877b), C(0x55504a)], eve: [C(0x3a3350), C(0xf08a4a), C(0x5a3a30)] }, FOG = { day: C(0xcfe3f2), ash: C(0x8a8378), eve: C(0xc98a66) };
+const sky = skyDome(0x2d7fdc, 0xcfe7f8, 0x9fc8e6); sky.scale.setScalar(8); st.add(sky);
+const hemi = new THREE.HemisphereLight(0xd6e9ff, 0x4f6a52, 1.1); st.add(hemi);
+const key = new THREE.DirectionalLight(0xfff0d0, 3.0); key.position.set(900, 900, 1200); key.castShadow = true; key.shadow.mapSize.set(4096, 4096);
+Object.assign(key.shadow.camera, { left: -1500, right: 1500, top: 1500, bottom: -1500, near: 1, far: 5000 }); key.shadow.bias = -0.0008; key.shadow.normalBias = 0.6; st.add(key); st.add(key.target); key.target.position.set(300, 0, 0);
+const world = new THREE.Group(); st.add(world);
+
+// =====================================================  TERRAIN: one mesh, re-shaped by (bulge b, slide s, blast front F, ash k)
+const HM = 330, RB = 400, LAKE = { x: 640, z: -300, rx: 230, rz: 140 }, FANA = 1.0;
+const cone = (r) => { const q = 1 - r / RB; return q <= 0 ? 0 : HM * (0.72 * q * q + 0.28 * q); };
+const craterF = (x, z) => 120 - 0.16 * x + 300 * Math.pow(Math.abs(z) / (120 + 0.3 * Math.max(x, 0)), 4) + (x < -30 ? ((-30 - x) / 55) ** 2 * 200 : 0);
+const bulgeW = (x, z) => Math.exp(-(((x - 140) / 80) ** 2) - ((z / 95) ** 2));
+const lakeK = (x, z) => smooth(seg(1.35 - (((x - LAKE.x) / LAKE.rx) ** 2 + ((z - LAKE.z) / LAKE.rz) ** 2), 0, 0.5));
+const groundN = (x, z) => 30 * fbm(x * 0.0035 + 3, 0.5, z * 0.0035 + 7, 3) - 14 + 150 * smooth(seg(Math.hypot(x - 300, z), 1000, 1900)) * fbm(x * 0.0016 + 9, 2.5, z * 0.0016, 3);
+const depo = (x, z) => x > 300 ? 30 * Math.exp(-(((x - 640) / 320) ** 2) - ((z / 180) ** 2)) * smooth(seg(x, 300, 420)) : 0;
+const fanD = (x, z) => { const r = Math.hypot(x, z), a = Math.abs(Math.atan2(z, x)); if (a >= FANA || r < 30) return 1e9; return r / (1 - Math.pow(a / FANA, 3) * 0.5); };
+function hAt(x, z, b, s) { const r = Math.hypot(x, z), c = cone(r), cb = c + 62 * b * bulgeW(x, z) * (1 - s), a = Math.min(c, craterF(x, z)), lk = lakeK(x, z); return lerp(cb, a, s) + lerp(groundN(x, z) * smooth(seg(r, 250, 520)), -9, lk) + depo(x, z) * smooth(seg(s, 0.45, 1)) * (1 - lk * 0.7); }
+const NX = 220, NZ = 170, tGeo = new THREE.PlaneGeometry(3400, 2600, NX, NZ); tGeo.rotateX(-Math.PI / 2); tGeo.translate(500, 0, 0);
+const tp = tGeo.attributes.position, TN = tp.count, tv = { x: new Float32Array(TN), z: new Float32Array(TN), c: new Float32Array(TN), bw: new Float32Array(TN), a: new Float32Array(TN), g: new Float32Array(TN), d: new Float32Array(TN), f: new Float32Array(TN), n: new Float32Array(TN), n2: new Float32Array(TN), lk: new Float32Array(TN) };
+for (let i = 0; i < TN; i++) { const x = tp.getX(i), z = tp.getZ(i), r = Math.hypot(x, z); tv.x[i] = x; tv.z[i] = z; tv.n[i] = fbm(x * 0.02, 1.3, z * 0.02, 3); tv.n2[i] = fbm(x * 0.05 + 5, 4.1, z * 0.05, 2);
+  const rough = (tv.n[i] - 0.5) * 30 * smooth(seg(r, 0, 60)) * smooth(1 - seg(r, RB - 80, RB + 40)); tv.c[i] = cone(r) + (cone(r) > 0 ? rough : 0); tv.bw[i] = bulgeW(x, z); tv.a[i] = Math.min(tv.c[i], craterF(x, z) + (tv.n2[i] - 0.5) * 16); tv.lk[i] = lakeK(x, z);
+  tv.g[i] = lerp(groundN(x, z) * smooth(seg(r, 250, 520)), -9, tv.lk[i]); tv.d[i] = depo(x, z) * (0.55 + 0.9 * tv.n2[i]) * (1 - tv.lk[i] * 0.7); tv.f[i] = fanD(x, z) * (0.9 + 0.2 * tv.n[i]); }
+tGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(TN * 3), 3));
+const terrain = new THREE.Mesh(tGeo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })); terrain.receiveShadow = true; terrain.castShadow = true; world.add(terrain);
+const COL = { snow: C(0xf5f8fc), rock: C(0x7d766c), forest: C(0x2c5a38), forest2: C(0x3c6f45), scar: C(0x8d8172), dep: C(0x9c8f7d), ash: C(0x77736c), ashAll: C(0x9d988f) }, tc = new THREE.Color();
+let tKey = '';
+function setTerrain(b, s, F, k) {
+  const ky = [b.toFixed(3), s.toFixed(3), Math.round(F), k.toFixed(2)].join('|'); if (ky === tKey) return; tKey = ky;
+  const col = tGeo.attributes.color, sd = smooth(seg(s, 0.45, 1));
+  for (let i = 0; i < TN; i++) { const cb = tv.c[i] + 62 * b * tv.bw[i] * (1 - s), a = tv.a[i], h = lerp(cb, a, s); tp.setY(i, h + tv.g[i] + tv.d[i] * sd);
+    const sn = 168 + (tv.n[i] - 0.5) * 110; if (h > sn) tc.copy(COL.snow); else if (h > sn - 42) tc.copy(COL.rock).lerp(COL.snow, smooth(seg(h, sn - 42, sn)) * (tv.n2[i] > 0.45 ? 1 : 0.35)); else if (h > 34) tc.copy(COL.forest).lerp(COL.rock, smooth(seg(h, 34, 100))); else tc.copy(COL.forest).lerp(COL.forest2, tv.n2[i]);
+    if (b > 0 && s < 1) tc.lerp(COL.rock, 0.9 * b * (1 - s) * smooth(seg(tv.bw[i], 0.2, 0.6)) * (tv.n2[i] > 0.4 ? 1 : 0.45));
+    if (s > 0) { const cut = tv.c[i] - a; if (cut > 3) tc.lerp(COL.scar, s * smooth(seg(cut, 3, 20)) * (0.75 + 0.25 * tv.n2[i])); if (tv.d[i] > 1.5) tc.lerp(COL.dep, sd * smooth(seg(tv.d[i], 1.5, 8))); }
+    if (tv.f[i] < F) tc.lerp(COL.ash, 0.86 * smooth(seg(F - tv.f[i], 0, 70)));
+    if (k > 0) tc.lerp(COL.ashAll, k * 0.6);
+    col.setXYZ(i, tc.r, tc.g, tc.b); }
+  tp.needsUpdate = true; col.needsUpdate = true; tGeo.computeBoundingSphere();
+}
+// far country: forested ridges and two distant snow peaks
+function lump(x, y, z, rx, h, rz, col, seed, det = 3) { const g = new THREE.IcosahedronGeometry(1, det), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const k = 1 + (fbm(p.getX(i) * 2 + seed, p.getY(i) * 2, p.getZ(i) * 2, 3) - 0.5) * 0.4; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k); } g.computeVertexNormals(); const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: col, flatShading: true })); m.scale.set(rx, h, rz); m.position.set(x, y, z); return m; }
+const farMats = []; { const far = new THREE.Mesh(new THREE.PlaneGeometry(30000, 30000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x2f5c3b })); far.position.y = -16; world.add(far); farMats.push(far.material);
+  const Rl = rng(77); for (let i = 0; i < 22; i++) { const a = i / 22 * 6.283 + Rl() * 0.2, d = 2300 + Rl() * 1500, m = lump(300 + Math.cos(a) * d, -20, Math.sin(a) * d, 500 + Rl() * 500, 150 + Rl() * 260, 500 + Rl() * 500, [0x2c5837, 0x335f40, 0x3b6a4a][i % 3], i); world.add(m); farMats.push(m.material); }
+  for (const [x, z, s] of [[5200, -2300, 1.5], [1500, -5600, 1.1]]) { const g = new THREE.Group(), base = new THREE.Mesh(new THREE.ConeGeometry(900, 900, 9, 1), new THREE.MeshLambertMaterial({ color: 0x5c6f7c, flatShading: true })), cap = new THREE.Mesh(new THREE.ConeGeometry(520, 520, 9, 1), new THREE.MeshLambertMaterial({ color: 0xf2f6fa, flatShading: true })); base.position.y = 450; cap.position.y = 645; g.add(base); g.add(cap); g.position.set(x, -20, z); g.scale.setScalar(s); world.add(g); } }
+// Spirit Lake
+const lakeMat = new THREE.MeshStandardMaterial({ color: 0x2a78b8, roughness: 0.22, metalness: 0.4, flatShading: true }); { const m = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), lakeMat); m.scale.set(LAKE.rx * 1.2, 1, LAKE.rz * 1.2); m.position.set(LAKE.x, -4.5, LAKE.z); m.receiveShadow = true; world.add(m); }
+// conifer forest (instanced). Trees inside the blast fan fall away from the mountain as the front passes.
+const CAMS = [[1250, -650], [1180, -600], [760, 640], [690, 600], [620, 550], [1420, 230], [1470, 250], [1500, 1080], [1580, 1140], [600, 800], [660, 850], [720, 900], [700, 960], [820, 560], [900, 640]]; const trees = []; { const Rt = rng(518); let tries = 0; while (trees.length < 7200 && tries++ < 60000) { const near = Rt() < 0.3, x = near ? 200 + Rt() * 1250 : -1150 + Rt() * 3300, z = near ? (Rt() - 0.5) * 1300 : (Rt() - 0.5) * 2500, r = Math.hypot(x, z); if (cone(r) > 88 + Rt() * 30 || lakeK(x, z) > 0.25) continue; if (CAMS.some(c => Math.hypot(c[0] - x, c[1] - z) < 62)) continue; if (fbm(x * 0.006, 9, z * 0.006, 2) < 0.36 && Rt() < 0.8) continue;
+    const dx = x / (r || 1), dz = z / (r || 1); trees.push({ x, z, y: hAt(x, z, 0, 0), h: 17 + Rt() * 13, w: 0.8 + Rt() * 0.5, f: fanD(x, z) * (0.92 + Rt() * 0.16), dx, dz, tw: (Rt() - 0.5) * 0.5, c: Rt(), bury: (Math.min(cone(r), craterF(x, z)) < cone(r) - 3 || depo(x, z) > 5) ? 1 : 0, lean: 1.34 + Rt() * 0.2 }); } }
+const fGeo = new THREE.ConeGeometry(0.2, 0.86, 6); fGeo.translate(0, 0.57, 0); const kGeo = new THREE.CylinderGeometry(0.035, 0.05, 0.3, 5); kGeo.translate(0, 0.15, 0);
+const foliage = new THREE.InstancedMesh(fGeo, new THREE.MeshLambertMaterial({ flatShading: true }), trees.length), trunks = new THREE.InstancedMesh(kGeo, new THREE.MeshLambertMaterial({ color: 0x5a4330, flatShading: true }), trees.length); foliage.castShadow = true; foliage.receiveShadow = true; foliage.frustumCulled = false; trunks.frustumCulled = false; world.add(foliage); world.add(trunks);
+const TG = [C(0x1f4a2c), C(0x2a5c36), C(0x346a3e)], TDEAD = C(0xb9b1a5), tm = new THREE.Matrix4(), tq = new THREE.Quaternion(), tax = new THREE.Vector3(), tpv = new THREE.Vector3(), tsv = new THREE.Vector3(), tcol = new THREE.Color(); let trKey = '';
+function setTrees(s, F, k) { const ky = [s.toFixed(3), Math.round(F), k.toFixed(2)].join('|'); if (ky === trKey) return; trKey = ky; const sd = smooth(seg(s, 0.2, 0.9));
+  for (let i = 0; i < trees.length; i++) { const t = trees[i], fl = t.f < F ? smooth(seg(F - t.f, 0, 46)) : 0, gone = t.bury * sd; tax.set(t.dz, 0, -t.dx); tq.setFromAxisAngle(tax, fl * t.lean + (1 - fl) * t.tw * 0.12); tpv.set(t.x, t.y - 0.6 - gone * 3, t.z); const sc = t.h * (1 - gone); tsv.set(sc * t.w * (1 - fl * 0.45), sc, sc * t.w * (1 - fl * 0.45)); tm.compose(tpv, tq, tsv); foliage.setMatrixAt(i, tm); trunks.setMatrixAt(i, tm);
+    tcol.copy(TG[Math.floor(t.c * 3)]).lerp(TDEAD, Math.max(fl, k * 0.5)); foliage.setColorAt(i, tcol); }
+  foliage.instanceMatrix.needsUpdate = true; trunks.instanceMatrix.needsUpdate = true; foliage.instanceColor.needsUpdate = true; }
+const PUFF = [1, 2, 3, 4].map(sd => { const g = new THREE.IcosahedronGeometry(1, 2), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const k = 1 + (fbm(p.getX(i) * 1.7 + sd * 7, p.getY(i) * 1.7, p.getZ(i) * 1.7, 3) - 0.5) * 0.75; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k); } g.computeVertexNormals(); return g; });
+// landslide: tumbling blocks and dust riding down the north side
+const rockMat = new THREE.MeshLambertMaterial({ color: 0x857a6c, flatShading: true }), snowMat = new THREE.MeshLambertMaterial({ color: 0xe9eef4, flatShading: true }), dustMat = new THREE.MeshLambertMaterial({ color: 0xc4bdb2, flatShading: true, transparent: true, opacity: 0.92 });
+const chunks = [], dust = []; { const Rc = rng(32), g = new THREE.IcosahedronGeometry(1, 0), g1 = new THREE.IcosahedronGeometry(1, 1);
+  for (let i = 0; i < 90; i++) { const m = new THREE.Mesh(g, Rc() < 0.3 ? snowMat : rockMat); m.castShadow = true; m.userData = { x0: 20 + Rc() * 170, z0: (Rc() - 0.5) * 150, x1: 330 + Rc() * 620, z1: (Rc() - 0.5) * 420, s: 7 + Rc() * 15, d: Rc() * 0.3, ph: Rc() * 6.283 }; world.add(m); chunks.push(m); }
+  for (let i = 0; i < 80; i++) { const m = new THREE.Mesh(PUFF[i % 4], dustMat); m.userData = { x0: 30 + Rc() * 160, z0: (Rc() - 0.5) * 170, x1: 300 + Rc() * 520, z1: (Rc() - 0.5) * 460, s: 11 + Rc() * 13, d: Rc() * 0.35, ph: Rc() * 6.283, up: 10 + Rc() * 50 }; world.add(m); dust.push(m); } }
+// lateral blast: a ground-hugging cloud that fans out to the north
+const ashA = new THREE.MeshLambertMaterial({ color: 0x77777c, emissive: 0x50505a, emissiveIntensity: 0.5, flatShading: true }), ashB = new THREE.MeshLambertMaterial({ color: 0x5a5a60, emissive: 0x40404a, emissiveIntensity: 0.5, flatShading: true }), ashC = new THREE.MeshLambertMaterial({ color: 0x9a9a9e, emissive: 0x60606a, emissiveIntensity: 0.5, flatShading: true }), ashHot = new THREE.MeshLambertMaterial({ color: 0x6a5a52, emissive: 0xc8562c, emissiveIntensity: 0.3, flatShading: true });
+const blastP = []; { const Rb2 = rng(1980), g1 = 0; for (let i = 0; i < 420; i++) { const q = 1 - Math.pow(Rb2(), 1.7) * 0.85, a = (Rb2() - 0.5) * 2 * FANA * 0.96, m = new THREE.Mesh(PUFF[i % 4], q < 0.1 ? ashHot : [ashA, ashB, ashC][i % 3]); m.userData = { q, a, s: 15 + Rb2() * 24, up: Rb2(), ph: Rb2() * 6.283 }; world.add(m); blastP.push(m); } }
+// vertical ash column
+const colG = new THREE.Group(), colP = []; colG.position.set(25, 120, 0); world.add(colG);
+{ const Ra = rng(83), geo = new THREE.IcosahedronGeometry(1, 1); for (let i = 0; i < 170; i++) { const u = Math.pow(Ra(), 0.8), top = smooth(seg(u, 0.74, 1)), a = Ra() * 6.283, rad = (26 + u * 40) * Ra() + top * (50 + Ra() * 330), m = new THREE.Mesh(PUFF[i % 4], u < 0.06 ? ashHot : [ashA, ashB, ashC][i % 3]); m.userData = { u, a, rad, s: (40 + u * 46 + top * 46) * (0.7 + Ra() * 0.6), ph: Ra() * 6.283, top }; colG.add(m); colP.push(m); } }
+const flashB = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshBasicMaterial({ color: new THREE.Color(4.5, 3.0, 1.5), toneMapped: false, transparent: true, fog: false })); flashB.position.set(70, 150, 0); world.add(flashB);
+// ash fall
+const fall = (() => { const n = 1100, p = new Float32Array(n * 3), Rf = rng(9); for (let i = 0; i < n; i++) p.set([(Rf() - 0.5) * 900, Rf() * 400, (Rf() - 0.5) * 900], i * 3); const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); const m = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xc9c2b6, size: 3.2, sizeAttenuation: false, transparent: true, opacity: 0.75, fog: false })); m.userData.p0 = p.slice(); m.frustumCulled = false; st.add(m); return m; })();
+// morning clouds, birds, the ghost of the old summit
+const clouds = []; for (let i = 0; i < 8; i++) { const c = cloud(R); c.position.set(-3000 + i * 800 + R() * 300, 700 + R() * 300, -3200 + R() * 500 + (i % 2) * 5600); c.scale.setScalar(7 + R() * 5); st.add(c); clouds.push(c); } const cloudMat = clouds[0].children[0].material;
+const birds = []; for (let i = 0; i < 9; i++) { const g = new THREE.Group(), wg = new THREE.ConeGeometry(0.5, 4.2, 3), a = new THREE.Mesh(wg, mat(0x1c1c1c)), b = new THREE.Mesh(wg, mat(0x1c1c1c)); a.rotation.z = 1.2; a.position.x = -1.6; b.rotation.z = -1.2; b.position.x = 1.6; g.add(a); g.add(b); g.userData = { a, b, c: V(520 + R() * 260, 70 + R() * 50, -60 + R() * 300), r: 40 + R() * 60, s: R() * 6 }; world.add(g); birds.push(g); }
+const ghost = (() => { const pts = []; for (let i = -40; i <= 40; i++) { const r = i / 40 * 210; pts.push(V(0, cone(Math.abs(r)) + 2, r)); } const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: new THREE.Color(2.2, 2.2, 2.4), toneMapped: false, transparent: true, fog: false, depthTest: false })); l.renderOrder = 9; world.add(l); return l; })();
+
+const post = makePost(renderer, st, cam, { bloom: 0.3, bloomThreshold: 0.88, bloomRadius: 0.7, sat: 1.14, warm: 0.02 });
+const CAPS = /*CAPS*/[[2.6, 4.85, "In <em>1980</em>, this volcano"], [4.87, 6.07, "didn't <em>blow its top</em>."], [6.09, 7.48, "Its <em>north side</em><br>slid away,"], [7.5, 9.2, "and the blast shot out<br><em>sideways</em>."], [9.8, 12.1, "May 18th, 8:32 a.m."], [12.12, 13.05, "For two months,"], [13.07, 15.1, "magma has pushed<br>the north face out"], [15.12, 16.07, "into a <em>bulge</em>."], [16.09, 18.53, "A magnitude <em>5.1</em><br>earthquake"], [18.55, 19.51, "shakes it loose."], [20.1, 20.92, "Seconds later,"], [20.94, 22.34, "the north face <em>collapses</em>:"], [22.36, 23.64, "the <em>largest landslide</em>"], [23.66, 24.81, "in recorded history."], [25.3, 27.09, "Like uncorking<br>a shaken bottle,"], [27.11, 28.4, "the <em>pressure</em> is released."], [28.42, 30.54, "Gas and rock blast out<br><em>sideways</em>"], [30.56, 32.8, "at around<br><em>500 kilometres an hour</em>."], [33.3, 35.14, "The blast <em>overtakes</em><br>the landslide"], [35.16, 36.16, "and flattens about"], [36.18, 38.46, "<em>600 square kilometres</em><br>of forest."], [39.0, 39.9, "Then ash climbs"], [39.92, 41.3, "about <em>24 kilometres</em>"], [41.32, 42.16, "in fifteen minutes."], [42.9, 44.24, "<em>57</em> people died."], [45.0, 46.24, "By evening, the mountain"], [46.26, 48.09, "is about <em>400 metres</em><br>shorter."], [48.6, 49.67, "It didn't blow its top."], [49.69, 50.58, "It <em>lost its side</em>."]]/*END*/;
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const hash = (n) => { const x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); };
+const FMAX = 1750;
+// the state of the mountain at film time t: bulge, slide, blast front, column, ash on the land, light mode
+function stateAt(t) {
+  if (t < T.hook) return { b: 1, s: 0, F: 0, g: 0, k: 0, mode: 'day', a: 0 };
+  if (t < T.date) { const s = easeIO(seg(t, T.hSlide, T.hBlast + 0.5)), F = t < T.hBlast ? 0 : easeOut(seg(t, T.hBlast, T.date + 0.6)) * 950; return { b: 1, s, F, g: 0, k: 0, mode: 'ash', a: smooth(seg(t, T.hBlast, T.date)) * 0.7 }; }
+  if (t < T.slide) return { b: smooth(seg(t, T.bulge, T.quake - 1.2)), s: 0, F: 0, g: 0, k: 0, mode: 'day', a: 0 };
+  if (t < T.uncork) return { b: 1, s: easeIO(seg(t, T.slide + 0.2, T.uncork + 1.4)), F: 0, g: 0, k: 0, mode: 'day', a: 0 };
+  if (t < T.flat) { const s = easeIO(seg(t, T.slide + 0.2, T.uncork + 1.4)), u = seg(t, T.uncork + 0.85, T.flat); return { b: 1, s, F: (0.55 * u + 0.45 * u * u) * 1280, g: 0, k: 0, mode: 'ash', a: smooth(seg(t, T.uncork + 0.85, T.rush + 2)) * 0.8 }; }
+  if (t < T.col) return { b: 1, s: 1, F: lerp(560, 1250, seg(t, T.flat, T.col - 0.6)), g: 0, k: 0.1, mode: 'ash', a: 0.8, aerial: 1 };
+  if (t < T.eve) return { b: 1, s: 1, F: FMAX, g: easeOut(seg(t, T.col, T.toll - 0.3)), k: 0.25, mode: 'ash', a: 1 };
+  return { b: 1, s: 1, F: FMAX, g: 0, k: 0.4, mode: 'eve', a: 1 };
+}
+function frame(t) {
+  const S = stateAt(t), { b, s, F, g, k, mode, a } = S;
+  setTerrain(b, s, F, k); setTrees(s, F, k);
+  const U = sky.material.uniforms, from = SKY.day, to = SKY[mode === 'day' ? 'day' : mode], kk = mode === 'day' ? 0 : (mode === 'eve' ? 1 : a);
+  U.top.value.lerpColors(from[0], to[0], kk); U.mid.value.lerpColors(from[1], to[1], kk); U.bot.value.lerpColors(from[2], to[2], kk); st.fog.color.lerpColors(FOG.day, FOG[mode === 'day' ? 'day' : mode], kk);
+  key.intensity = mode === 'eve' ? 2.4 : lerp(3.0, 1.15, kk); hemi.intensity = mode === 'eve' ? 0.95 : lerp(1.1, 0.8, kk); hemi.color.set(mode === 'eve' ? 0xd9cfe0 : (kk > 0.5 ? 0xc9c2b8 : 0xd6e9ff)); key.color.set(mode === 'eve' ? 0xffb07a : 0xfff0d0);
+  if (mode === 'eve') key.position.set(1300, 420, 1500); else key.position.set(900, 900, 1200);
+  cloudMat.emissiveIntensity = mode === 'eve' ? 0.3 : lerp(0.62, 0.15, kk); cloudMat.color.set(mode === 'eve' ? 0xff9a7a : (kk > 0.5 ? 0x9a948c : 0xffffff)); cloudMat.emissive.set(mode === 'eve' ? 0xff6a3a : 0xd6e4f5);
+  for (const m of farMats) m.color.set(mode === 'eve' ? 0x5f665c : 0x2f5c3b); lakeMat.color.set(F > 600 || mode === 'eve' ? 0x6f6a62 : 0x2a78b8); lakeMat.metalness = F > 600 || mode === 'eve' ? 0.1 : 0.4;
+  // landslide blocks and dust
+  const sliding = s > 0.001 && s < 0.999 || (s >= 0.999 && mode !== 'eve' && F < 900);
+  for (const m of chunks) { const u = m.userData, p = easeIO(clamp((s - u.d * 0.6) / (1 - u.d * 0.6) * 1.05)), x = lerp(u.x0, u.x1, p), z = lerp(u.z0, u.z1, p * p); m.visible = s > 0.02 && mode !== 'eve'; if (!m.visible) continue; const y = hAt(x, z, b, s) + u.s * 0.35 + Math.abs(Math.sin(p * 14 + u.ph)) * 14 * Math.sin(Math.PI * p); m.position.set(x, y, z); m.rotation.set(p * 9 + u.ph, u.ph, p * 7); m.scale.setScalar(u.s * (1 - 0.45 * p)); }
+  for (const m of dust) { const u = m.userData, p = easeOut(clamp((s - u.d * 0.5) / (1 - u.d * 0.5))), x = lerp(u.x0, u.x1, p), z = lerp(u.z0, u.z1, p), life = Math.sin(Math.PI * clamp(s * 1.02 - u.d * 0.3)) ; m.visible = s > 0.03 && F < 500 && mode !== 'eve' && life > 0.02; if (!m.visible) continue; m.position.set(x, hAt(x, z, b, s) + u.up * (0.4 + p) + u.s * 0.4, z); m.scale.setScalar(u.s * (0.5 + 1.3 * p) * (0.4 + 0.6 * life)); m.rotation.set(u.ph + t * 0.3, u.ph * 2, 0); }
+  // lateral blast cloud
+  const blasting = F > 1 && mode !== 'eve', aer = S.aerial ? 1 : 0, nar = (t < T.date || (t >= T.slide && t < T.rush)) ? 0.62 : 1, fade = 1 - smooth(seg(g, 0.0, 0.9)) * 0.75, late = smooth(seg(F, 1300, FMAX));
+  for (const m of blastP) { const u = m.userData; m.visible = blasting && (!aer || u.q > 0.8); if (!m.visible) continue; const reach = F * (1 - Math.pow(Math.abs(u.a) / FANA, 3) * 0.5), r = 50 + u.q * reach, x = Math.cos(u.a * nar) * r, z = Math.sin(u.a * nar) * r, grow = clamp(F / 700, 0.3, 1.0) * (aer ? 0.55 : 1), sc = u.s * grow * (0.6 + 0.6 * u.q) * (1 + 0.1 * Math.sin(t * 2.1 + u.ph)) * fade * (1 - late * 0.55 * (1 - u.q * 0.4));
+    m.position.set(x, hAt(x, z, 1, 1) + sc * (0.35 + u.up * 0.9) + late * 40 * u.up, z); m.scale.set(sc, sc * 0.8, sc); m.rotation.set(u.ph + t * 0.5, u.ph * 2 + t * 0.2, 0); }
+  
+  // vertical column
+  const HC = 1150 * g + 1; colG.visible = g > 0.003; if (colG.visible) for (const m of colP) { const u = m.userData, w = 1 + 0.14 * Math.sin(t * 1.4 + u.ph), rr = u.rad * (0.35 + 0.65 * g) * (1 + 0.05 * Math.sin(t * 0.8 + u.ph)), an = u.a + t * 0.06 * (u.top ? 0.4 : 1); m.position.set(Math.cos(an) * rr + u.top * 120 * g, u.u * HC + Math.sin(t * 0.9 + u.ph) * 6, Math.sin(an) * rr); m.scale.setScalar(u.s * (0.25 + 0.75 * g) * w * (1 + u.top * 0.8)); m.rotation.set(u.ph + t * 0.15, u.ph * 2, 0); }
+  // the flash where the side came off
+  const tb = t < T.date ? T.hBlast : T.uncork + 0.85, fb = t >= tb && t < tb + 1.1 && (t < T.date || t >= T.uncork) ? 1 - seg(t, tb, tb + 1.1) : 0; flashB.visible = fb > 0.01; flashB.scale.setScalar(24 + 62 * fb); flashB.material.opacity = Math.min(1, fb * 1.5);
+  fall.visible = (mode === 'ash' && a > 0.5 && t >= T.rush) || false; if (fall.visible) { const p = fall.geometry.attributes.position, p0 = fall.userData.p0; for (let i = 0; i < p.count; i++) { const y = ((p0[i * 3 + 1] - t * (30 + (i % 7) * 5)) % 400 + 400) % 400; p.setXYZ(i, cam.position.x + p0[i * 3] + Math.sin(t + i) * 4, y - 100 + cam.position.y, cam.position.z + p0[i * 3 + 2]); } p.needsUpdate = true; }
+  for (const c of clouds) c.visible = mode !== 'ash' || a < 0.6;
+  const calm = t < T.quake + 0.3 && (t < T.hook || t >= T.date), flee = t >= T.quake + 0.3 && t < T.slide + 2;
+  for (const [i, gg] of birds.entries()) { const u = gg.userData, an = t * 0.5 + u.s; gg.visible = calm || flee; const fl2 = flee ? (t - T.quake - 0.3) : 0; gg.position.set(u.c.x + Math.cos(an) * u.r + fl2 * 90, u.c.y + Math.sin(an * 1.7) * 6 + fl2 * (22 + i * 3), u.c.z + Math.sin(an) * u.r + fl2 * 60); gg.rotation.y = flee ? -0.6 : -an; const w = Math.sin(t * (flee ? 16 : 8) + u.s) * 0.5; u.a.rotation.z = 1.2 + w; u.b.rotation.z = -1.2 - w; gg.scale.setScalar(1.6); }
+  // camera
+  const M = V(40, 150, 0);
+  if (t < T.hook) camPath([[0, V(1250, 46, -650), V(0, 150, 0), 40], [T.hook, V(1180, 52, -600), V(0, 160, 0), 39]], t);
+  else if (t < T.date) camPath([[T.hook, V(600, 100, 800), V(190, 70, 0), 46], [T.hBlast, V(640, 100, 830), V(230, 66, 0), 47], [T.date, V(720, 105, 900), V(300, 60, 0), 50]], t);
+  else if (t < T.slide) camPath([[T.date, V(760, 70, 640), V(60, 165, 0), 42], [T.quake, V(640, 84, 560), V(80, 160, 0), 38], [T.slide, V(620, 86, 550), V(80, 158, 0), 38]], t);
+  else if (t < T.rush) camPath([[T.slide, V(600, 100, 800), V(190, 70, 0), 46], [T.uncork, V(620, 105, 860), V(170, 70, 0), 48], [T.rush, V(700, 110, 960), V(200, 66, 0), 52]], t);
+  else if (t < T.flat) camPath([[T.rush, V(1420, 52, 230), V(0, 150, 0), 42], [T.flat, V(1470, 56, 250), V(0, 170, 0), 44]], t);
+  else if (t < T.col) camPath([[T.flat, V(560, 600, 420), V(760, 0, 60), 50], [T.col, V(640, 680, 440), V(840, 0, 60), 50]], t);
+  else if (t < T.eve) camPath([[T.col, V(1500, 64, 1080), V(60, 330, 0), 58], [T.toll, V(1560, 70, 1130), V(60, 640, 0), 64], [T.eve, V(1580, 72, 1140), V(60, 660, 0), 64]], t);
+  else camPath([[T.eve, V(820, 190, 560), V(20, 140, 0), 36], [T.end, V(900, 230, 640), V(30, 140, 0), 37], [DUR, V(920, 240, 660), V(30, 140, 0), 37]], t);
+  let sh = 0; if (t >= T.quake && t < T.slide) sh = (1 - seg(t, T.quake, T.slide) * 0.6) * 5; else if (t >= T.slide && t < T.rush) sh = 2.2 + (t >= T.uncork + 0.85 ? 4 * (1 - seg(t, T.uncork + 0.85, T.rush)) : 0); else if (t >= T.rush && t < T.flat) sh = 1 + 5 * easeIn(seg(t, T.rush, T.flat)); else if (t >= T.hSlide && t < T.date) sh = 2.4;
+  if (sh > 0) { cam.position.x += (hash(Math.floor(t * 30)) - 0.5) * sh; cam.position.y += (hash(Math.floor(t * 30) + 7) - 0.5) * sh; }
+  // ghost of the old summit, facing the evening camera
+  ghost.visible = t >= T.eve + 0.5; if (ghost.visible) { ghost.rotation.y = Math.atan2(-cam.position.z, cam.position.x); ghost.material.opacity = 0.9 * seg(t, T.eve + 0.5, T.eve + 1.1) * (1 - seg(t, T.end - 0.3, T.end)); }
+  renderer.toneMappingExposure = 1.0; post.render(); return S;
+}
+function overlayFrame(t, S) {
+  const ta = t < 2.25 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 1.9, 2.25)) : 0; O.set(O.title, '<em>Mount St. Helens</em>,<br>second by second'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`; O.title.style.top = '430px';
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  let ha = 1, ht = 860;
+  if (t < T.hook + 0.2) ha = 0;
+  else if (t < T.date) { O.hudSet('Washington State, USA', '18 May 1980', t < T.hSlide ? 'What really happened\nPreview · time sped up' : 'The north side goes first\nPreview · time sped up'); ha = seg(t, T.hook + 0.2, T.hook + 0.6); }
+  else if (t < T.bulge) { O.hudSet('18 May 1980', '8:32 am', 'A clear Sunday morning\nSeen from the north'); ha = seg(t, T.date + 0.1, T.date + 0.5); }
+  else if (t < T.quake) O.hudSet('March to May 1980', 'The bulge', 'Magma pushing the north face out\nShown sped up and exaggerated');
+  else if (t < T.slide) O.hudSet('18 May 1980 · 8:32 am', 'Magnitude 5.1', 'Earthquake beneath the volcano');
+  else if (t < T.uncork) O.hudSet('8:32 am · seconds later', 'Landslide', 'The largest in recorded history\nShown slowed down · not to scale');
+  else if (t < T.rush) O.hudSet('8:32 am', 'Uncorked', 'The weight is gone:\ntrapped gas expands at once');
+  else if (t < T.flat) O.hudSet('Sideways blast', '≈ 500 km/h', 'Hot gas, ash and rock\nheading north');
+  else if (t < T.col) { O.hudSet('Forest flattened', '≈ 600 km²', 'Trees fall pointing away\nfrom the mountain · not to scale'); ha = seg(t, T.flat + 0.1, T.flat + 0.5); ht = 700; }
+  else if (t < T.toll) { const m = 32 + Math.round(15 * seg(t, T.col + 0.3, T.toll - 0.5)); O.hudSet('18 May 1980', '8:' + m + ' am', 'Ash column: about 24 km high\nwithin 15 minutes · not to scale'); }
+  else if (t < T.eve) { O.hudSet('18 May 1980', '57 lives lost', 'The eruption went on\nfor about nine hours'); ht = 800; }
+  else if (t < T.close) { O.hudSet('That evening', '≈ 400 m shorter', 'Summit: 2,950 m before,\n2,549 m after'); ha = seg(t, T.eve + 0.1, T.eve + 0.5); }
+  else if (t < T.end) O.hudSet('Mount St. Helens', 'It lost its side', 'A crater open to the north');
+  else ha = 1 - seg(t, T.end, T.end + 0.3);
+  O.hud.style.background = 'rgba(6,10,26,.42)'; O.hud.style.boxShadow = '0 0 0 14px rgba(6,10,26,.42)'; O.hud.style.borderRadius = '4px'; O.show(O.hud, ha); O.hud.style.top = ht + 'px'; O.show(O.chip, 0);
+  let hh = ''; const L = (x, y, a, small, big, col) => { if (a > 0.01) hh += `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${a}${col ? ';color:' + col : ''}">${small}${big ? '<b style="font-size:38px">' + big + '</b>' : ''}</div>`; };
+  if (t >= T.hook + 0.5 && t < T.hSlide) { const a0 = seg(t, T.hook + 0.5, T.hook + 0.9) * (1 - seg(t, T.hSlide - 0.3, T.hSlide)), [nx, ny] = proj(V(250, 120, 0), cam), [sx, sy] = proj(V(-250, 120, 0), cam); L(clamp(nx - 20, 64, 700), clamp(ny - 190, 420, 800), a0, '', 'North side', '#ffd98a'); }
+  else if (t >= T.bulge + 0.4 && t < T.quake) { const a0 = seg(t, T.bulge + 0.4, T.bulge + 0.9) * (1 - seg(t, T.quake - 0.3, T.quake)), [bx, by] = proj(V(150, hAt(120, 0, S.b, 0) + 6, 0), cam); L(clamp(bx - 250, 64, 640), clamp(by - 120, 420, 780), a0, 'North face', 'The bulge', '#ffd98a'); }
+  else if (t >= T.slide + 0.6 && t < T.uncork) { const a0 = seg(t, T.slide + 0.6, T.slide + 1.1) * (1 - seg(t, T.uncork - 0.3, T.uncork)), [nx, ny] = proj(V(260, 150, 0), cam); L(clamp(nx - 10, 64, 640), clamp(ny - 170, 420, 800), a0, 'North face', 'sliding away', '#ffd98a'); }
+  else if (t >= T.flat + 0.6 && t < T.col) { const a0 = seg(t, T.flat + 0.6, T.flat + 1.1) * (1 - seg(t, T.col - 0.3, T.col)); L(64, 440, a0, 'Seen from above', 'The blast moves this way ↗', '#ffd98a'); }
+  else if (t >= T.eve + 0.6 && t < T.end) { const a0 = seg(t, T.eve + 0.6, T.eve + 1.1) * (1 - seg(t, T.end - 0.3, T.end)), [gx, gy] = proj(V(0, HM + 4, 0), cam); L(clamp(gx - 110, 64, 700), clamp(gy - 90, 420, 800), a0, '', 'Old summit', '#e8eeff'); }
+  if (O.labels._h !== hh) { O.labels._h = hh; O.labels.innerHTML = hh; }
+  let fl = 0; for (const [a, dd, kq] of [[T.hook, 0.3, 0.6], [T.hBlast, 0.35, 0.6], [T.date, 0.45, 0.9], [T.quake, 0.25, 0.4], [T.slide, 0.3, 0.5], [T.uncork + 0.85, 0.4, 0.8], [T.rush, 0.3, 0.5], [T.flat, 0.45, 0.85], [T.col, 0.3, 0.6], [T.eve, 0.5, 0.8]]) if (t >= a - 0.06 && t < a + dd) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * kq : (1 - seg(t, a, a + dd)) * kq);
+  O.flash.style.background = `rgba(255,255,255,${fl})`;
+  const dk = t >= T.toll && t < T.eve ? 0.62 * seg(t, T.toll, T.toll + 0.4) * (1 - seg(t, T.eve - 0.3, T.eve)) : (t >= T.flat - 0.5 && t < T.flat ? 0.75 * seg(t, T.flat - 0.5, T.flat - 0.05) : 0);
+  O.tint.style.background = dk > 0 ? (t < T.flat ? `rgba(70,66,60,${dk})` : `rgba(4,5,10,${dk})`) : 'none';
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { const S = frame(t); overlayFrame(t, S); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>

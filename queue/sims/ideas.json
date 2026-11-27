@@ -211,9 +211,10 @@
    "setting": "A swimming pool, with a cutaway of the lungs and blood",
    "hook": "What if you held your breath for as long as you could?",
    "the surprising true point": "The desperate urge to breathe comes from carbon dioxide building up, not from running out of oxygen",
-   "status": "making",
+   "status": "made",
    "claimed_at": "2026-11-28T01:15:00+11:00",
-   "file": "sim-24-breath.mp4"
+   "file": "sim-24-breath.mp4",
+   "note": "Told as checked: the urge to breathe comes mainly from carbon dioxide; the exact break point is unresolved, so no single 'alarm' is claimed."
   },
   {
    "title": "Mount St. Helens, second by second",
@@ -221,7 +222,7 @@
    "setting": "The mountain and the forest around it, Washington State, 18 May 1980",
    "hook": "Mount St. Helens, second by second",
    "the surprising true point": "It did not blow its top first: the north side slid away in a giant landslide, and that uncorked a blast that shot out sideways",
-   "status": "making",
+   "status": "made",
    "claimed_at": "2026-11-28T01:15:00+11:00",
    "file": "sim-25-sthelens.mp4"
   },
@@ -375,6 +376,22 @@
    "setting": "Two astronauts outside a space station, a few metres apart, with the sound drawn as waves",
    "hook": "What if you shouted in space?",
    "the surprising true point": "Nobody would hear you, even a metre away: sound is a wave in matter and there is almost none out there, but touch your helmets together and your voice travels through the glass",
+   "status": "planned"
+  },
+  {
+   "title": "Lituya Bay, second by second",
+   "kind": "second-by-second",
+   "setting": "A narrow Alaskan fjord ringed by forested mountains, with a fishing boat at anchor, 9 July 1958",
+   "hook": "The tallest wave ever recorded, second by second",
+   "the surprising true point": "It was not an ocean tsunami: an earthquake dropped a mountainside into the head of a narrow bay, and the splash stripped trees from the opposite slope to about half a kilometre above the water, yet people on a boat in the bay rode it out and lived",
+   "status": "planned"
+  },
+  {
+   "title": "What if all the gold ever mined were melted into one cube?",
+   "kind": "what-if",
+   "setting": "A city square with a tennis court and office buildings for scale, then the Earth cut away to show where the rest of the gold is",
+   "hook": "What if all the gold ever mined were melted into one cube?",
+   "the surprising true point": "It would be far smaller than people expect: a single cube only about as wide as a tennis court is long, because gold is so dense, and most of the planet's gold sank to the core long ago",
    "status": "planned"
   }
  ]

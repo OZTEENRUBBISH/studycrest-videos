@@ -1,0 +1,238 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// What if you held your breath for as long as you could?  An outdoor pool. Flash-forward to the hold (the myth: oxygen runs out; the truth: the urge comes
+// mainly from carbon dioxide), then the hold from the start: the dive reflex, carbon dioxide building in the blood, the brainstem sensors, the diaphragm,
+// the break. Then the dangerous shortcut (breathing fast first), the rule, and the summary. The two gauges are illustrations with no numbers.
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, mat, box, shadowAll, person, palm, umbrella, cloud, skyDome, overlay, capAt, proj, makePost, skyEnv, tower } from './common.js';
+const W = 1080, H = 1920, DUR = 49.4, HZ = -6, FL = -1.6, VX = 600;
+const O = overlay();
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 0.05, 3000);
+const R = rng(20261128), V = (x, y, z) => new THREE.Vector3(x, y, z);
+
+// =====================================================  WORLD
+const S = new THREE.Scene(); S.fog = new THREE.Fog(0xd6ecfa, 150, 900);
+const sky = skyDome(0x2f7fe0, 0xd6ecfa, 0xa9d3ee); S.add(sky); const ENV = skyEnv(renderer, 0x2f7fe0, 0xd6ecfa, 0x6fb6e0);
+const hemi = new THREE.HemisphereLight(0xe6f1ff, 0x8fb58a, 1.25); S.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff0d2, 3.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.05; S.add(sun); S.add(sun.target);
+{ const c = V(0, 0, -9), r = 24; sun.target.position.copy(c); sun.position.set(c.x + r * 0.7, c.y + r * 1.7, c.z + r * 0.8); Object.assign(sun.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 0.5, far: r * 6 }); sun.shadow.camera.updateProjectionMatrix(); }
+const camLight = new THREE.PointLight(0xffe6e0, 0, 60, 1.2); S.add(camLight);
+// ---- the pool: 25 m, five lanes
+const pool = new THREE.Group(); S.add(pool);
+const PW = 12.5, PL = 25, DECK = 0.35;
+{ const c = document.createElement('canvas'); c.width = 500; c.height = 1000; const x = c.getContext('2d'); x.fillStyle = '#bfeaf5'; x.fillRect(0, 0, 500, 1000);
+  for (let i = 0; i < 25; i++) for (let j = 0; j < 50; j++) { x.fillStyle = ['#c9f0f8', '#b3e3f1', '#bfeaf5', '#a9dcec'][Math.floor(R() * 4)]; x.fillRect(i * 20 + 1, j * 20 + 1, 18, 18); }
+  x.fillStyle = '#1e4fb0'; for (let l = 0; l < 5; l++) { const cx = 50 + l * 100; x.fillRect(cx - 5, 80, 10, 840); x.fillRect(cx - 22, 76, 44, 9); x.fillRect(cx - 22, 915, 44, 9); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; const f = new THREE.Mesh(new THREE.PlaneGeometry(PW, PL).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: t })); f.position.set(0, FL, -PL / 2); f.receiveShadow = true; pool.add(f); }
+{ const stone = 0xe9e0cb, tile = 0xa8dcee, hh = DECK - FL + 0.3, cy = (DECK + FL - 0.3) / 2;
+  for (const [w, d, x, z] of [[PW + 24, 12, 0, 6], [PW + 24, 12, 0, -PL - 6], [12, PL, -PW / 2 - 6, -PL / 2], [12, PL, PW / 2 + 6, -PL / 2]]) { const b = box(w, hh, d, stone, x, cy, z); pool.add(b); }
+  for (const [w, d, x, z] of [[PW, 0.06, 0, -0.03], [PW, 0.06, 0, -PL + 0.03], [0.06, PL, -PW / 2 + 0.03, -PL / 2], [0.06, PL, PW / 2 - 0.03, -PL / 2]]) { pool.add(box(w, -FL + 0.02, d, tile, x, FL / 2, z)); pool.add(box(w + (d < 1 ? 0 : 0.5), 0.08, d + (d < 1 ? 0.5 : 0), 0xfafafa, x, DECK + 0.03, z)); pool.add(box(w, 0.2, d + (d < 1 ? 0.02 : 0), 0x1e4fb0, x + (d < 1 ? 0 : Math.sign(x) * -0.02), -0.02, z)); }
+  for (const [w, d, x, z] of [[900, 440, 0, 12 + 220], [900, 440, 0, -PL - 12 - 220], [440, PL + 24, -PW / 2 - 12 - 220, -PL / 2], [440, PL + 24, PW / 2 + 12 + 220, -PL / 2]]) { const lawn = new THREE.Mesh(new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2), mat(0x7fbf62)); lawn.position.set(x, DECK - 0.04, z); lawn.receiveShadow = true; pool.add(lawn); } }
+const waterGeo = new THREE.PlaneGeometry(PW, PL, 40, 80).rotateX(-Math.PI / 2), water = new THREE.Mesh(waterGeo, new THREE.MeshStandardMaterial({ color: 0x2fc3ee, roughness: 0.12, metalness: 0.1, flatShading: true, envMap: ENV, envMapIntensity: 1.0, transparent: true, opacity: 0.7 })); water.position.set(0, 0, -PL / 2); water.receiveShadow = true; S.add(water);
+const wy = (x, z, t) => Math.sin(x * 1.3 + t * 1.6) * 0.022 + Math.sin(z * 1.1 + t * 2.0 + x * 0.6) * 0.018 + Math.sin((x - z) * 2.3 + t * 2.7) * 0.008;
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(PW, PL).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xc8f4ff, fog: false })); ceil.position.set(0, -0.01, -PL / 2); S.add(ceil);
+// lane ropes
+{ const g = new THREE.CylinderGeometry(0.075, 0.075, 0.22, 8).rotateX(Math.PI / 2), n = 4 * 110, im = new THREE.InstancedMesh(g, new THREE.MeshLambertMaterial(), n), m = new THREE.Matrix4(), c = new THREE.Color(); let k = 0;
+  for (let l = 0; l < 4; l++) for (let i = 0; i < 110; i++) { m.makeTranslation(-3.75 + l * 2.5, 0.01, -0.3 - i * 0.2245); im.setMatrixAt(k, m); im.setColorAt(k, c.set(i < 20 || i > 89 ? 0xe2372c : (Math.floor(i / 5) % 2 ? 0xffffff : 0x2f56d6))); k++; } im.castShadow = true; pool.add(im); }
+// flags, blocks, ladder
+for (const z of [-5, -20]) { for (const s of [-1, 1]) pool.add(box(0.08, 2.5, 0.08, 0xd9d9d9, s * (PW / 2 + 0.6), DECK + 1.25, z)); pool.add(box(PW + 1.2, 0.02, 0.02, 0xffffff, 0, DECK + 2.4, z)); for (let i = 0; i < 26; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.34, 3), mat([0xe2372c, 0xf2c94c, 0x2f56d6, 0x2bb673][i % 4], { side: THREE.DoubleSide })); f.scale.z = 0.08; f.rotation.z = Math.PI; f.position.set(-PW / 2 - 0.3 + i * 0.52, DECK + 2.22, z); pool.add(f); } }
+for (let l = 0; l < 5; l++) { const x = -5 + l * 2.5; pool.add(box(0.6, 0.5, 0.6, 0xf2f2f2, x, DECK + 0.25, -PL - 0.5)); pool.add(box(0.7, 0.08, 0.75, 0x2f56d6, x, DECK + 0.54, -PL - 0.45)); }
+for (const z of [-9.6, -10.2]) { const r = box(0.05, 1.5, 0.05, 0xd0d8e0, PW / 2 - 0.12, 0.2, z, { metalness: 0.8, roughness: 0.25, envMap: ENV }); pool.add(r); pool.add(box(0.5, 0.05, 0.05, 0xd0d8e0, PW / 2 + 0.12, 0.95, z, { metalness: 0.8, roughness: 0.25, envMap: ENV })); }
+// lifeguard chair
+const guard = person(rng(3), 'sit', { shirt: 0xe2372c, sleeve: 0xe2372c, pants: 0xe2372c, shorts: true, hair: 0x2b1b12 });
+{ const g = new THREE.Group(); for (const [x, z] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) g.add(box(0.09, 2.2, 0.09, 0xffffff, x, 1.1, z)); g.add(box(1.2, 0.09, 1.2, 0xffffff, 0, 2.2, 0)); g.add(box(1.2, 0.9, 0.09, 0xffffff, 0, 2.7, -0.55)); for (let i = 0; i < 4; i++) g.add(box(0.9, 0.06, 0.2, 0xffffff, 0, 0.4 + i * 0.45, 0.6)); const u = umbrella(rng(2)); u.position.set(0, 2.2, -0.3); u.scale.setScalar(0.9); g.add(u); guard.position.set(0, 2.25, -0.1); g.add(guard); g.add(box(0.9, 0.16, 0.16, 0xe2372c, 0.2, 2.35, 0.5));
+  g.position.set(PW / 2 + 2.6, DECK, -13); g.rotation.y = -Math.PI / 2; shadowAll(g); pool.add(g); }
+// loungers, umbrellas, people
+const folk = []; { const Rp = rng(77);
+  for (let i = 0; i < 7; i++) { const side = i % 2 ? 1 : -1, x = side * (PW / 2 + 3.2 + Rp() * 1.5), z = -2.5 - i * 3.3; const l = new THREE.Group(); l.add(box(0.75, 0.12, 1.9, [0xffffff, 0xf2c94c, 0x7fd0ff][i % 3], 0, 0.36, 0)); l.add(box(0.75, 0.12, 0.7, [0xffffff, 0xf2c94c, 0x7fd0ff][i % 3], 0, 0.6, -1.1)); l.children[1].rotation.x = 0.7; for (const [a, b] of [[-0.3, -0.8], [0.3, -0.8], [-0.3, 0.8], [0.3, 0.8]]) l.add(box(0.06, 0.34, 0.06, 0x8a8a8a, a, 0.17, b)); l.position.set(x, DECK, z); l.rotation.y = side * -1.2; shadowAll(l); pool.add(l);
+    if (i % 2 === 0) { const u = umbrella(Rp); u.position.set(x + side * 0.9, DECK, z - 0.6); pool.add(u); }
+    if (i % 3 !== 1) { const p = person(Rp, 'sit', { shorts: true }); p.position.set(x, DECK + 0.4, z + 0.1); p.rotation.y = side * -1.2 + Math.PI; pool.add(p); folk.push(p); } }
+  for (const [x, z, ry, k] of [[-8.4, 2.5, 0.6, 'stand'], [-9.3, 2.9, -2.2, 'stand'], [9.8, -19, -1.2, 'walk'], [-8.0, -22, 1.3, 'walk'], [3.5, -27.5, 0, 'stand'], [-2, -28.2, 0.3, 'stand'], [-1.2, -28.0, -0.4, 'stand'], [8.5, 3.6, -0.7, 'stand'], [-11, -9, 1.5, 'stand']]) { const p = person(Rp, k, { shorts: true }); p.position.set(x, DECK, z); p.rotation.y = ry; p.userData.k = k; pool.add(p); folk.push(p); } }
+const swimmers = []; { const Rs = rng(41); for (const [lane, sp, ph] of [[-5, 1.1, 0], [5, -0.9, 9], [2.5, 0.8, 17], [-2.5, -1.0, 4]]) { const g = new THREE.Group(), p = person(Rs, 'float', { shorts: true, shirt: [0x2f56d6, 0xe2372c, 0x111111, 0x2bb673][swimmers.length] }); p.rotation.x = Math.PI / 2; p.position.set(0, 0.0, 0.9); g.add(p); g.userData = { p, lane, sp, ph }; S.add(g); swimmers.push(g); } }
+const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 1), new THREE.MeshLambertMaterial({ vertexColors: false, color: 0xffffff, flatShading: true })); { const g = ball.geometry.toNonIndexed(), n = g.attributes.position.count, col = new Float32Array(n * 3), c = new THREE.Color(); for (let i = 0; i < n; i += 3) { c.set([0xe2372c, 0xffffff, 0xf2c94c, 0x2f56d6, 0xffffff, 0x2bb673][Math.floor(i / 12) % 6]); for (let k = 0; k < 3; k++) col.set([c.r, c.g, c.b], (i + k) * 3); } g.setAttribute('color', new THREE.BufferAttribute(col, 3)); ball.geometry = g; ball.material.vertexColors = true; } ball.castShadow = true; S.add(ball);
+// surroundings: the pool house, palms, the city
+{ const b = new THREE.Group(); b.add(box(34, 5, 8, 0xf6f3ea, 0, 2.5, 0)); b.add(box(35, 0.5, 9, 0x2f56d6, 0, 5.25, 0)); for (let i = 0; i < 9; i++) b.add(box(2.4, 2.4, 0.1, 0x8fc3e6, -14 + i * 3.5, 2.4, 4.02, { metalness: 0.5, roughness: 0.2, envMap: ENV })); b.add(box(8, 1.2, 0.12, 0x1e3aa8, 0, 6.2, 4.0)); b.position.set(0, DECK, -PL - 18); shadowAll(b); pool.add(b);
+  for (let i = 0; i < 14; i++) { const p = palm(R), side = i % 2 ? 1 : -1; p.position.set(side * (PW / 2 + 9 + R() * 6), DECK, 2 - i * 2.6 + R() * 2); p.scale.setScalar(1.0 + R() * 0.4); pool.add(p); }
+  for (let i = 0; i < 22; i++) { const h = 30 + R() * 80, t = tower(R, 12 + R() * 10, h, 12 + R() * 10, { env: ENV }); t.position.set(-170 + i * 16 + R() * 6, 0, -95 - R() * 70); pool.add(t); }
+  for (let i = 0; i < 26; i++) { const hd = new THREE.Mesh(new THREE.IcosahedronGeometry(2.2 + R() * 1.8, 0), mat(i % 2 ? 0x4f9a4a : 0x3f8a44)); hd.position.set(-60 + i * 4.8, DECK + 1.2, -PL - 26 - R() * 4); hd.scale.y = 0.8; pool.add(hd); const h2 = hd.clone(); h2.position.set((i % 2 ? 1 : -1) * (PW / 2 + 19 + R() * 5), DECK + 1.2, 10 - i * 1.7); pool.add(h2); } }
+const clouds = []; for (let i = 0; i < 11; i++) { const c = cloud(R), a = -Math.PI * R(), r = 300 + R() * 420; c.position.set(Math.cos(a) * r, 130 + R() * 160, Math.sin(a) * r - 60); c.scale.setScalar(1.6 + R() * 2); S.add(c); clouds.push(c); }
+// underwater light shafts and specks
+const shafts = []; for (let i = 0; i < 9; i++) { const s = new THREE.Mesh(new THREE.PlaneGeometry(0.5 + R() * 0.8, 3.2), new THREE.MeshBasicMaterial({ color: 0xe6fbff, transparent: true, opacity: 0.08, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false })); s.position.set((R() - 0.5) * 9, -0.8, HZ - 1 - R() * 7); s.rotation.z = 0.25 + (R() - 0.5) * 0.1; s.userData.p = R() * 6.28; S.add(s); shafts.push(s); }
+// ---- you
+const HC = { shirt: 0xe0ac7e, sleeve: 0xe0ac7e, pants: 0xf2c94c, shorts: true, skin: 0xe0ac7e, hair: 0x2b1b12, shoe: 0xe0ac7e };
+const hero = person(rng(5), 'stand', HC); hero.scale.setScalar(1.0); S.add(hero); const torso = hero.userData.hips.children[0];
+const XM = (c, o = 0.95) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthTest: false, fog: false });
+const org = {}; { const hips = hero.userData.hips, add = (k, m, x, y, z, s) => { m.position.set(x, y, z); m.scale.set(...s); m.userData.s = s; m.renderOrder = 6; hips.add(m); org[k] = m; return m; }, sph = (c, o) => new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), XM(c, o));
+  add('lungL', sph(0xffa9bd), -0.11, 0.38, 0.14, [0.085, 0.19, 0.05]); add('lungR', sph(0xffa9bd), 0.11, 0.38, 0.14, [0.085, 0.19, 0.05]);
+  add('dia', sph(0xff8a3c), 0, 0.15, 0.14, [0.2, 0.028, 0.05]); add('heart', sph(0xe2262c), 0.035, 0.36, 0.15, [0.05, 0.058, 0.04]); org.heart.renderOrder = 7;
+  add('stem', sph(0xffe14a), 0, 0.7, -0.08, [0.035, 0.055, 0.035]); org.stem.renderOrder = 8;
+  for (let i = 0; i < 3; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(1, 0.035, 6, 28), XM(0xffe14a, 0.8)); r.position.set(0, 0.7, -0.08); r.renderOrder = 8; hips.add(r); (org.rings ||= []).push(r); } }
+const DN = 40, dropGeo = new THREE.SphereGeometry(0.05, 6, 5), drops = new THREE.InstancedMesh(dropGeo, new THREE.MeshBasicMaterial({ color: 0xeafaff, transparent: true, opacity: 0.9 }), DN), DD = []; { const Rd = rng(9); for (let i = 0; i < DN; i++) DD.push([Rd() * 6.28, 0.6 + Rd() * 1.6, 2.2 + Rd() * 3.0, 0.6 + Rd() * 1.0]); } drops.frustumCulled = false; S.add(drops);
+const BN = 26, bubs = new THREE.InstancedMesh(new THREE.SphereGeometry(0.04, 7, 5), new THREE.MeshBasicMaterial({ color: 0xf2fdff, transparent: true, opacity: 0.8 }), BN), BD = []; { const Rb = rng(19); for (let i = 0; i < BN; i++) BD.push([Rb(), (Rb() - 0.5) * 0.5, (Rb() - 0.5) * 0.4, Rb() * 6.28, 0.6 + Rb() * 1.2]); } bubs.frustumCulled = false; S.add(bubs);
+const puffs = []; for (let i = 0; i < 5; i++) { const p = new THREE.Mesh(new THREE.IcosahedronGeometry(0.07, 0), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 })); S.add(p); puffs.push(p); }
+// the rescue: the lifeguard and a friend on the pool edge
+const saver = person(rng(31), 'stand', { shirt: 0xe2372c, sleeve: 0xe2372c, pants: 0xe2372c, shorts: true, hair: 0x5a3825 }), friend = person(rng(32), 'stand', { shirt: 0x2bb673, pants: 0x1e3aa8, shorts: true }); S.add(saver); S.add(friend);
+const tube = box(0.2, 0.2, 1.1, 0xe2372c, PW / 2 + 1.5, DECK + 0.1, HZ + 1.6); tube.rotation.y = 0.4; S.add(tube); const towel = box(0.5, 0.06, 0.3, 0xffffff, 0, 0.62, -0.02);
+// ---- inside a blood vessel (illustration)
+const ves = new THREE.Group(); ves.position.set(VX, 0, 0); S.add(ves);
+{ const g = new THREE.CylinderGeometry(3.3, 3.3, 90, 26, 60, true).rotateX(Math.PI / 2), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 1 + (fbm(x * 0.4 + 5, y * 0.4, z * 0.16, 3) - 0.5) * 0.22; p.setX(i, x * k); p.setY(i, y * k); } g.computeVertexNormals(); const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0xe8566c, flatShading: true, side: THREE.BackSide })); m.position.z = -40; ves.add(m); }
+const CN = 80, cellGeo = new THREE.SphereGeometry(0.5, 12, 8); cellGeo.scale(1, 0.34, 1); const cells = new THREE.InstancedMesh(cellGeo, new THREE.MeshLambertMaterial({ color: 0xc8202e, flatShading: true }), CN), CD = []; { const Rc = rng(51); for (let i = 0; i < CN; i++) CD.push([Rc() * 6.28, 1.0 + Rc() * 1.7, Rc() * 70, Rc() * 6.28, Rc() * 6.28, 0.8 + Rc() * 0.5]); } cells.frustumCulled = false; ves.add(cells);
+const ON = 150, o2Geo = new THREE.SphereGeometry(0.15, 8, 6), oxy = new THREE.InstancedMesh(o2Geo, new THREE.MeshBasicMaterial({ color: 0x8fd0ff }), ON); oxy.frustumCulled = false; ves.add(oxy);
+const KN = 150, co2 = new THREE.Group(), KD = []; { const Rk = rng(61), mk = (r) => new THREE.InstancedMesh(new THREE.SphereGeometry(r, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd64a }), KN); co2.userData = { a: mk(0.13), b: mk(0.1), c: mk(0.1) }; for (const k of ['a', 'b', 'c']) { co2.userData[k].frustumCulled = false; co2.add(co2.userData[k]); } for (let i = 0; i < KN; i++) KD.push([Rk() * 6.28, 0.5 + Rk() * 2.2, Rk() * 60, Rk() * 6.28, Rk() * 6.28, Rk()]); } ves.add(co2);
+const vesL = new THREE.PointLight(0xfff0ea, 0, 70, 1.0); S.add(vesL);
+
+const post = makePost(renderer, S, cam, { bloom: 0.28, bloomThreshold: 0.88, warm: 0.02, sat: 1.15 });
+// =====================================================  TIMELINE
+const T = { in: 2.9, truth: 5.6, pool: 9.5, dip: 11.7, under: 12.4, blood: 15.6, stem: 21.1, dia: 23.7, oxy: 26.5, up: 29.2, risk: 31.3, dip2: 35.3, out: 38.0, rule: 40.4, fin: 43.0, end: 47.4 };
+const CAPS = /*CAPS*/[[2.9, 4.62, "You'd think you<br><em>run out of oxygen</em>."], [4.64, 5.32, "You <em>don't</em>."], [5.34, 6.47, "The urge to breathe"], [6.49, 7.51, "comes <em>mainly</em> from"], [7.53, 9.3, "<em>carbon dioxide</em><br>building up."], [9.5, 10.24, "You're at the pool."], [10.26, 10.93, "Deep breath,"], [10.95, 11.53, "and under."], [11.55, 12.74, "Cool water on your face"], [12.76, 13.6, "<em>slows your heart</em>:"], [13.62, 14.56, "the <em>dive reflex</em>."], [15.6, 18.18, "Your cells keep making<br><em>carbon dioxide</em>."], [18.2, 19.24, "With nowhere to go,"], [19.26, 20.45, "it <em>builds</em><br>in your blood."], [21.1, 22.86, "Sensors in your<br><em>brainstem</em> notice."], [22.88, 24.09, "Most people give in"], [24.11, 25.26, "after about <em>a minute</em>."], [25.28, 27.23, "Yet your lungs held<br>enough oxygen"], [27.25, 28.24, "for about <em>four</em>."], [29.1, 29.65, "Then you break,"], [29.67, 30.2, "and <em>breathe</em>."], [31.3, 33.22, "The danger is<br><em>cheating that urge</em>."], [33.24, 34.58, "Breathing fast first"], [34.6, 36.46, "flushes out<br><em>carbon dioxide</em>,"], [36.48, 37.96, "so the warning<br>comes <em>late</em>,"], [37.98, 39.66, "and you can <em>black out</em><br>underwater."], [40.4, 42.07, "<em>Never</em> hold your breath<br>in water <em>alone</em>."], [43.0, 44.28, "You're <em>not</em> out of oxygen."], [44.3, 46.15, "It's mostly <em>carbon dioxide</em>"], [46.17, 47.27, "telling you to breathe."]]/*END*/;
+// the clock of the hold (film time -> seconds held); the hold is compressed
+const held = (t) => t < T.dip + 0.3 ? 0 : Math.min(65, (t - T.dip - 0.3) / (T.up - T.dip - 0.3) * 65);
+// gauges (illustration): oxygen and carbon dioxide in the blood, 0..1. ALARM marks where the urge to breathe wins.
+const ALARM = 0.78, BLACK = 0.3;
+function gauges(t) {
+  if (t < T.in) return null;
+  if (t < T.truth) return { o: lerp(0.95, 0.04, easeIO(seg(t, T.in + 0.3, T.truth - 0.4))), c: null, myth: true };
+  if (t < T.pool) return { o: 0.66, c: lerp(0.45, 0.86, easeIO(seg(t, T.truth + 0.3, 8.0))) };
+  if (t < T.under) return null;
+  if (t >= T.blood && t < T.stem) return null;
+  if (t < T.up) { const h = held(t) / 65; return { o: lerp(1, 0.62, h), c: lerp(0.42, 0.9, Math.pow(h, 0.9)) }; }
+  if (t < T.risk) { const u = easeOut(seg(t, T.up + 0.3, T.risk)); return { o: lerp(0.62, 1, u), c: lerp(0.9, 0.5, u) }; }
+  if (t < T.dip2) return { o: 1, c: lerp(0.42, 0.14, easeIO(seg(t, T.risk + 1.2, T.dip2 - 0.3))), risk: true };
+  if (t < T.rule) { const u = seg(t, T.dip2, T.rule - 0.6); return { o: lerp(1, 0.24, Math.pow(u, 0.85)), c: lerp(0.14, 0.52, u), risk: true }; }
+  if (t < T.fin) return null;
+  return { o: 0.98, c: lerp(0.5, 0.42, seg(t, T.fin, T.fin + 2)) };
+}
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+function above(k = 0) { S.fog.color.set(0xd6ecfa); S.fog.near = 150; S.fog.far = 900; sky.material.uniforms.top.value.set(0x2f7fe0); sky.material.uniforms.mid.value.set(0xd6ecfa); sky.material.uniforms.bot.value.set(0xa9d3ee); hemi.intensity = 1.25; hemi.color.set(0xe6f1ff); hemi.groundColor.set(0x8fb58a); sun.intensity = 3.0; }
+function below() { S.fog.color.set(0x35b4e2); S.fog.near = 1.5; S.fog.far = 34; sky.material.uniforms.top.value.set(0x9fe6ff); sky.material.uniforms.mid.value.set(0x35b4e2); sky.material.uniforms.bot.value.set(0x1f8ac0); hemi.intensity = 1.5; hemi.color.set(0xd6f6ff); hemi.groundColor.set(0x6fcfee); sun.intensity = 2.2; }
+const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), e4 = new THREE.Euler(), s4 = V(1, 1, 1), ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+function splash(t, t0, x, z) { const a = t - t0; if (a < 0 || a > 1.4) return false; for (let i = 0; i < DN; i++) { const d = DD[i], r = d[1] * a * 1.1 * d[3], y = d[2] * a - 4.9 * a * a; if (y < -0.05) { drops.setMatrixAt(i, ZERO); continue; } s4.setScalar(0.3 + d[3] * 0.4); m4.compose(V(x + Math.cos(d[0]) * (0.25 + r), y + 0.02, z + Math.sin(d[0]) * (0.25 + r)), q4.identity(), s4); drops.setMatrixAt(i, m4); } drops.instanceMatrix.needsUpdate = true; return true; }
+function organs(show, t, o = {}) { for (const k of ['lungL', 'lungR', 'dia', 'heart', 'stem']) org[k].visible = show; org.stem.visible = show && (o.alarm ?? 0) > 0.01; for (const r of org.rings) r.visible = false; frame.alarm = 0; if (!show) return;
+  const hr = o.hr ?? 1.2, beat = Math.pow(Math.max(0, Math.sin(t * Math.PI * 2 * hr)), 6), hs = org.heart.userData.s; org.heart.scale.set(hs[0] * (1 + 0.3 * beat), hs[1] * (1 + 0.3 * beat), hs[2]);
+  const j = o.jerk ?? 0, ls = org.lungL.userData.s, lk = (o.full ?? 1) * (1 + 0.05 * j); for (const k of ['lungL', 'lungR']) org[k].scale.set(ls[0] * lk, ls[1] * lk, ls[2]);
+  org.dia.position.y = 0.15 + 0.035 * j; org.dia.material.color.set(j > 0.3 || o.diaHot ? 0xff5a2a : 0xff8a3c); org.dia.scale.set(0.2, 0.028 + 0.012 * j, 0.05);
+  const al = o.alarm ?? 0; org.stem.material.color.set(al > 0 ? 0xffe14a : 0xcfd6e0); org.stem.material.opacity = al > 0 ? 0.98 : 0.75; const ss = org.stem.userData.s, sp = 1 + 0.25 * al * (0.5 + 0.5 * Math.sin(t * 14)); org.stem.scale.set(ss[0] * sp, ss[1] * sp, ss[2] * sp);
+  frame.alarm = al; }
+const jerkAt = (t) => 0;
+function frame(t) {
+  const flash0 = t >= T.in && t < T.pool, bloodS = t >= T.blood && t < T.stem, ruleS = t >= T.rule && t < T.fin;
+  const underA = flash0 || (t >= T.under && t < T.blood) || (t >= T.stem && t < T.up) || (t >= T.dip2 + 0.5 && t < T.rule);
+  // defaults
+  pool.visible = !bloodS; ves.visible = bloodS; water.visible = !bloodS; ball.visible = !bloodS; for (const s of swimmers) s.visible = !bloodS; for (const c of clouds) c.visible = !bloodS; hero.visible = !bloodS; saver.visible = friend.visible = tube.visible = ruleS; vesL.intensity = 0; camLight.intensity = 0;
+  for (const p of puffs) p.visible = false; drops.visible = false; bubs.visible = false; hero.rotation.set(0, 0, 0); hero.scale.set(1, 1, 1); torso.scale.set(1, 1, 1); post.grade.uniforms.sat.value = 1.15; post.grade.uniforms.warm.value = 0.02; renderer.toneMappingExposure = 1.0; if (towel.parent) towel.parent.remove(towel);
+  // water surface, swimmers, ball, people
+  { const p = water.geometry.attributes.position; for (let i = 0; i < p.count; i++) p.setY(i, wy(p.getX(i), p.getZ(i), t)); p.needsUpdate = true; }
+  for (const g of swimmers) { const u = g.userData, L = PL - 3.2, s = (u.ph + t * Math.abs(u.sp)) % (2 * L), z = s < L ? s : 2 * L - s, dir = (s < L ? 1 : -1); g.position.set(u.lane, -0.16, -1.3 - z); g.rotation.y = dir > 0 ? Math.PI : 0; u.p.userData.pose(t * 5 + u.ph, 'float'); u.p.userData.aL.rotation.x = -1.6 + Math.sin(t * 4 + u.ph) * 1.4; u.p.userData.aR.rotation.x = -1.6 - Math.sin(t * 4 + u.ph) * 1.4; }
+  ball.position.set(3.6 + Math.sin(t * 0.3) * 0.5, 0.2 + wy(3.6, -3, t), -2.4 + Math.cos(t * 0.24) * 0.4); ball.rotation.set(t * 0.3, t * 0.2, 0);
+  for (const p of folk) if (p.userData.k === 'walk') { p.userData.pose(t * 5 + p.userData.seed, 'walk'); p.position.z += 0; } else if (p.userData.k === 'stand') p.userData.pose(t * 2 + p.userData.seed, 'stand');
+  hero.userData.pose(t * 1.5, 'float'); hero.userData.aL.rotation.set(-0.5 + Math.sin(t * 2.2) * 0.25, 0, -0.9); hero.userData.aR.rotation.set(-0.5 - Math.sin(t * 2.2) * 0.25, 0, 0.9); hero.userData.lL.rotation.set(Math.sin(t * 3) * 0.35, 0, 0); hero.userData.lR.rotation.set(-Math.sin(t * 3) * 0.35, 0, 0); hero.userData.hips.rotation.x = 0;
+  const UPY = FL + 0.52 + Math.sin(t * 1.7) * 0.02, H0 = V(0, UPY, HZ); let hp = H0.clone(), pose = 'stand', showOrg = false, oo = {}, isUnder = underA, wantDrops = false;
+  if (t < T.in) { // the pool
+    camPath([[0, V(9.5, 8.5, 8.5), V(0, 0.2, -9), 52], [T.in, V(3.6, 2.6, 0.8), V(0, 0.15, HZ), 46]], t); }
+  else if (flash0) { // flash-forward: the hold, the myth and the truth
+    pose = 'sit'; hp.y = FL; showOrg = true; hero.rotation.y = 0.55; const myth = t < T.truth; post.grade.uniforms.sat.value = myth ? 0.4 : 1.15; oo = { hr: 0.95, alarm: myth ? 0 : smooth(seg(t, 7.0, 7.6)), jerk: 0 };
+    camPath([[T.in, V(1.4, -0.55, HZ + 4.6), V(-0.3, -0.85, HZ), 44], [T.truth, V(1.0, -0.6, HZ + 3.9), V(-0.32, -0.85, HZ), 42], [T.pool, V(0.6, -0.65, HZ + 3.2), V(-0.34, -0.8, HZ), 40]], t); }
+  else if (t < T.blood) { // deep breath, and under
+    const d = easeIO(seg(t, T.dip, T.under));
+    const br = smooth(seg(t, 10.3, 11.2)); torso.scale.set(1 + 0.12 * br, 1 + 0.04 * br, 1 + 0.22 * br); pose = d > 0.5 ? 'sit' : 'stand'; hp.y = d < 0.5 ? lerp(UPY, FL - 0.2, d * 2) : FL; showOrg = t > T.under + 0.3; oo = { hr: lerp(1.25, 0.9, seg(t, T.under, T.blood)), full: 1.08 };
+    camPath([[T.pool, V(3.0, 1.7, HZ + 5.4), V(0, 0.2, HZ), 44], [T.dip - 0.2, V(2.2, 1.25, HZ + 4.4), V(-0.2, 0.0, HZ), 42], [T.under + 0.2, V(1.6, -0.55, HZ + 4.4), V(-0.3, -0.85, HZ), 44], [T.blood, V(0.75, -0.72, HZ + 3.3), V(-0.34, -0.95, HZ), 40]], t);
+    wantDrops = splash(t, T.dip + 0.25, 0, HZ); }
+  else if (bloodS) { // inside a blood vessel
+    const u = seg(t, T.blood, T.stem); S.fog.color.set(0x7a1424); S.fog.near = 6; S.fog.far = 58; sky.material.uniforms.top.value.set(0x7a1424); sky.material.uniforms.mid.value.set(0x7a1424); sky.material.uniforms.bot.value.set(0x7a1424); hemi.intensity = 0.9; hemi.color.set(0xffd0d0); hemi.groundColor.set(0x8a2030); sun.intensity = 0;
+    cam.position.set(VX + Math.sin(t * 0.5) * 0.4, 0.2 + Math.sin(t * 0.37) * 0.25, 2 - (t - T.blood) * 0.5); cam.fov = 58; cam.up.set(Math.sin(t * 0.2) * 0.12, 1, 0); cam.lookAt(V(VX, 0, -30)); cam.updateProjectionMatrix(); vesL.intensity = 22; vesL.position.copy(cam.position).add(V(0.5, 0.8, -1));
+    const cz = cam.position.z, mod = (a, n) => ((a % n) + n) % n;
+    for (let i = 0; i < CN; i++) { const d = CD[i], z = cz - 68 + mod(d[2] + t * 5.5 * d[5], 70), th = d[0] + Math.sin(t * 0.3 + d[3]) * 0.2; e4.set(d[3] + t * 0.7, d[4] + t * 0.5, 0); q4.setFromEuler(e4); s4.setScalar(1); const pv = V(Math.cos(th) * d[1], Math.sin(th) * d[1], z); m4.compose(pv, q4, s4); cells.setMatrixAt(i, m4);
+      for (let k = 0; k < 2 && i * 2 + k < ON; k++) { const j = i * 2 + k; const off = V(k ? 0.34 : -0.3, 0.26, k ? 0.1 : -0.12).applyQuaternion(q4); m4.compose(pv.clone().add(off), q4, s4); oxy.setMatrixAt(j, j % 9 === 8 && u > 0.5 ? ZERO : m4); } } cells.instanceMatrix.needsUpdate = true; oxy.instanceMatrix.needsUpdate = true;
+    const nvis = Math.floor(lerp(14, KN, Math.pow(u, 0.9)));
+    for (let i = 0; i < KN; i++) { const d = KD[i]; if (i >= nvis) { for (const k of ['a', 'b', 'c']) co2.userData[k].setMatrixAt(i, ZERO); continue; } const born = i < 14 ? -1 : T.blood + Math.pow((i - 14) / (KN - 14), 1 / 0.9) * (T.stem - T.blood), g = i < 14 ? 1 : easeOut(seg(t, born, born + 0.35));
+      const z = cz - 58 + mod(d[2] + t * 3.2 * (0.7 + d[5] * 0.6), 60), th = d[0] + t * 0.25 * (d[5] - 0.5), pv = V(Math.cos(th) * d[1], Math.sin(th) * d[1], z); e4.set(d[3] + t * 1.5, d[4] + t * 1.1, t); q4.setFromEuler(e4); s4.setScalar(g * (1 + 0.5 * (1 - g))); const ax = V(0.21, 0, 0).applyQuaternion(q4);
+      m4.compose(pv, q4, s4); co2.userData.a.setMatrixAt(i, m4); m4.compose(pv.clone().add(ax), q4, s4); co2.userData.b.setMatrixAt(i, m4); m4.compose(pv.clone().sub(ax), q4, s4); co2.userData.c.setMatrixAt(i, m4); }
+    for (const k of ['a', 'b', 'c']) co2.userData[k].instanceMatrix.needsUpdate = true; }
+  else if (t < T.up) { // the alarm: brainstem, diaphragm, and oxygen still there
+    pose = 'sit'; hp.y = FL; showOrg = true; hero.rotation.y = t < T.dia ? 0.55 : 0; const j = jerkAt(t); oo = { hr: 0.9, alarm: smooth(seg(t, T.stem + 0.5, T.stem + 1.1)), jerk: j, full: 1.08, diaHot: false };
+    torso.scale.set(1, 1 + 0.03 * j, 1 + 0.12 * j); hp.y = FL + 0.03 * j; hero.rotation.x = -0.08 * j;
+    if (t < T.dia) camPath([[T.stem, V(0.5, -0.5, HZ + 2.9), V(-0.28, -0.75, HZ), 38], [T.dia, V(0.4, -0.5, HZ + 2.5), V(-0.27, -0.7, HZ), 36]], t);
+    else if (t < T.oxy) camPath([[T.dia, V(0.7, -0.9, HZ + 2.8), V(-0.3, -1.0, HZ), 38], [T.oxy, V(0.6, -0.9, HZ + 2.6), V(-0.3, -1.0, HZ), 37]], t);
+    else camPath([[T.oxy, V(1.4, -0.6, HZ + 4.2), V(-0.32, -0.9, HZ), 42], [T.up, V(1.1, -0.65, HZ + 3.6), V(-0.32, -0.85, HZ), 40]], t);
+    cam.position.x += j * 0.012; }
+  else if (t < T.risk) { // the break
+    const g = Math.sin((t - T.up - 0.2) * Math.PI * 2 * 1.3); torso.scale.set(1 + 0.08 * Math.max(0, g), 1, 1 + 0.2 * Math.max(0, g)); hp.y = lerp(FL + 0.1, UPY, easeOut(seg(t, T.up - 0.05, T.up + 0.3)));
+    camPath([[T.up, V(2.6, 1.3, HZ + 4.4), V(-0.1, 0.05, HZ), 42], [T.risk, V(2.2, 1.2, HZ + 3.8), V(-0.1, 0.05, HZ), 40]], t); wantDrops = splash(t, T.up + 0.02, 0, HZ); }
+  else if (t < T.rule) { // the dangerous shortcut
+    post.grade.uniforms.sat.value = 0.8; post.grade.uniforms.warm.value = 0.07; const d = easeIO(seg(t, T.dip2 - 0.2, T.dip2 + 0.5)); const u2 = t >= T.dip2 + 0.15;
+    if (t < T.dip2 - 0.2) { const g = Math.sin((t - 32.6) * Math.PI * 2 / 0.3) * seg(t, 32.3, 32.6); torso.scale.set(1 + 0.07 * g, 1, 1 + 0.2 * g); hero.rotation.x = 0.04 * g;
+      for (const [i, p] of puffs.entries()) { const a = ((t - 32.6) / 0.3 + i * 0.2) % 1; p.visible = t > 32.6; p.position.set(0.02 * i, UPY + 1.6 + a * 0.05, HZ + 0.25 + a * 0.6); p.scale.setScalar(0.5 + a * 1.6); p.material.opacity = 0.6 * (1 - a); } }
+    pose = d > 0.5 ? 'sit' : 'stand'; hp.y = d < 0.5 ? lerp(UPY, FL - 0.2, d * 2) : FL; showOrg = u2 && t > T.dip2 + 0.6; const out = smooth(seg(t, T.out + 0.4, T.rule - 0.5)); oo = { hr: lerp(1.0, 0.7, seg(t, T.dip2, T.rule)), alarm: 0, jerk: 0 };
+    hero.rotation.z = 0.5 * out; hero.rotation.x = 0.25 * out; hp.x += 0.25 * out; hp.y += 0.05 * out; renderer.toneMappingExposure = 1 - 0.55 * smooth(seg(t, T.out + 0.9, T.rule - 0.2));
+    if (t < T.dip2 + 0.15) camPath([[T.risk, V(-2.8, 1.6, HZ + 4.8), V(0.1, 0.25, HZ), 42], [T.dip2 - 0.3, V(-2.0, 1.3, HZ + 3.8), V(0.15, 0.1, HZ), 40], [T.dip2 + 0.15, V(-1.8, 0.5, HZ + 3.8), V(0.2, -0.3, HZ), 42]], t);
+    else camPath([[T.dip2 + 0.15, V(-1.6, -0.5, HZ + 4.4), V(0.3, -0.85, HZ), 44], [T.rule, V(-0.8, -0.65, HZ + 3.3), V(0.34, -0.9, HZ), 40]], t);
+    wantDrops = splash(t, T.dip2 - 0.05, 0, HZ); }
+  else if (ruleS) { // never alone
+    const ex = PW / 2 + 0.2; pose = 'sit'; hp.set(ex + 0.05, DECK + 0.02, HZ); hero.rotation.y = -Math.PI / 2; const g = Math.sin(t * 7); torso.scale.set(1 + 0.04 * g, 1, 1 + 0.1 * g); hero.userData.hips.add(towel);
+    saver.position.set(ex + 0.15, DECK, HZ - 1.4); saver.rotation.y = 0.25; saver.userData.pose(t * 2, 'stand'); saver.userData.aL.rotation.x = -1.1; saver.userData.aL.rotation.z = -0.2; friend.position.set(ex + 1.15, DECK, HZ + 0.55); friend.rotation.y = -2.1; friend.userData.pose(t * 2 + 1, 'stand'); friend.userData.aR.rotation.x = -0.9;
+    camPath([[T.rule, V(2.2, 2.1, HZ + 4.2), V(ex + 0.1, 0.55, HZ - 0.1), 44], [T.fin, V(2.8, 1.9, HZ + 3.6), V(ex + 0.1, 0.55, HZ - 0.1), 42]], t); }
+  else { // the close
+    const g = Math.sin(t * 2.6); torso.scale.set(1 + 0.04 * g, 1, 1 + 0.1 * g);
+    camPath([[T.fin, V(2.6, 1.6, HZ + 4.6), V(-0.2, 0.2, HZ), 44], [DUR + 2, V(9, 9, 9), V(0, 0.2, -9), 52]], t); }
+  if (!bloodS) { isUnder = cam.position.y < 0; if (isUnder) below(); else above(); drops.visible = wantDrops && !isUnder; }
+  if (pose === 'sit' && !bloodS) { hero.userData.pose(0, 'sit'); hero.userData.aL.rotation.z = hero.userData.aR.rotation.z = 0; if (!ruleS) { hero.userData.lL.rotation.x = -1.5; hero.userData.lR.rotation.x = -1.5; hero.userData.lL.rotation.z = -0.35; hero.userData.lR.rotation.z = 0.35; hero.userData.aL.rotation.x = hero.userData.aR.rotation.x = -0.75; } }
+  if (ruleS) { hero.userData.lL.rotation.x = hero.userData.lR.rotation.x = -0.25; hero.userData.lL.rotation.z = hero.userData.lR.rotation.z = 0; hero.userData.hips.rotation.x = 0.1; }
+  hero.position.copy(hp); hero.updateMatrixWorld(true); organs(showOrg, t, oo);
+  // underwater dressing
+  ceil.visible = isUnder && !bloodS; water.visible = !isUnder && !bloodS; for (const s of shafts) { s.visible = isUnder && !bloodS; s.material.opacity = 0.07 + 0.04 * Math.sin(t * 1.1 + s.userData.p); }
+  if (isUnder && !bloodS) { const t0 = flash0 ? T.in - 3 : (t < T.up ? T.dip + 0.3 : T.dip2 + 0.1), a0 = t - t0; bubs.visible = true; for (let i = 0; i < BN; i++) { const b = BD[i], a = a0 * 0.5 * b[4] - b[0] * (flash0 || a0 > 3 ? 6 : 0.6); const on = a > 0 && a < 1 && (a0 < 3.2 || i < 4); if (!on) { bubs.setMatrixAt(i, ZERO); continue; } s4.setScalar(0.6 + a * 1.2 + b[4] * 0.4); m4.compose(V(hp.x + b[1] + Math.sin(a * 9 + b[3]) * 0.06, hp.y + 1.0 + a * 1.0, hp.z + 0.1 + b[2]), q4.identity(), s4); bubs.setMatrixAt(i, m4); } bubs.instanceMatrix.needsUpdate = true; }
+  sun.castShadow = !bloodS; sky.position.copy(cam.position); post.render();
+}
+function overlayFrame(t) {
+  const ta = t < 2.9 ? Math.min(seg(t, 0.12, 0.5), 1 - seg(t, 2.5, 2.85)) : 0; O.set(O.title, 'What if you<br><em>held your breath</em><br>for as long<br>as you could?'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.12, 0.8))) * 26}px)`; O.title.style.fontSize = '82px';
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  const fade = (a, b) => Math.min(seg(t, a, a + 0.35), 1 - seg(t, b - 0.3, b));
+  let chip = '', cha = 0; for (const [a, b, s] of [[T.in + 0.15, T.truth, 'The myth'], [T.truth + 0.1, T.pool, 'What really happens'], [T.pool + 0.2, T.dip, 'From the start'], [T.blood + 0.2, T.stem, 'Inside your blood'], [T.stem + 0.2, T.dia, 'The urge to breathe'], [T.risk + 0.2, T.dip2, 'The dangerous shortcut'], [T.rule + 0.15, T.fin, 'The rule']]) if (t >= a && t < b) { chip = s; cha = fade(a, b); }
+  O.set(O.chip, chip); O.show(O.chip, cha);
+  let ha = 1; const hs = held(t), clock = Math.floor(hs / 60) + ':' + String(Math.floor(hs % 60)).padStart(2, '0');
+  if (t < T.in) ha = 0;
+  else if (t < T.truth) O.hudSet('Out of oxygen?', 'No', 'What people imagine\nThis is not what stops you');
+  else if (t < T.pool) O.hudSet('The urge to breathe', 'CO₂', 'Mainly carbon dioxide\nbuilding up in your blood');
+  else if (t < T.dip + 0.3) { O.hudSet('Breath held', '0:00', 'One deep breath'); ha = seg(t, T.pool + 0.2, T.pool + 0.6); }
+  else if (t < T.blood) O.hudSet('Breath held', clock, 'Dive reflex: heart slows\nTime compressed');
+  else if (t < T.stem) O.hudSet('Breath held', clock, 'Carbon dioxide has\nnowhere to go');
+  else if (t < T.dia) O.hudSet('Breath held', clock, 'Brainstem sensors\nfeel the carbon dioxide');
+  else if (t < T.oxy) O.hudSet('Breath held', clock, 'Most people give in\nafter about a minute');
+  else if (t < T.up) O.hudSet('Breath held', clock, 'Lungs held enough oxygen\nfor about 4 minutes');
+  else if (t < T.risk) O.hudSet('Breath held', '1:05', 'You break, and breathe\nThe urge wins');
+  else if (t < T.dip2) O.hudSet('Breathing fast', 'CO₂ ↓', 'Carbon dioxide flushed out\nThe urge to breathe is delayed');
+  else if (t < T.out + 0.9) O.hudSet('The urge', 'Late', 'Low carbon dioxide\nNo urge to breathe yet');
+  else if (t < T.rule) O.hudSet('Oxygen', 'Too low', 'Blackout\nwith no warning');
+  else if (t < T.fin) O.hudSet('In water', 'Never alone', 'Someone watching\ncan pull you out');
+  else if (t < T.end) O.hudSet('Telling you to breathe', 'CO₂', 'Mostly carbon dioxide\nYou are not out of oxygen');
+  else ha = 0;
+  O.show(O.hud, ha); O.hud.style.top = '1000px';
+  let lab = ''; const L = (x, y, a, html, al) => `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${clamp(a).toFixed(3)};${al || ''}">${html}</div>`;
+  const wp = (o, dy = 0) => { const v = new THREE.Vector3(); o.getWorldPosition(v); v.y += dy; return proj(v, cam); };
+  // the gauges
+  const G = gauges(t);
+  if (G && t < T.end) { const a = t < T.pool ? seg(t, T.in + 0.1, T.in + 0.4) : (t < T.up + 3 && t >= T.under ? (t >= T.stem ? seg(t, T.stem, T.stem + 0.4) : Math.min(seg(t, T.under, T.under + 0.4), 1 - seg(t, T.blood - 0.3, T.blood))) : (t >= T.fin ? seg(t, T.fin + 0.2, T.fin + 0.6) * (1 - seg(t, T.end - 0.3, T.end)) : seg(t, T.risk + 0.2, T.risk + 0.6))) * (t >= T.rule - 0.3 && t < T.rule ? 1 - seg(t, T.rule - 0.3, T.rule) : 1);
+    const bar = (name, v, col, mark, mlab, hot) => `<div style="margin-bottom:26px"><div style="font-size:22px;letter-spacing:3px;margin-bottom:9px">${name}</div><div style="position:relative;width:430px;height:30px;border-radius:15px;background:rgba(8,12,30,.6);border:2px solid rgba(255,255,255,.6);box-shadow:0 2px 14px rgba(0,0,0,.5)"><div style="position:absolute;left:3px;top:3px;height:24px;border-radius:12px;width:${Math.round(clamp(v) * 424)}px;background:${hot ? '#ff5a4a' : col}"></div>${mark != null ? `<div style="position:absolute;left:${Math.round(mark * 424)}px;top:-9px;width:4px;height:48px;background:#fff;border-radius:2px"></div><div style="position:absolute;left:${Math.round(mark * 424) - 120}px;width:244px;text-align:center;top:44px;font-size:17px;letter-spacing:2.5px;color:${hot ? '#ffb0a6' : '#fff'}">${mlab}</div>` : ''}</div></div>`;
+    let h = bar('Oxygen in your blood', G.o, '#7fc4ff', G.risk ? BLACK : null, 'Blackout', G.risk && G.o <= BLACK + 0.02);
+    if (G.c != null) h += `<div style="height:${G.risk ? 30 : 0}px"></div>` + bar('Carbon dioxide', G.c, '#ffd64a', ALARM, 'Urge to breathe', G.c >= ALARM && Math.sin(t * 16) > -0.3);
+    h += `<div style="font-size:16px;letter-spacing:2.5px;color:#d5e2ff;margin-top:${G.c != null ? 38 : 4}px">${G.myth ? 'The myth' : 'Illustration · not to scale'}</div>`;
+    lab += L(90, 480, a, h); }
+  if (t >= T.under + 0.6 && t < T.blood) lab += L(90, 800, fade(T.under + 0.6, T.blood), '<span style="color:#ff8a8a">● Heart</span><b>slowing down</b>');
+  if (t >= T.blood + 0.4 && t < T.stem) { const a = fade(T.blood + 0.4, T.stem); lab += L(90, 480, a, '<span style="color:#ffd64a">● Carbon dioxide</span><b>building up</b>'); lab += L(90, 640, a, '<span style="color:#8fd0ff">● Oxygen</span><b>slowly used up</b>'); lab += L(90, 800, a * 0.95, 'Inside a blood vessel<br>Illustration · not to scale', 'font-size:18px;letter-spacing:2.5px;color:#ffe0e0'); }
+  if (t >= T.stem + 0.6 && t < T.dia) lab += L(90, 800, fade(T.stem + 0.6, T.dia), '<span style="color:#ffe14a">● Brainstem sensors</span><b>feel it rising</b>');
+  if (t >= T.dia + 0.3 && t < T.oxy) lab += L(90, 800, fade(T.dia + 0.3, T.oxy), '<span style="color:#ffd64a">● Urge to breathe</span><b>growing</b>');
+  if (t >= T.oxy + 0.3 && t < T.up) lab += L(90, 800, fade(T.oxy + 0.3, T.up), '<span style="color:#8fd0ff">● Oxygen in your lungs</span><b>enough for<br>about 4 minutes</b>');
+  if (t >= T.out + 1.0 && t < T.rule) lab += L(90, 1196, fade(T.out + 1.0, T.rule) * 0.9, 'Called shallow water blackout', 'font-size:20px;letter-spacing:2px;color:#d5e2ff');
+  if (frame.alarm > 0.01 && t < T.up) { const p = wp(org.stem); for (let i = 0; i < 3; i++) { const u = (t * 1.1 + i / 3) % 1, r = 20 + u * 150; lab += `<div style="position:absolute;left:${(p[0] - r).toFixed(1)}px;top:${(p[1] - r).toFixed(1)}px;width:${(2 * r).toFixed(1)}px;height:${(2 * r).toFixed(1)}px;border-radius:50%;border:5px solid rgba(255,225,74,${(0.85 * (1 - u) * frame.alarm).toFixed(3)});box-sizing:border-box"></div>`; } }
+  if (O.labels._h !== lab) { O.labels._h = lab; O.labels.innerHTML = lab; }
+  let fl = 0; for (const [a, dd, k] of [[T.in, 0.35, 0.8], [T.truth, 0.4, 0.9], [T.pool, 0.35, 0.8], [12.2, 0.3, 0.55], [T.blood, 0.35, 0.75], [T.stem, 0.35, 0.7], [T.dia, 0.25, 0.4], [T.oxy, 0.25, 0.4], [T.up, 0.35, 0.8], [T.risk, 0.35, 0.8], [T.dip2 + 0.15, 0.3, 0.5], [T.rule, 0.4, 0.9], [T.fin, 0.35, 0.7]]) if (t >= a - 0.06 && t < a + dd) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * k : (1 - seg(t, a, a + dd)) * k);
+  O.flash.style.background = `rgba(${t >= T.blood - 0.1 && t < T.stem - 0.1 ? '255,200,200' : '235,250,255'},${fl})`;
+  O.tint.style.background = 'linear-gradient(180deg, rgba(4,10,26,0) 40%, rgba(4,10,26,.42) 60%, rgba(4,10,26,.62) 100%), linear-gradient(90deg, rgba(4,10,26,.45) 0, rgba(4,10,26,0) 60%)';
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { frame(t); overlayFrame(t); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>
