@@ -222,6 +222,18 @@
    "kind": "spot",
    "due_at": "2026-11-26T12:00:00+11:00",
    "buffer_post_id": "6b059be67214cbdb01aa4e81"
+  },
+  {
+   "file": "studycrest-30-chemistry-moles",
+   "kind": "spot",
+   "due_at": "2026-11-28T12:00:00+11:00",
+   "buffer_post_id": "6b098fdf34d224b14a8bd5df"
+  },
+  {
+   "file": "studycrest-31-nursing-dose",
+   "kind": "spot",
+   "due_at": "2026-11-29T12:00:00+11:00",
+   "buffer_post_id": "6b098fe734d224b14a8bd76e"
   }
  ]
 }
