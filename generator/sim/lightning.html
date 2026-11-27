@@ -1,0 +1,210 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// What if lightning struck your plane?  An invented airliner inside a storm cloud: the strike (nose in, tail out), the current staying in the
+// metal skin (cutaway cabin), the 1963 accident that changed the rules (re-creation, told plainly), a lightning test, and the flight carrying on.
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, mat, box, shadowAll, person, skyDome, overlay, capAt, proj, makePost, skyEnv } from './common.js';
+const W = 1080, H = 1920, DUR = 48.2;
+const O = overlay(); { const st = document.createElement('style'); st.textContent = '#hud{background:linear-gradient(90deg,rgba(8,12,30,.62),rgba(8,12,30,.35) 60%,rgba(8,12,30,0));padding:14px 90px 16px 22px;border-radius:0 20px 20px 0}#chip span{font-size:28px}'; document.head.appendChild(st); }
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(40, W / H, 0.1, 4000);
+const R = rng(20261128), V = (x, y, z) => new THREE.Vector3(x, y, z);
+
+// =====================================================  WORLD
+const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x1b2233, 90, 760);
+const sky = skyDome(0x0d1522, 0x2c3854, 0x141a28); scene.add(sky); const ENV = skyEnv(renderer, 0x2a3a5c, 0x8ea2c8, 0x2a3040);
+const hemi = new THREE.HemisphereLight(0xa9bce0, 0x232836, 1.25); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xcfdcff, 1.9); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.05; scene.add(sun); scene.add(sun.target);
+{ const r = 46; Object.assign(sun.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 1, far: 400 }); sun.shadow.camera.updateProjectionMatrix(); }
+const flashL = new THREE.PointLight(0xbfd0ff, 0, 0, 1.2); scene.add(flashL);
+
+// ---------- the airliner (invented type and livery). Nose towards +x, right wing towards +z.
+const pl = new THREE.Group(); scene.add(pl);
+const SKIN = new THREE.MeshStandardMaterial({ color: 0xf1f3f6, metalness: 0.55, roughness: 0.36, envMap: ENV, envMapIntensity: 1.0, flatShading: false, emissive: 0x4a6cff, emissiveIntensity: 0 });
+const SKIN2 = SKIN.clone(); SKIN2.side = THREE.DoubleSide;
+const BLUE = new THREE.MeshStandardMaterial({ color: 0x2446c8, metalness: 0.45, roughness: 0.4, envMap: ENV, flatShading: true });
+const DARK = mat(0x1c222c), GREY = new THREE.MeshStandardMaterial({ color: 0xb9c1cc, metalness: 0.6, roughness: 0.4, envMap: ENV, flatShading: true });
+const RF = 2.0, XA = -13, XB = 13;
+const xcyl = (r1, r2, len, seg2 = 28, open = false, ts, tl) => { const g = new THREE.CylinderGeometry(r1, r2, len, seg2, 1, open, ts ?? 0, tl ?? Math.PI * 2); g.rotateZ(Math.PI / 2); return g; };  // axis along x; r1 at the -x end
+const shellFull = new THREE.Mesh(xcyl(RF, RF, XB - XA, 32, true), SKIN); pl.add(shellFull);
+const shellCut = new THREE.Mesh(xcyl(RF, RF, XB - XA, 32, true, 0.40 * Math.PI, 1.34 * Math.PI), SKIN2); pl.add(shellCut);
+{ const g = new THREE.SphereGeometry(RF, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2); g.rotateZ(-Math.PI / 2); g.scale(2.4, 1, 1); const n = new THREE.Mesh(g, SKIN); n.position.x = XB; pl.add(n);
+  const tc = new THREE.Mesh(xcyl(0.45, RF, 8, 28), SKIN); tc.position.set(XA - 4, 0.0, 0); pl.add(tc); const cap = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 8), SKIN); cap.position.set(XA - 8, 0, 0); pl.add(cap);
+  const cw = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.55, 2.5), mat(0x101620)); cw.position.set(XB + 2.25, 0.98, 0); cw.rotation.z = -0.42; pl.add(cw);
+  for (const x of [XA, XB]) { const d = new THREE.Mesh(new THREE.CircleGeometry(RF - 0.03, 28), new THREE.MeshLambertMaterial({ color: 0xc9d1dc, side: THREE.DoubleSide })); d.rotation.y = Math.PI / 2; d.position.x = x + (x < 0 ? 0.02 : -0.02); pl.add(d); } }
+// wings, tailplane, fin: boxes reshaped into swept, tapered surfaces
+function reshape(g, f) { const p = g.attributes.position; for (let i = 0; i < p.count; i++) { const v = f(p.getX(i), p.getY(i), p.getZ(i)); p.setXYZ(i, v[0], v[1], v[2]); } g.computeVertexNormals(); return g; }
+const wing = new THREE.Mesh(reshape(new THREE.BoxGeometry(6.4, 0.5, 32, 1, 1, 10), (x, y, z) => { const a = Math.abs(z); return [x * (1 - 0.62 * a / 16) - 0.55 * a, y * (1 - 0.55 * a / 16) + 0.07 * a, z]; }), SKIN); wing.position.set(1.2, -1.15, 0); pl.add(wing);
+const WT = (s) => V(1.2 - 8.8, -0.05, s * 16);
+const stab = new THREE.Mesh(reshape(new THREE.BoxGeometry(3.4, 0.28, 12.4, 1, 1, 4), (x, y, z) => { const a = Math.abs(z); return [x * (1 - 0.5 * a / 6.2) - 0.55 * a, y + 0.05 * a, z]; }), SKIN); stab.position.set(-17.6, 0.7, 0); pl.add(stab);
+const finM = new THREE.Mesh(reshape(new THREE.BoxGeometry(5.4, 6.2, 0.34, 1, 4, 1), (x, y, z) => { const h = (y + 3.1) / 6.2; return [x * (1 - 0.55 * h) - 3.4 * h, y, z * (1 - 0.5 * h)]; }), BLUE); finM.position.set(-15.6, 4.3, 0); pl.add(finM);
+const winglets = []; for (const s of [-1, 1]) { const w = box(1.3, 1.9, 0.14, 0x2446c8, 0, 0, 0); w.material = BLUE; w.position.copy(WT(s)).add(V(0.3, 0.85, 0)); w.rotation.z = 0.35; pl.add(w); winglets.push(w); }
+function engine(x, y, z, sc = 1) { const g = new THREE.Group(); const c = new THREE.Mesh(xcyl(0.92, 1.08, 3.8, 20), SKIN); g.add(c); const lip = new THREE.Mesh(xcyl(1.1, 1.1, 0.5, 20), BLUE); lip.position.x = 1.9; g.add(lip); const fan = new THREE.Mesh(new THREE.CircleGeometry(0.95, 20), DARK); fan.rotation.y = Math.PI / 2; fan.position.x = 2.16; g.add(fan); const ex = new THREE.Mesh(xcyl(0.3, 0.7, 1.2, 14), DARK); ex.position.x = -2.3; g.add(ex);
+  const py = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.1, 0.3), SKIN); py.position.set(-0.4, 1.0, 0); g.add(py); g.position.set(x, y, z); g.scale.setScalar(sc); pl.add(g); return g; }
+engine(1.6, -2.55, 5.6); engine(1.6, -2.55, -5.6);
+const eng4 = [engine(-2.6, -1.9, 10.6, 0.82), engine(-2.6, -1.9, -10.6, 0.82)];
+// cabin windows (lit), doors, navigation lights
+const winM = new THREE.MeshBasicMaterial({ color: 0xffe6a8 }), winNear = new THREE.InstancedMesh(new THREE.BoxGeometry(0.34, 0.44, 0.08), winM, 40), winFar = new THREE.InstancedMesh(new THREE.BoxGeometry(0.34, 0.44, 0.08), winM, 40);
+{ const m4 = new THREE.Matrix4(); for (let i = 0; i < 40; i++) { const x = XA + 1.2 + i * 0.6; m4.makeTranslation(x, 0.42, 1.955); winNear.setMatrixAt(i, m4); m4.makeTranslation(x, 0.42, -1.955); winFar.setMatrixAt(i, m4); } pl.add(winNear); pl.add(winFar); }
+const navL = []; for (const [s, c] of [[1, 0x35ff6a], [-1, 0xff3a2a]]) { const l = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshBasicMaterial({ color: c })); l.material.color.multiplyScalar(2.4); l.position.copy(WT(s)).add(V(0.4, 0.1, 0)); pl.add(l); navL.push(l); }
+const strobe = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff })); strobe.position.set(-19.2, 7.5, 0); pl.add(strobe);
+// landing gear (lab only)
+const gear = new THREE.Group(); for (const [x, z] of [[12, 0], [-1.5, 2.7], [-1.5, -2.7]]) { gear.add(box(0.28, 2.6, 0.28, 0x8a929c, x, -3.2, z)); for (const s of [-1, 1]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.3, 14), DARK); w.rotation.x = Math.PI / 2; w.position.set(x, -4.3, z + s * 0.32); w.castShadow = true; gear.add(w); } } pl.add(gear);
+// the cabin: floor, seats, passengers, ceiling light
+const cabin = new THREE.Group(); pl.add(cabin); const FY = -0.72;
+{ const fl = box(XB - XA - 0.1, 0.12, 3.72, 0x59606c, 0, FY - 0.06, 0); cabin.add(fl); cabin.add(box(XB - XA - 0.2, 0.02, 0.5, 0x2f56d6, 0, FY + 0.012, 0));
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(XB - XA - 1, 0.05, 0.3), new THREE.MeshBasicMaterial({ color: 0xfff1cf })); strip.position.set(0, 1.82, -0.5); cabin.add(strip);
+  const ZS = [-1.5, -1.05, -0.6, 0.6, 1.05, 1.5], NR = 24, base = new THREE.InstancedMesh(new THREE.BoxGeometry(0.44, 0.16, 0.4), mat(0x2b4bb8), NR * 6), back = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.82, 0.4), mat(0x3558cf), NR * 6), m4 = new THREE.Matrix4(); let k = 0;
+  const Rp = rng(77);
+  for (let r = 0; r < NR; r++) for (let j = 0; j < 6; j++) { const x = XA + 1.5 + r * 1.0, z = ZS[j]; m4.makeTranslation(x, FY + 0.4, z); base.setMatrixAt(k, m4); m4.makeTranslation(x - 0.27, FY + 0.78, z); back.setMatrixAt(k, m4); k++;
+    const isHero = r === 15 && j === 5; if (isHero || Rp() < 0.62) { const p = person(Rp, 'sit', isHero ? { shirt: 0xf2c94c, pants: 0x1e3aa8, shorts: false, skin: 0xe0ac7e, hair: 0x2b1b12 } : { shorts: false }); p.scale.setScalar(isHero ? 0.82 : 0.74 + Rp() * 0.08); p.position.set(x + 0.02, FY + 0.38, z); p.rotation.y = Math.PI / 2; p.userData.pose(0, 'sit'); p.userData.lL.rotation.x = p.userData.lR.rotation.x = -1.45; cabin.add(p); if (isHero) cabin.userData.hero = p; } }
+  base.castShadow = back.castShadow = true; base.receiveShadow = back.receiveShadow = true; cabin.add(base); cabin.add(back);
+  for (const x of [-7, 2, 10]) { const p = new THREE.PointLight(0xffeccb, 7, 9, 1.5); p.position.set(x, 1.3, 0.4); cabin.add(p); } }
+const hero = cabin.userData.hero;
+shadowAll(pl); for (const m of [winNear, winFar, strobe, ...navL]) m.castShadow = false;
+
+// ---------- storm clouds, rain, distant flashes
+const CM = [0x39414f, 0x2c3340, 0x4a5362].map(c => new THREE.MeshLambertMaterial({ color: c, flatShading: true, emissive: 0x9fb4ff, emissiveIntensity: 0 }));
+const clouds = []; { const Rc = rng(5); for (let i = 0; i < 46; i++) { const g = new THREE.Group(), n = 4 + Math.floor(Rc() * 4), m = CM[i % 3]; for (let k = 0; k < n; k++) { const s = 10 + Rc() * 16, b = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 1), m); b.position.set((k - n / 2) * 14 + Rc() * 8, Rc() * 10 - 5, Rc() * 14 - 7); b.scale.y = 0.62; g.add(b); }
+  let y = (Rc() - 0.5) * 240, z = -260 + Rc() * 300; if (Math.abs(y) < 34 && z > -70) y = (y < 0 ? -1 : 1) * (36 + Rc() * 60); g.userData = { x0: Rc() * 900, y, z, sp: 26 + Rc() * 10 }; g.scale.setScalar(0.9 + Rc() * 1.3); scene.add(g); clouds.push(g); } }
+const RN = 700, rainGeo = new THREE.BufferGeometry(), rainPos = new Float32Array(RN * 6), RD = []; { const Rr = rng(9); for (let i = 0; i < RN; i++) RD.push([Rr() * 120, Rr() * 80, Rr() * 90 - 30, 0.7 + Rr() * 0.6]); rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3)); }
+const rain = new THREE.LineSegments(rainGeo, new THREE.LineBasicMaterial({ color: 0xaec2e6, transparent: true, opacity: 0.32, depthWrite: false })); rain.frustumCulled = false; scene.add(rain);
+// ---------- lightning bolts
+const CORE = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }); CORE.color.setRGB(3.2, 3.5, 4.6);
+function mkBolt(seed, a, b, n, jag, rad, branches = 2) { const Rb = rng(seed), g = new THREE.Group(), halo = new THREE.MeshBasicMaterial({ color: 0x7f9cff, transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+  const path = (a, b, n, jag) => { const pts = [], d = b.clone().sub(a), L = d.length(), u = V(0, 1, 0).cross(d).normalize(); if (u.lengthSq() < 0.01) u.set(1, 0, 0); const w = d.clone().cross(u).normalize(); for (let i = 0; i <= n; i++) { const f = i / n, e = Math.pow(Math.sin(Math.PI * f), 0.6) * jag * L / n; pts.push(a.clone().lerp(b, f).addScaledVector(u, (Rb() - 0.5) * 2 * e).addScaledVector(w, (Rb() - 0.5) * 2 * e)); } return pts; };
+  const lay = (pts, r) => { for (let i = 0; i < pts.length - 1; i++) { const d = pts[i + 1].clone().sub(pts[i]), L = d.length(), q = new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), d.clone().normalize()); for (const [m, k] of [[CORE, 1], [halo, 2.5]]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(r * k, r * k, L * 1.04, 6), m); c.position.copy(pts[i]).addScaledVector(d, 0.5); c.quaternion.copy(q); c.frustumCulled = false; g.add(c); } } };
+  const main = path(a, b, n, jag); lay(main, rad);
+  for (let k = 0; k < branches; k++) { const i = 2 + Math.floor(Rb() * (n - 4)), p = main[i], dir = b.clone().sub(a).normalize().multiplyScalar(0.22 * a.distanceTo(b)).add(V((Rb() - 0.5), (Rb() - 0.5) * 0.3, (Rb() - 0.5) * 0.5).multiplyScalar(0.3 * a.distanceTo(b))); lay(path(p, p.clone().add(dir), 5, jag * 0.9), rad * 0.5); }
+  g.userData = { halo, set(k) { g.visible = k > 0.04; halo.opacity = 0.24 * k; } }; g.visible = false; scene.add(g); return g; }
+const NT = V(XB + 4.75, 0, 0), TT = V(XA - 8.4, 0, 0);
+const boltIn = mkBolt(11, V(30, 150, -8), NT, 18, 1.5, 0.2, 3), boltOut = mkBolt(12, TT, V(-36, -150, 8), 18, 1.5, 0.2, 2);
+const bolt63 = mkBolt(63, V(-22, 150, -34), V(-7.2, 1.0, -15.0), 16, 1.5, 0.2, 2);
+const arc = [mkBolt(31, V(16.6, 5.6, 0), V(16.6, 1.45, 0), 7, 1.3, 0.05, 0), mkBolt(32, V(16.6, 5.6, 0), V(15.9, 1.6, 0.3), 7, 1.5, 0.05, 0), mkBolt(33, V(16.6, 5.6, 0), V(17.0, 1.25, -0.2), 7, 1.2, 0.05, 0)];
+const stream = [mkBolt(41, NT, NT.clone().add(V(4.5, 5, -1)), 5, 1.2, 0.085, 0), mkBolt(42, NT, NT.clone().add(V(5.5, 2.4, 1.4)), 5, 1.2, 0.08, 0), mkBolt(43, TT, TT.clone().add(V(-4, -3.6, 0.8)), 5, 1.2, 0.08, 0), mkBolt(44, NT, NT.clone().add(V(3.2, 6.5, 0.6)), 5, 1.3, 0.08, 0)];
+const far = []; { const Rf = rng(21); for (let i = 0; i < 5; i++) { const x = (Rf() - 0.5) * 420, z = -150 - Rf() * 160, y = 90 + Rf() * 40; far.push(mkBolt(100 + i, V(x, y, z), V(x + (Rf() - 0.5) * 60, y - 170 - Rf() * 60, z), 12, 1.6, 0.5, 2)); } }
+// current running through the skin: bright points moving nose -> tail on the outside of the hull
+const SN = 420, skGeo = new THREE.BufferGeometry(), skPos = new Float32Array(SN * 3), SD = []; { const Rs = rng(3); for (let i = 0; i < SN; i++) SD.push([Rs() * Math.PI * 2, Rs(), 0.85 + Rs() * 0.3]); skGeo.setAttribute('position', new THREE.BufferAttribute(skPos, 3)); }
+const skM = new THREE.PointsMaterial({ color: 0xffffff, size: 10, sizeAttenuation: false, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }); skM.color.setRGB(1.5, 1.9, 3.0);
+const skinPts = new THREE.Points(skGeo, skM); skinPts.frustumCulled = false; pl.add(skinPts);
+const hullR = (x) => x > XB ? RF * Math.sqrt(Math.max(0, 1 - Math.pow((x - XB) / 4.8, 2))) : (x < XA ? lerp(RF, 0.45, (XA - x) / 8) : RF);
+function skinFlow(q, front) { for (let i = 0; i < SN; i++) { const D = SD[i], u = (q * 0.55 * D[2] + D[1]) % 1, x = lerp(NT.x - 0.1, TT.x + 0.2, u), on = u < front, r = hullR(x) + 0.05, a = D[0] + Math.sin(u * 9 + i) * 0.12; skPos[i * 3] = on ? x : 0; skPos[i * 3 + 1] = on ? Math.sin(a) * r : -9999; skPos[i * 3 + 2] = Math.cos(a) * r; } skGeo.attributes.position.needsUpdate = true; }
+// ---------- 1963: a small glow at the wing (no wreckage is shown)
+const glow63 = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), new THREE.MeshBasicMaterial({ color: 0xffa23a, transparent: true, depthWrite: false, fog: false })); glow63.material.color.setRGB(2.6, 1.3, 0.4); pl.add(glow63);
+// ---------- the lightning laboratory
+const lab = new THREE.Group(); scene.add(lab); const LF = -4.86;
+{ const f = new THREE.Mesh(new THREE.PlaneGeometry(400, 300).rotateX(-Math.PI / 2), mat(0x8d949e)); f.position.y = LF; f.receiveShadow = true; lab.add(f);
+  const wall = box(400, 70, 1, 0x5c6672, 0, LF + 35, -34); wall.castShadow = false; lab.add(wall); const w2 = box(1, 70, 300, 0x545e6a, -62, LF + 35, 0); w2.castShadow = false; lab.add(w2); const cl = box(400, 1, 300, 0x3d4550, 0, LF + 44, 0); cl.castShadow = false; lab.add(cl);
+  for (let i = -5; i <= 5; i++) { lab.add(box(1.2, 70, 1.6, 0x46505c, i * 22, LF + 35, -33)); const s = new THREE.Mesh(new THREE.BoxGeometry(14, 0.3, 1.6), new THREE.MeshBasicMaterial({ color: 0xf4f7ff })); s.position.set(i * 22, LF + 43.2, -8 + (i % 2) * 14); lab.add(s); }
+  for (const yy of [8, 20]) lab.add(box(400, 0.8, 0.6, 0x7a8592, 0, LF + yy, -33.3));
+  for (const z of [-13, 13]) { lab.add(box(0.7, 15.4, 0.7, 0xf2c94c, 16.6, LF + 7.7, z)); lab.add(box(1.8, 0.4, 1.8, 0x39424d, 16.6, LF + 0.2, z)); } lab.add(box(0.8, 0.8, 27, 0xf2c94c, 16.6, LF + 15.2, 0));
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 4.6, 10), GREY); rod.position.set(16.6, 8.1, 0); lab.add(rod); const ball = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), GREY); ball.position.set(16.6, 5.75, 0); lab.add(ball);
+  for (let k = 0; k < 5; k++) { const ins = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.14, 12), mat(0x9c4a2c)); ins.position.set(16.6, 7.2 + k * 0.6, 0); lab.add(ins); }
+  for (const [x, z, w] of [[34, 14, 16], [34, -16, 16]]) { for (let k = 0; k < w / 2; k++) lab.add(box(1.0, 0.03, 0.28, k % 2 ? 0x22262c : 0xf2c94c, x - w / 2 + k * 2 + 0.5, LF + 0.03, z)); }
+  lab.add(box(3.4, 1.1, 1.2, 0x39424d, 27.5, LF + 0.55, 11.5)); const scr = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.9, 0.08), new THREE.MeshBasicMaterial({ color: 0x7fe0ff })); scr.position.set(27.5, LF + 1.65, 11.3); scr.rotation.x = -0.25; lab.add(scr);
+  const Rl = rng(8); lab.userData.crew = []; for (const [x, z, c] of [[26.4, 12.9, 0xffffff], [28.3, 13.1, 0xf2994a], [30.6, 12.2, 0xffffff], [24.2, 13.6, 0x2f56d6]]) { const p = person(Rl, 'stand', { shirt: c, sleeve: c, shorts: false, pants: 0x2c3e50 }); p.scale.setScalar(1.05); p.position.set(x, LF, z); p.rotation.y = Math.PI + Math.atan2(x - 17, z) * 0.9; p.userData.hips.add(box(0.3, 0.1, 0.3, 0xf2c94c, 0, 1.04, 0)); lab.add(p); lab.userData.crew.push(p); } shadowAll(lab, true, true); f.castShadow = false; }
+
+const post = makePost(renderer, scene, cam, { bloom: 0.34, bloomRadius: 0.7, bloomThreshold: 0.9, warm: 0.0, sat: 1.1 });
+// =====================================================  TIMELINE
+const T = { stat: 2.3, seat: 8.4, trig: 11.25, strike: 13.55, skin: 15.9, sun: 21.7, safe: 24.75, old: 27.2, hit63: 30.9, dark: 34.0, lab: 36.1, arc: 38.2, fin: 41.8, end: 45.3 };
+const CAPS = /*CAPS*/[[2.4, 3.03, "It <em>will</em>."], [3.05, 4.27, "An airliner gets hit"], [4.29, 5.71, "about <em>once or twice</em><br>a year."], [5.73, 7.01, "And almost every time,"], [7.03, 8.06, "it just <em>flies on</em>."], [8.5, 9.36, "You're in your seat,"], [9.38, 10.67, "inside a <em>storm cloud</em>."], [10.69, 11.69, "The plane itself"], [11.71, 13.15, "often <em>sets the bolt off</em>."], [13.65, 14.54, "It strikes the <em>nose</em>."], [14.56, 15.07, "A flash."], [15.09, 15.53, "A bang."], [16.0, 17.79, "But the current<br><em>doesn't come inside</em>."], [17.81, 19.32, "It runs through<br>the <em>metal skin</em>,"], [19.34, 20.07, "around you,"], [20.09, 21.31, "and leaves<br>from the <em>tail</em>."], [21.8, 23.01, "That bolt heats the air"], [23.03, 24.69, "<em>hotter</em> than the<br>surface of the Sun."], [24.71, 25.91, "And you're sitting <em>safely</em>"], [25.93, 26.85, "in the middle of it."], [27.4, 28.93, "It wasn't always<br>this safe."], [28.95, 30.74, "In <em>1963</em>,"], [30.76, 32.74, "lightning ignited<br><em>fuel vapour</em>"], [32.76, 34.1, "in a jet's wing tank."], [34.12, 35.65, "Eighty-one people died."], [36.3, 37.94, "Fuel tanks were<br><em>redesigned</em>,"], [37.96, 39.46, "and every airliner design"], [39.48, 41.33, "now has to pass<br><em>lightning tests</em>."], [42.0, 43.44, "Lightning doesn't<br><em>miss</em> planes."], [43.46, 44.76, "Planes are<br><em>built to be hit</em>."]]/*END*/;
+// flashes: [start, length, strength]
+const F_OPEN = [0.75, 1.35, 1], F_STRIKE = [13.72, 2.18, 1], F_SUN = [21.7, 3.05, 1], F_SAFE = [24.75, 1.9, 0.8], F_63 = [T.hit63, 0.9, 1], F_FIN = [42.35, 1.1, 1];
+const fk = (t, f) => { const q = t - f[0]; if (q < 0 || q > f[1]) return 0; return f[2] * Math.min(1, q / 0.04) * (1 - smooth(seg(q, f[1] - 0.28, f[1]))) * (0.62 + 0.38 * Math.abs(Math.sin(q * 41 + 1) * Math.sin(q * 17))); };
+const FARF = [[3.4, 0], [5.2, 2], [6.9, 4], [9.3, 1], [10.6, 3], [12.2, 0], [28.0, 2], [29.6, 4], [44.2, 1]];
+function shot(p, l, fov) { cam.position.copy(p); cam.fov = fov; cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+function path(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); shot(a[1].clone().lerp(b[1], u), a[2].clone().lerp(b[2], u), lerp(a[3], b[3], u)); }
+function look(sat, warm, fogC, near, far, top, mid, bot, hi, si, sunC) { post.grade.uniforms.sat.value = sat; post.grade.uniforms.warm.value = warm; scene.fog.color.set(fogC); scene.fog.near = near; scene.fog.far = far; sky.material.uniforms.top.value.set(top); sky.material.uniforms.mid.value.set(mid); sky.material.uniforms.bot.value.set(bot); hemi.intensity = hi; sun.intensity = si; sun.color.set(sunC); }
+function frame(t) {
+  const inLab = t >= T.lab && t < T.fin, old = t >= T.old && t < T.lab, fin = t >= T.fin;
+  const cut = (t >= T.seat && t < T.trig) || (t >= T.skin && t < T.sun) || (t >= T.safe && t < T.old);
+  // look
+  if (inLab) look(1.08, 0.03, 0x5a6472, 160, 900, 0x3d4550, 0x5a6472, 0x5a6472, 2.7, 3.3, 0xffffff);
+  else if (old) look(0.32, 0.05, 0x1a1d24, 90, 700, 0x0c0f16, 0x2b2f3a, 0x12151c, 1.0, 1.5, 0xd5dcee);
+  else if (fin) { const k = smooth(seg(t, T.fin, T.fin + 2.6)); look(1.12, lerp(0.0, 0.05, k), new THREE.Color(0x1b2233).lerp(new THREE.Color(0x6a5a66), k), 90, lerp(760, 1100, k), new THREE.Color(0x0d1522).lerp(new THREE.Color(0x27457a), k), new THREE.Color(0x2c3854).lerp(new THREE.Color(0xf0a868), k), 0x141a28, lerp(1.25, 1.45, k), lerp(1.9, 3.0, k), new THREE.Color(0xcfdcff).lerp(new THREE.Color(0xffc890), k)); }
+  else look(1.1, 0.0, 0x1b2233, 90, 760, 0x0d1522, 0x2c3854, 0x141a28, 1.25, 1.9, 0xcfdcff);
+  // the plane
+  const bump = inLab ? 0 : 1; pl.position.set(0, Math.sin(t * 0.9) * 0.3 * bump, 0); pl.rotation.set(Math.sin(t * 0.55) * 0.035 * bump, 0, Math.sin(t * 0.7) * 0.012 * bump);
+  if (old) { pl.rotation.x = 0.3; pl.rotation.z = 0.02; }
+  shellFull.visible = !cut; shellCut.visible = cut; winNear.visible = !cut; cabin.visible = cut; gear.visible = inLab; lab.visible = inLab; for (const e of eng4) e.visible = old; for (const w of winglets) w.visible = !old;
+  finM.material = old ? GREY : BLUE;
+  for (const c of clouds) { const u = c.userData; c.visible = !inLab && !(old && u.z < -25 && u.y > -80 && u.y < 40); c.position.set(((u.x0 - u.sp * t * 3.2) % 900 + 900) % 900 - 450, u.y, u.z); }
+  rain.visible = !inLab; if (rain.visible) { for (let i = 0; i < RN; i++) { const D = RD[i], x = ((D[0] - t * 95 * D[3]) % 120 + 120) % 120 - 60 + cam.position.x * 0.5, y = ((D[1] - t * 34 * D[3]) % 80 + 80) % 80 - 40 + cam.position.y * 0.5, z = D[2]; rainPos[i * 6] = x; rainPos[i * 6 + 1] = y; rainPos[i * 6 + 2] = z; rainPos[i * 6 + 3] = x - 2.6; rainPos[i * 6 + 4] = y - 0.95; rainPos[i * 6 + 5] = z; } rainGeo.attributes.position.needsUpdate = true; rain.material.opacity = fin ? 0.32 * (1 - smooth(seg(t, T.fin, T.fin + 2))) : 0.32; }
+  strobe.visible = !inLab && (t * 1.1 % 1) < 0.08; for (const l of navL) l.visible = !inLab;
+  for (const p of lab.userData.crew) p.userData.pose(t * 1.2 + p.userData.seed, 'stand');
+  if (hero) { hero.userData.hips.rotation.y = 0; }
+  // bolts and flashes
+  let kIn = Math.max(fk(t, F_OPEN), fk(t, F_STRIKE), fk(t, F_SUN), fk(t, F_SAFE), fk(t, F_FIN)); let flow = -1, front = 2;
+  if (t >= T.skin && t < T.sun) { kIn = 0.75 + 0.25 * Math.abs(Math.sin(t * 23)); flow = (t - T.skin) * 0.5; front = (t - T.skin + 0.15) / 2.6; }
+  const kOut = (t >= T.skin && t < T.sun) ? kIn * smooth(seg(front, 0.95, 1.05)) : kIn;
+  boltIn.userData.set(kIn); boltOut.userData.set(kOut); boltIn.position.copy(pl.position); boltOut.position.copy(pl.position);
+  const k63 = fk(t, F_63); bolt63.userData.set(old ? k63 : 0);
+  if (old) { const p = pl.localToWorld(WT(-1).clone()); bolt63.position.set(0, 0, 0); bolt63.position.copy(p.sub(V(-7.2, 1.0, -15.0)).add(V(0.4, 0.9, -1.0))); }
+  const q63 = t - T.hit63; glow63.visible = old && q63 > 0; if (glow63.visible) { glow63.position.copy(WT(-1)).add(V(1.5, 0.1, 3.0)); glow63.scale.setScalar(0.25 + 0.35 * easeOut(q63 / 2.2)); glow63.material.opacity = 0.9 * Math.min(1, q63 / 0.15); }
+  let kArc = 0; if (inLab && t >= T.arc) { const q = t - T.arc, n = Math.floor(q / 0.42), ph = q / 0.42 - n; kArc = n < 8 && ph < 0.55 ? 0.7 + 0.3 * Math.sin(ph * 40) : 0; for (let i = 0; i < 3; i++) arc[i].userData.set(i === n % 3 ? kArc : 0); } else for (const a of arc) a.userData.set(0);
+  let kS = 0; if (t >= T.trig && t < T.strike) { const q = t - T.trig, g = smooth(seg(q, 0.3, 2.2)); for (let i = 0; i < 4; i++) { const on = (Math.sin(q * (19 + i * 7) + i * 2.1) > 0.25 - g * 0.5) ? g : 0; stream[i].userData.set(on); stream[i].position.copy(pl.position); kS = Math.max(kS, on * 0.25); } } else for (const s of stream) s.userData.set(0);
+  let kFar = 0, farP = null; for (let i = 0; i < 5; i++) far[i].userData.set(0); if (!inLab) for (const [t0, i] of FARF) { const k = fk(t, [t0, 0.5, 0.8]); if (k > 0) { far[i].userData.set(k); kFar = Math.max(kFar, k); } }
+  const showFlow = kIn > 0.04 && !inLab; skinPts.visible = showFlow; if (showFlow) skinFlow(flow >= 0 ? flow : t * 0.9, front);
+  const slow = (t >= T.skin && t < T.sun) || (t >= T.safe && t < T.old), K = Math.max(kIn, k63, kS);
+  SKIN.emissiveIntensity = SKIN2.emissiveIntensity = inLab ? kArc * 0.06 : K * (slow ? 0.1 : 0.16);
+  for (const m of CM) m.emissiveIntensity = (K * 0.13 + kFar * 0.07) * (slow ? 0.5 : 1);
+  flashL.intensity = inLab ? kArc * 70 : (K * 2600 + kFar * 500) * (slow ? 0.35 : 1); flashL.position.copy(inLab ? V(16.6, 4, 2) : (old ? V(-20, 60, -40) : V(34, 50, 20)));
+  hemi.intensity += K * (slow ? 0.3 : 0.7) + kFar * 0.25;
+  // cameras
+  const sh = (a, d, amp) => (t >= a && t < a + d) ? Math.sin(t * 61) * amp * (1 - (t - a) / d) : 0;
+  if (t < T.stat) path([[0, V(66, 4, 64), V(4, 7, 0), 44], [T.stat, V(60, 4, 60), V(3, 6.5, 0), 42]], t);
+  else if (t < T.seat) path([[T.stat, V(70, 16, 46), V(2, -3, 0), 44], [T.seat, V(52, 6, 70), V(0, -6, 0), 44]], t);
+  else if (t < T.trig) path([[T.seat, V(10, 9.5, 21), V(2.6, -2.2, 0), 46], [T.trig, V(5.6, 4.6, 9.6), V(3.3, -0.9, 0.6), 40]], t);
+  else if (t < T.strike) path([[T.trig, V(44, 5, 24), V(17, -2.6, 0), 40], [T.strike, V(40, 6, 21), V(17, -2.0, 0), 38]], t);
+  else if (t < T.skin) path([[T.strike, V(6, -6, 138), V(-1, -13, 0), 40], [T.skin, V(0, -4, 128), V(-1, -12, 0), 40]], t);
+  else if (t < T.sun) path([[T.skin, V(30, 9, 19), V(14.5, -2.0, 0), 44], [T.skin + 3.2, V(8, 9.5, 21), V(0.5, -2.6, 0), 46], [T.sun, V(-19, 8, 29), V(-18.5, -4.2, 0), 46]], t);
+  else if (t < T.safe) path([[T.sun, V(-14, -22, 132), V(-1, -14, 0), 42], [T.safe, V(-22, -30, 122), V(-1, -13, 0), 42]], t);
+  else if (t < T.old) path([[T.safe, V(8.6, 3.4, 8.4), V(3.4, -1.0, 0.8), 38], [T.old, V(7.4, 3.0, 7.2), V(3.4, -0.9, 0.9), 36]], t);
+  else if (old) path([[T.old, V(-60, -26, -118), V(-2, -8, 0), 40], [T.lab, V(-46, -20, -112), V(-2, -9, 0), 38]], t);
+  else if (inLab) path([[T.lab, V(-14, 3, 40), V(-4, -3.4, 4), 46], [T.arc, V(46, 4.5, 21), V(13, -1.9, 0), 42], [T.fin, V(42, 3.8, 18), V(14, -1.4, 0), 40]], t);
+  else path([[T.fin, V(-52, 10, 62), V(4, -5, 0), 44], [DUR + 2, V(-86, 20, 96), V(10, -4, 0), 42]], t);
+  cam.position.y += sh(F_OPEN[0], 0.6, 0.5) + sh(F_STRIKE[0], 0.7, 1.2) + sh(F_SAFE[0], 0.5, 0.06) + sh(F_63[0], 0.6, 0.9) + sh(F_FIN[0], 0.5, 0.5);
+  sun.target.position.copy(pl.position); sun.position.set(pl.position.x + (old ? -30 : 40), pl.position.y + 90, pl.position.z + (old ? -50 : 60));
+  sky.position.copy(cam.position); post.render();
+}
+function overlayFrame(t) {
+  const ta = t < T.stat ? Math.min(seg(t, 0.1, 0.45), 1 - seg(t, T.stat - 0.35, T.stat)) : 0; O.set(O.title, 'What if <em>lightning</em><br>struck your<br>plane?'); O.show(O.title, ta); O.title.style.top = '400px'; O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.1, 0.8))) * 26}px)`;
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  const fade = (a, b) => Math.min(seg(t, a, a + 0.35), 1 - seg(t, b - 0.3, b));
+  let chip = '', cha = 0; if (t >= T.strike + 0.4 && t < T.skin) { chip = 'Slowed down · not to scale'; cha = fade(T.strike + 0.4, T.skin); } else if (t >= T.skin + 0.2 && t < T.sun) { chip = 'Slow motion'; cha = fade(T.skin + 0.2, T.sun); } else if (t >= T.old + 0.3 && t < T.lab) { chip = '8 December 1963'; cha = fade(T.old + 0.3, T.lab); } else if (t >= T.lab + 0.3 && t < T.fin) { chip = 'Lightning test'; cha = fade(T.lab + 0.3, T.fin); }
+  O.set(O.chip, chip); O.show(O.chip, cha);
+  let ha = 1;
+  if (t < T.stat) ha = 0;
+  else if (t < T.seat) { ha = seg(t, T.stat, T.stat + 0.4); O.hudSet('Lightning strikes', t < 4.2 ? '…' : '1 to 2', t < 4.2 ? 'Per airliner, on average' : 'A year, per airliner\nOn average'); }
+  else if (t < T.strike) { const s = Math.max(0, T.strike + 0.17 - t); O.hudSet('To the strike', s.toFixed(1) + ' s', t < T.trig ? 'Flight time 1 h 12 min\nInside a storm cloud' : 'Charge builds on the nose\nThe plane triggers the bolt'); }
+  else if (t < T.skin) O.hudSet('Strike', 'Nose', 'In at the nose\nOut at the tail');
+  else if (t < T.sun) { const ms = Math.round((t - T.skin) / (T.sun - T.skin) * 200); O.hudSet('Since the strike', (ms / 1000).toFixed(3) + ' s', 'Illustration, slowed down\nCurrent stays in the skin'); }
+  else if (t < T.safe) O.hudSet('Air in the bolt', 'Hotter', "Than the Sun's surface");
+  else if (t < T.old) O.hudSet('Inside the cabin', 'Safe', 'A flash and a bang\nThen the flight goes on');
+  else if (t < T.lab) O.hudSet('Elkton, Maryland', '1963', t < T.dark ? 'Re-creation\nA jet waiting to land' : '81 people on board\nNo one survived');
+  else if (t < T.fin) O.hudSet('Before passengers', t < T.arc + 0.5 ? 'Test' : 'Pass', t < T.arc ? 'Fuel tanks redesigned\nafter 1963' : 'Every airliner design\nis tested against lightning');
+  else if (t < T.end) O.hudSet('Flight time', '1 h 13 min', 'Still flying');
+  else ha = 0;
+  O.show(O.hud, ha); O.hud.style.top = '1010px';
+  let lab = ''; const L = (x, y, a, html, al) => `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${clamp(a).toFixed(3)};${al || ''}">${html}</div>`;
+  const wp = (v) => proj(pl.localToWorld(v.clone()), cam);
+  if (t >= T.seat + 0.5 && t < T.trig && hero) { const v = new THREE.Vector3(); hero.getWorldPosition(v); v.y += 1.25; const p = proj(v, cam); lab += L(p[0] - 30, p[1] - 46, fade(T.seat + 0.5, T.trig), 'You'); }
+  if (t >= T.strike + 0.5 && t < T.skin) { const a = fade(T.strike + 0.5, T.skin), p = wp(NT), q = wp(TT); lab += L(p[0] - 150, p[1] - 150, a, '<span style="color:#b9d2ff">In</span>', 'font-size:30px'); lab += L(q[0] + 36, q[1] + 90, a, '<span style="color:#b9d2ff">Out</span>', 'font-size:30px'); }
+  if (t >= T.skin + 0.8 && t < T.sun) { const a = fade(T.skin + 0.8, T.sun); lab += L(90, 520, a, 'Metal skin<b>carries the current</b>'); if (hero && t > T.skin + 2.4) { const v = new THREE.Vector3(); hero.getWorldPosition(v); v.y += 1.25; const p = proj(v, cam); if (p[0] > 60 && p[0] < 900) lab += L(p[0] - 30, p[1] - 46, Math.min(a, seg(t, T.skin + 2.4, T.skin + 2.8)), 'You'); } }
+  if (t >= T.sun + 0.4 && t < T.safe) lab += L(90, 470, fade(T.sun + 0.4, T.safe), 'Bolt and plane<b>not to scale</b>', 'font-size:22px');
+  if (t >= T.old + 0.6 && t < T.lab) lab += L(90, 540, fade(T.old + 0.6, T.lab) * 0.95, 'Re-creation<br>Invented aircraft shape', 'font-size:21px;letter-spacing:2.5px');
+  if (t >= T.hit63 + 0.5 && t < T.dark) lab += L(90, 640, fade(T.hit63 + 0.5, T.dark), '<span style="color:#ffc48a">Fuel vapour<br>in a wing tank</span>', 'font-size:23px');
+  if (t >= T.lab + 0.5 && t < T.arc - 0.2) lab += L(90, 470, fade(T.lab + 0.5, T.arc - 0.2), 'Fuel tanks in the wings<b>redesigned</b>');
+  if (t >= T.arc + 0.6 && t < T.fin) lab += L(90, 540, fade(T.arc + 0.6, T.fin), 'Laboratory lightning<b>on purpose</b>');
+  if (t >= T.fin + 0.5 && t < T.end) lab += L(90, 540, fade(T.fin + 0.5, T.end), 'Built<b>to be hit</b>');
+  if (O.labels._h !== lab) { O.labels._h = lab; O.labels.innerHTML = lab; }
+  let fl = 0; for (const [a, d, k] of [[F_OPEN[0], 0.35, 0.85], [T.stat, 0.3, 0.5], [T.seat, 0.3, 0.6], [T.trig, 0.25, 0.4], [T.strike, 0.12, 0.3], [F_STRIKE[0], 0.4, 0.95], [T.skin, 0.3, 0.6], [T.sun, 0.35, 0.8], [T.safe, 0.3, 0.6], [T.old, 0.4, 0.7], [T.hit63, 0.35, 0.8], [T.lab, 0.4, 0.7], [T.arc, 0.2, 0.35], [T.fin, 0.4, 0.7], [F_FIN[0], 0.3, 0.6]]) if (t >= a - 0.05 && t < a + d) fl = Math.max(fl, t < a ? seg(t, a - 0.05, a) * k : (1 - seg(t, a, a + d)) * k);
+  O.flash.style.background = `rgba(235,240,255,${fl})`;
+  const dk = t >= T.dark - 0.1 && t < T.lab ? 0.8 * smooth(seg(t, T.dark - 0.1, T.dark + 0.9)) : 0; O.tint.style.background = `rgba(5,7,14,${dk})`;
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { frame(t); overlayFrame(t); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>

@@ -339,6 +339,21 @@
     "https://www.usgs.gov/faqs/how-high-was-mount-st-helens-may-18-1980-eruption-how-high-was-it-after",
     "https://pubs.usgs.gov/gip/msh/climactic.html"
    ]
+  },
+  {
+   "file": "sim-26-lightning.mp4",
+   "title": "What if lightning struck your plane?",
+   "made": "2026-11-28",
+   "caption": "What if lightning struck your plane? It will: an airliner gets hit about once or twice a year. The current runs through the metal skin from the nose to the tail, around the people inside, and the flight carries on. ⚡\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #lightning #aviation #studytok",
+   "science": "How often: 'Commercial transport passenger planes are hit by lightning an average of one or two times a year' (US National Weather Service); the FAA says the same ('each airplane is struck once or twice a year'), said as 'about once or twice a year'. The plane often triggers the strike itself: 'aircraft often initiate the strike because their presence enhances the ambient electric fields' (NWS). Path: lightning attaches to an extremity such as the nose or a wing tip, the current travels through the conductive outer skin and structure and exits from another extremity such as the tail (E. Rupke, Lightning Technologies, in Scientific American); most airliner skins are aluminium, composite ones carry an embedded conductive layer. The film shows nose in, tail out as the example; other entry and exit points happen. Passengers 'may see a flash and hear a loud noise' (same source). Heat: lightning 'can heat the air it passes through to 50,000 degrees Fahrenheit (5 times hotter than the surface of the sun)' (NWS); NOAA's NSSL page gives about 18,000 F. Sources differ on the figure, so the film states no temperature, only 'hotter than the surface of the Sun', which holds for both (18,000 F is about 9,980 C; the Sun's surface is about 5,500 C). 1963: Pan American Flight 214, a Boeing 707, Elkton, Maryland, 8 December 1963, in a holding pattern; 73 passengers and 8 crew, all killed (checked 73 + 8 = 81); probable cause 'lightning-induced ignition of the fuel/air mixture in the number 1 reserve fuel tank' (Civil Aeronautics Board, quoted by the FAA). The film says 'fuel vapour in a jet's wing tank', shows an invented aircraft shape labelled 're-creation', and shows no wreckage. Afterwards: fuel-tank and skin changes were ordered and fuel-system lightning protection rules followed (FAA lessons-learned page); 'airplanes receive a rigorous set of lightning certification tests' (Scientific American), said as 'every airliner design now has to pass lightning tests'. 'Almost every time, it just flies on': NWS says there has not been a lightning-caused commercial transport crash in many decades. Note: Scientific American dates the last US airliner crash caused by lightning to 1967; the Smithsonian and the FAA record give 1963; the film makes no 'last crash' claim. The strike is labelled 'slowed down, not to scale'; the HUD clock in the slow-motion scene (0 to 0.2 s) and the moving points of current are an illustration; the opening is a flash-forward. Not stated anywhere: amps, volts, or any temperature figure. Verified 28 Nov 2026 by reading the pages listed.",
+   "sources": [
+    "https://www.weather.gov/safety/lightning-planes",
+    "https://weather.gov/safety/lightning-temperature",
+    "https://www.nssl.noaa.gov/education/svrwx101/lightning/",
+    "https://www.scientificamerican.com/article/what-happens-when-lightni/",
+    "https://www.faa.gov/lessons_learned/transport_airplane/accidents/N709PA",
+    "https://www.smithsonianmag.com/air-space-magazine/how-things-work-lightning-protection-161993347/"
+   ]
   }
  ]
 }

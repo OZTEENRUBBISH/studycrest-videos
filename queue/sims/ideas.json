@@ -232,8 +232,8 @@
    "setting": "A passenger jet inside a storm cloud, with a cutaway of the cabin",
    "hook": "What if lightning struck your plane?",
    "the surprising true point": "It happens to airliners regularly: the current runs through the metal skin and leaves again, so the people inside are shielded",
-   "status": "making",
-   "claimed_at": "2026-11-28T03:12:00+11:00"
+   "status": "made",
+   "file": "sim-26-lightning"
   },
   {
    "title": "What if the Moon orbited as close as the space station?",
@@ -393,6 +393,14 @@
    "setting": "A city square with a tennis court and office buildings for scale, then the Earth cut away to show where the rest of the gold is",
    "hook": "What if all the gold ever mined were melted into one cube?",
    "the surprising true point": "It would be far smaller than people expect: a single cube only about as wide as a tennis court is long, because gold is so dense, and most of the planet's gold sank to the core long ago",
+   "status": "planned"
+  },
+  {
+   "title": "What if you dropped your phone from the space station?",
+   "kind": "what-if",
+   "setting": "An astronaut on a spacewalk outside a space station, with the Earth turning below and the phone drifting beside the glove",
+   "hook": "What if you dropped your phone from the space station?",
+   "the surprising true point": "It would not fall to Earth: it is already circling the planet at about 28,000 km/h, just like you, so it floats beside your hand and stays in orbit until thin air slowly drags it down",
    "status": "planned"
   }
  ]
