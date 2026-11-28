@@ -380,6 +380,22 @@
     "https://www.jpl.nasa.gov/news/galileo-probe-suggests-planetary-science-reappraisal/",
     "https://www.nasa.gov/solar-system/what-is-jupiter-grades-5-8/"
    ]
+  },
+  {
+   "file": "sim-29-tacoma.mp4",
+   "title": "Tacoma Narrows Bridge, minute by minute",
+   "made": "2026-11-29",
+   "caption": "Tacoma Narrows Bridge, minute by minute. In 1940 a four-month-old bridge twisted itself apart, and the wind didn't simply knock it down: engineers call it flutter, a twist that feeds itself. No person died. 🌉\n\nFollow for a new simulation every day.\n\n#simulation #science #physics #engineering #tacomanarrows #bridge #studytok",
+   "science": "Dates: 'When the bridge opened on July 1, 1940' (APS News); collapsed 7 November 1940 (WSDOT): four months and six days, said as 'four months old'. Bounce: Farquharson, 'We knew from the night of the day the bridge opened that something was wrong ... On that night the bridge began to gallop' (WSDOT), nickname 'Galloping Gertie'; 'The world's third largest suspension bridge' (WSDOT). Wind: 'At 7:30 a.m. the wind measured 38 miles per hour. Two hours later, engineers clocked the wind at 42 miles per hour' (WSDOT); 42 x 1.609344 = 67.6 km/h, said as 'about sixty eight' (= 18.8 m/s, the speed of the wind streaks). Twist: '10:03 a.m. Suddenly, the roadway began a \"lateral twisting motion\"', 'The roadway tilted up to 28 feet on one side then the other at an angle up to 45 degrees', 'Every 5 seconds the bridge deck rose and fell violently with the twisting wave' (WSDOT); Farquharson timed 12 cycles a minute, a period of five seconds (Physics Today). The film's twist has a 5-second period and a 45-degree peak at the quarter points with a still centre line (the 'two-wave torsional movement' in STRUCTURE magazine), shown at real speed. The University of Washington page puts the start of the twist at about 10:15; the film uses WSDOT's 10:03. Cause: 1960s textbooks said the wind acted 'in resonance with a natural frequency of the structure' (quoted in Physics Today); 'that classic explanation is incorrect' (APS News); 'The primary explanation of Galloping Gertie's failure is described as \"torsional flutter\"', 'Engineers call this \"self-excited\" motion', 'The bridge deck's own motion produced the forces', 'twisting induced more twisting' (WSDOT, Lessons from failure). WSDOT also notes that no single description has unanimous agreement, so the film says 'Engineers now call it flutter' and gives no more detail of the mechanism than those sentences. Collapse: 'At 11:02, a 600-foot long section of roadway ... plummeted 195 feet into Puget Sound', 'By 11:10 a.m. it was over' (WSDOT; its timeline page says 11:08, so the HUD says 'about 11:10'); 600 x 0.3048 = 183 m, said as 'about a hundred and eighty metres'; 195 ft = 59 m, the deck height used, giving a fall of sqrt(2 x 59 / 9.8) = 3.5 s for each piece, while the break-up as a whole is compressed into a few seconds (HUD: 'fall shown shortened', 'time compressed'); the model drops 0.23 of an 800-unit span (184). Casualties: 'A dog trapped in an abandoned car on the bridge was the only fatality' (University of Washington); the dog was 'a black spaniel named \"Tubby\"' in Leonard Coatsworth's car (WSDOT). Afterwards: 'Now, wind tunnel testing for aerodynamic effects on bridges is commonplace' (WSDOT); the 1950 replacement has '33-foot-deep open trusses' (STRUCTURE magazine), drawn 10 units deep. Earlier wording in the plan, 'not a storm', was dropped: Physics Today calls the wind a gale. Labelled illustration: the size of the bounce ('exaggerated, not to scale'), the compressed time of the collapse, the bridge's colour and proportions, the people and the car. The dog is not shown. Verified 29 Nov 2026 by reading the pages listed.",
+   "sources": [
+    "https://wsdot.wa.gov/tnbhistory/collapse.htm",
+    "https://wsdot.wa.gov/TNBhistory/bridges-failure.htm",
+    "https://wsdot.wa.gov/tnbhistory/bridge-timeline.htm",
+    "https://lib.uw.edu/specialcollections/collections/exhibits/tnb/collapse",
+    "https://www.aps.org/apsnews/2016/11/collapse-of-tacoma-narrows-bridge",
+    "https://physicstoday.aip.org/quick-study/the-tacoma-narrows-bridge-collapse-1760014552637",
+    "https://www.structuremag.org/?p=19995"
+   ]
   }
  ]
 }

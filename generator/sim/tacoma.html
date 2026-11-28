@@ -1,0 +1,162 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// Tacoma Narrows Bridge, minute by minute (Washington State, 7 November 1940). The bridge runs along x, the wind blows along +z.
+// Sizes are stylised: the bounce is exaggerated and the collapse is shown in a few seconds (both labelled on screen).
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, fbm, mat, box, shadowAll, person, cloud, skyDome, overlay, capAt, makePost, proj } from './common.js';
+const W = 1080, H = 1920, DUR = 57.6;
+const O = overlay();
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const cam = new THREE.PerspectiveCamera(50, W / H, 1, 16000);
+const R = rng(19401107), V = (x, y, z) => new THREE.Vector3(x, y, z), C = (h) => new THREE.Color(h);
+const T = { hook: 2.5, hBreak: 6.3, date: 8.8, gertie: 12.6, wind: 15.5, twist: 19.6, tw0: 21.0, flutter: 28.5, fall: 38.0, brk: 39.7, gone: 42.5, toll: 44.7, today: 49.7, close: 52.7, end: 55.7 };
+
+// =====================================================  LIGHT AND SKY
+const st = new THREE.Scene(); st.fog = new THREE.Fog(0xc3d0d8, 700, 5200);
+const SKY = { grey: [C(0x5f7d98), C(0xd3dde3), C(0x8fa4b0)], clear: [C(0x2f7fd8), C(0xd6ebfa), C(0x9fc8e6)] }, FOGC = { grey: C(0xc3d0d8), clear: C(0xd3e6f4) };
+const sky = skyDome(0x5f7d98, 0xd3dde3, 0x8fa4b0); sky.scale.setScalar(8); st.add(sky);
+const hemi = new THREE.HemisphereLight(0xdbe6ee, 0x7f8f8a, 1.15); st.add(hemi);
+const key = new THREE.DirectionalLight(0xfff2dc, 2.6); key.position.set(-700, 900, -900); key.castShadow = true; key.shadow.mapSize.set(4096, 4096);
+Object.assign(key.shadow.camera, { left: -1000, right: 1000, top: 700, bottom: -700, near: 1, far: 4000 }); key.shadow.bias = -0.0006; key.shadow.normalBias = 0.5; st.add(key); st.add(key.target);
+const world = new THREE.Group(); st.add(world);
+
+// =====================================================  THE NARROWS: water, two bluffs, forest, far hills
+const DY = 60, DW = 14, L = 800, NS = 80, SEG = L / NS, XT = 400, XA = 735, TOP = 132;
+const landH = (x, z) => { const ax = Math.abs(x), k = smooth(seg(ax + 60 * (fbm(z * 0.004 + (x > 0 ? 7 : 1), 2, 0.5, 2) - 0.5), 560, 730)); const away = smooth(seg(Math.abs(z), 16, 110)) * smooth(seg(ax, 640, 900)); return -9 + (DY + 9.3) * k + away * (26 * (fbm(x * 0.006 + 3, 1.5, z * 0.006, 3) - 0.35)) + smooth(seg(ax, 900, 2400)) * 60 * fbm(x * 0.002, 4, z * 0.002, 2); };
+{ const g = new THREE.PlaneGeometry(7000, 7000, 200, 200); g.rotateX(-Math.PI / 2); const p = g.attributes.position, col = new Float32Array(p.count * 3), c = new THREE.Color(), cs = C(0xa39c88), cr = C(0x857a68), cg = C(0x33543b), cg2 = C(0x3f6646);
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), h = landH(x, z); p.setY(i, h); const n = fbm(x * 0.02, 3, z * 0.02, 2); if (h < 3) c.copy(cs); else if (h < DY - 6) c.copy(cr).lerp(cg, n > 0.55 ? 0.6 : 0.1); else c.copy(cg).lerp(cg2, n); col.set([c.r, c.g, c.b], i * 3); }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals(); const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })); m.receiveShadow = true; world.add(m); }
+const waterGeo = new THREE.PlaneGeometry(7000, 7000, 110, 110); waterGeo.rotateX(-Math.PI / 2); const wp = waterGeo.attributes.position, wx = new Float32Array(wp.count), wz = new Float32Array(wp.count); for (let i = 0; i < wp.count; i++) { wx[i] = wp.getX(i); wz[i] = wp.getZ(i); }
+const waterMat = new THREE.MeshStandardMaterial({ color: 0x4d7f94, roughness: 0.32, metalness: 0.35, flatShading: true }); const water = new THREE.Mesh(waterGeo, waterMat); water.receiveShadow = true; world.add(water);
+function setWater(t, k) { for (let i = 0; i < wp.count; i++) wp.setY(i, k * (1.6 * Math.sin(wz[i] * 0.045 - t * 1.7 + wx[i] * 0.013) + 1.1 * Math.sin(wx[i] * 0.06 + t * 1.1 + wz[i] * 0.02) + 0.8 * Math.sin((wx[i] + wz[i]) * 0.11 - t * 2.3))); wp.needsUpdate = true; }
+// forest
+const trees = []; { const Rt = rng(7); let tries = 0; while (trees.length < 5200 && tries++ < 60000) { const sd = Rt() < 0.5 ? -1 : 1, x = sd * (600 + Math.pow(Rt(), 1.6) * 1500), z = (Rt() - 0.5) * 2800, h = landH(x, z); if (h < 14 || (Math.abs(z) < 30 && Math.abs(x) > 640)) continue; if (Math.abs(x) > 735 && Math.abs(x) < 850 && Math.abs(z) < 40) continue; trees.push({ x, z, y: h, h: 11 + Rt() * 10, w: 0.8 + Rt() * 0.5, c: Rt(), ph: Rt() * 6.28 }); } }
+const fGeo = new THREE.ConeGeometry(0.22, 0.9, 6); fGeo.translate(0, 0.55, 0); const foliage = new THREE.InstancedMesh(fGeo, new THREE.MeshLambertMaterial({ flatShading: true }), trees.length); foliage.castShadow = true; foliage.frustumCulled = false; world.add(foliage);
+{ const TG = [C(0x1f4a2c), C(0x2a5c36), C(0x346a3e)]; for (let i = 0; i < trees.length; i++) foliage.setColorAt(i, TG[Math.floor(trees[i].c * 3)]); }
+const tm = new THREE.Matrix4(), tq = new THREE.Quaternion(), tpv = new THREE.Vector3(), tsv = new THREE.Vector3(), tE = new THREE.Euler();
+function setTrees(t, k) { for (let i = 0; i < trees.length; i++) { const a = trees[i]; tE.set(k * (0.1 + 0.07 * Math.sin(t * 2.3 + a.ph)), 0, 0); tq.setFromEuler(tE); tpv.set(a.x, a.y - 0.5, a.z); tsv.set(a.h * a.w, a.h, a.h * a.w); tm.compose(tpv, tq, tsv); foliage.setMatrixAt(i, tm); } foliage.instanceMatrix.needsUpdate = true; }
+{ const Rl = rng(77); for (let i = 0; i < 26; i++) { const a = i / 26 * 6.283 + Rl() * 0.2, d = 3300 + Rl() * 1400, g = new THREE.IcosahedronGeometry(1, 2), p = g.attributes.position; for (let j = 0; j < p.count; j++) { const k = 1 + (fbm(p.getX(j) * 2 + i, p.getY(j) * 2, p.getZ(j) * 2, 3) - 0.5) * 0.5; p.setXYZ(j, p.getX(j) * k, p.getY(j) * k, p.getZ(j) * k); } g.computeVertexNormals(); const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: [0x4c6b63, 0x587a72, 0x61857e][i % 3], flatShading: true })); m.scale.set(700 + Rl() * 600, 220 + Rl() * 330, 700 + Rl() * 600); m.position.set(Math.cos(a) * d, -30, Math.sin(a) * d); world.add(m); } }
+const clouds = []; for (let i = 0; i < 16; i++) { const c = cloud(R); c.userData = { x: -3200 + (i % 8) * 900 + R() * 400, y: 560 + R() * 380, z: R() * 6400 }; c.scale.setScalar(9 + R() * 7); st.add(c); clouds.push(c); } const cloudMat = clouds[0].children[0].material;
+
+// =====================================================  THE BRIDGE
+const STEEL = 0x6f8c84, STEELD = 0x56706a, ROAD = 0x51555b, CONC = 0xb8b3a8;
+const cableY = (x) => { const ax = Math.abs(x); if (ax <= XT) return DY + 5 + (TOP - DY - 5) * (ax / XT) ** 2; const u = (ax - XT) / (XA - XT); return TOP + (DY + 3 - TOP) * u - 26 * Math.sin(Math.PI * u) * 0.5; };
+for (const sz of [-1, 1]) { const pts = []; for (let x = -XA; x <= XA; x += 5) pts.push(V(x, cableY(x), sz * DW / 2)); const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 300, 0.75, 6), mat(STEELD)); m.castShadow = true; world.add(m); }
+for (const sx of [-1, 1]) { const g = new THREE.Group(); g.position.x = sx * XT; const lz = DW / 2 + 0.2;
+  g.add(box(26, 14, 40, CONC, 0, 2, 0)); g.add(box(20, 6, 34, 0xa7a297, 0, 11, 0));
+  for (const sz of [-1, 1]) g.add(box(4.6, TOP - 12, 3.6, STEEL, 0, 14 + (TOP - 12) / 2, sz * lz));
+  g.add(box(4.2, 7, DW + 3, STEEL, 0, TOP + 0.5, 0)); g.add(box(3.6, 5, DW, STEEL, 0, DY - 7, 0)); g.add(box(3.6, 4, DW, STEEL, 0, DY + 26, 0));
+  for (const [y0, y1] of [[18, DY - 10], [DY + 29, TOP - 4]]) { const hh = y1 - y0, len = Math.hypot(hh, DW), a = Math.atan2(DW, hh); for (const s of [-1, 1]) { const b = box(1.2, len, 1.2, STEELD, 0, (y0 + y1) / 2, 0); b.rotation.x = s * a; g.add(b); } }
+  for (const sz of [-1, 1]) g.add(box(5.4, 2.4, 4.4, STEELD, 0, TOP + 5, sz * lz));
+  world.add(shadowAll(g)); }
+// deck segments of the main span: each can bounce, twist and fall
+const segs = []; const lampGeo = new THREE.BoxGeometry(0.22, 6.5, 0.22), lampM = mat(0x3d4a47);
+function deckPiece(len, lamps) { const g = new THREE.Group(); g.add(box(len, 0.45, DW, ROAD, 0, 0, 0)); for (const sz of [-1, 1]) { g.add(box(len, 2.4, 0.4, STEEL, 0, 0.25, sz * DW / 2)); g.add(box(len, 0.2, 1.4, 0x8f9294, 0, 0.33, sz * (DW / 2 - 1.0))); } g.add(box(len * 0.5, 0.06, 0.28, 0xf0e6b8, 0, 0.25, 0));
+  if (lamps) for (const sz of [-1, 1]) { const l = new THREE.Mesh(lampGeo, lampM); l.position.set(0, 4.6, sz * (DW / 2 - 0.5)); g.add(l); g.add(box(0.5, 0.35, 0.5, 0xf4efd8, 0, 7.9, sz * (DW / 2 - 0.5))); } return shadowAll(g); }
+for (let i = 0; i < NS; i++) { const g = deckPiece(SEG + 0.12, i % 4 === 2), s = (i + 0.5) / NS; g.userData = { s, x: -XT + s * L, w1: (R() - 0.5) * 1.6, w2: (R() - 0.5) * 1.2, j: R() }; world.add(g); segs.push(g); }
+// side spans, anchorages, approach roads
+for (const sx of [-1, 1]) { const n = 34, len = (XA - XT) / n; for (let i = 0; i < n; i++) { const g = deckPiece(len + 0.1, i % 4 === 1); g.position.set(sx * (XT + (i + 0.5) * len), DY, 0); world.add(g); }
+  world.add(box(50, 24, DW + 10, CONC, sx * (XA + 22), DY - 12.25, 0)); const rd = box(1700, 0.5, DW - 1, ROAD, sx * (XA + 850), DY + 0.05, 0); rd.castShadow = false; world.add(rd);
+  for (let k = 0; k < 3; k++) for (const sz of [-1, 1]) world.add(box(2.4, DY - 4, 2.4, CONC, sx * (XT + 90 + k * 85), (DY - 4) / 2 - 2, sz * (DW / 2 - 1))); }
+// suspenders (instanced cylinders between cable and deck edge)
+const NSS = 2 * 26, susGeo = new THREE.CylinderGeometry(0.2, 0.2, 1, 5), sus = new THREE.InstancedMesh(susGeo, mat(STEELD), NS * 2 + NSS * 2); sus.frustumCulled = false; sus.castShadow = true; world.add(sus);
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _d = new THREE.Vector3(), _up = V(0, 1, 0), _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3();
+function rod(i, ax, ay, az, bx, by, bz) { _a.set(ax, ay, az); _b.set(bx, by, bz); _d.subVectors(_b, _a); const len = _d.length() || 0.001; _q.setFromUnitVectors(_up, _d.multiplyScalar(1 / len)); _s.set(1, len, 1); _a.add(_b).multiplyScalar(0.5); _m.compose(_a, _q, _s); sus.setMatrixAt(i, _m); }
+{ let k = NS * 2; for (const sx of [-1, 1]) for (let i = 0; i < 26; i++) { const x = sx * (XT + 12 + i * 12.4); for (const sz of [-1, 1]) rod(k++, x, cableY(x), sz * DW / 2, x, DY + 1.4, sz * DW / 2); } }
+// the 1950 replacement: deep open trusses under the deck (shown only in the epilogue)
+const truss = new THREE.Group(); { const tmat = mat(0x7d9a90), D = 10; for (const sz of [-1, 1]) { truss.add(box(2 * XA, 0.7, 0.7, 0x7d9a90, 0, DY - D, sz * DW / 2)); for (let x = -XA; x < XA - 1; x += 14.7) { truss.add(box(0.5, D, 0.5, 0x7d9a90, x, DY - D / 2, sz * DW / 2)); const dl = Math.hypot(14.7, D), b = box(dl, 0.45, 0.45, 0x7d9a90, x + 7.35, DY - D / 2, sz * DW / 2); b.rotation.z = (Math.round(x / 14.7) % 2 ? 1 : -1) * Math.atan2(D, 14.7); truss.add(b); } } for (let x = -XA; x < XA; x += 29.4) truss.add(box(0.5, 0.5, DW, 0x7d9a90, x, DY - D, 0)); shadowAll(truss); world.add(truss); }
+// the car left on the span, people at the east end, a walker on the centre line
+const CARSEG = 49; { const c = new THREE.Group(); c.add(box(4.5, 0.85, 1.75, 0x191a1f, 0, 0.75, 0)); c.add(box(2.3, 0.75, 1.55, 0x22242b, -0.3, 1.5, 0)); c.add(box(1.9, 0.5, 1.5, 0x9fb7c9, -0.3, 1.52, 0.03)); c.add(box(2.31, 0.76, 1.3, 0x22242b, -0.3, 1.5, 0)); for (const [x, z] of [[-1.45, 0.85], [1.45, 0.85], [-1.45, -0.85], [1.45, -0.85]]) c.add(box(0.75, 0.75, 0.3, 0x0c0c0e, x, 0.38, z)); c.add(box(0.1, 0.22, 0.3, 0xfff2b0, 2.26, 0.85, 0.6)); c.add(box(0.1, 0.22, 0.3, 0xfff2b0, 2.26, 0.85, -0.6)); c.position.set(1, 0.24, DW / 2 - 2.4); c.rotation.y = 0.5; segs[CARSEG].add(shadowAll(c)); }
+const crowd = []; { const Rp = rng(40); for (let i = 0; i < 14; i++) { const p = person(Rp, 'stand', { shorts: false, shirt: [0x2c3440, 0x4a3b2e, 0x6b6f76, 0x7a2f2a, 0x2f4a3a, 0xc9c2b0][i % 6], pants: [0x22262c, 0x3a3f47, 0x4a4033][i % 3] }); p.position.set(-XA - 6 - Rp() * 16, DY + 0.3, (Rp() - 0.5) * (DW - 3.5)); p.rotation.y = Math.PI / 2 + (Rp() - 0.5) * 0.5; p.scale.multiplyScalar(1.05); world.add(p); crowd.push(p); }
+  world.add(box(4, 3.2, 3, 0xd9d2c0, -XA - 34, DY + 1.9, DW / 2 + 3)); world.add(box(5, 0.4, 4, 0x7a2f2a, -XA - 34, DY + 3.7, DW / 2 + 3)); world.add(box(4, 3.2, 3, 0xd9d2c0, -XA - 34, DY + 1.9, -DW / 2 - 3)); world.add(box(5, 0.4, 4, 0x7a2f2a, -XA - 34, DY + 3.7, -DW / 2 - 3)); }
+const walker = person(rng(3), 'walk', { shorts: false, shirt: 0x3a3f47, pants: 0x22262c, sleeve: 0x3a3f47 }); walker.rotation.order = 'XYZ'; walker.scale.multiplyScalar(1.15); world.add(walker);
+// wind streaks and splashes
+const NW = 340, streaks = new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 0.16, 11), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, fog: false }), NW); streaks.frustumCulled = false; world.add(streaks);
+const sw = []; { const Rw = rng(11); for (let i = 0; i < NW; i++) sw.push({ x: (Rw() - 0.5) * 1100, y: 8 + Rw() * 150, z: Rw() * 900, v: 0.85 + Rw() * 0.3 }); }
+const NSP = 6, splash = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0xdfeaf2, emissiveIntensity: 0.6, flatShading: true }), NS * NSP); splash.frustumCulled = false; world.add(splash);
+
+const post = makePost(renderer, st, cam, { bloom: 0.2, bloomThreshold: 0.92, bloomRadius: 0.6, sat: 1.12, warm: 0.01 });
+const CAPS = /*CAPS*/[[2.7, 4.62, "In <em>1940</em>, this bridge"], [4.64, 5.83, "<em>tore itself apart</em>."], [5.85, 7.26, "The wind didn't<br>knock it down."], [7.28, 8.47, "Its own <em>twisting</em> did."], [9.0, 10.1, "November 7th."], [10.12, 11.63, "The bridge is<br><em>four months old</em>,"], [11.65, 13.42, "and has <em>bounced</em><br>since opening day."], [13.44, 15.34, "Locals call it<br><em>Galloping Gertie</em>."], [15.7, 17.17, "This morning,<br>the wind blows"], [17.19, 19.27, "at about<br><em>68 kilometres an hour</em>."], [19.8, 21.31, "10:03 a.m."], [21.33, 23.16, "The bouncing turns<br>into a <em>twist</em>."], [23.18, 25.7, "The road tilts<br>up to <em>45 degrees</em>,"], [25.72, 26.9, "one way, then the other,"], [26.92, 28.23, "every <em>five seconds</em>."], [28.7, 31.15, "For years, textbooks<br>blamed <em>resonance</em>."], [31.17, 32.96, "Engineers now call it<br><em>flutter</em>:"], [32.98, 34.86, "each twist changes<br>the airflow,"], [34.88, 36.66, "and the airflow<br><em>twists it further</em>."], [38.2, 39.33, "11:02."], [39.35, 41.14, "About <em>180 metres</em><br>of road"], [41.16, 42.24, "breaks free and falls."], [44.9, 46.0, "<em>No person died.</em>"], [46.02, 48.06, "A dog named Tubby,<br>trapped in a car,"], [48.08, 49.46, "was the only life lost."], [49.9, 51.28, "Today, <em>wind tunnel tests</em>"], [51.3, 52.47, "for bridges are routine."], [52.9, 54.19, "The wind didn't<br>knock it down."], [54.21, 55.4, "The twist <em>fed itself</em>."]]/*END*/;
+function camPath(keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); cam.position.lerpVectors(a[1], b[1], u); const l = a[2].clone().lerp(b[2], u); cam.fov = lerp(a[3], b[3], u); cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+const hash = (n) => { const x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); };
+const F0 = 0.52, F1 = 0.75, FM = (F0 + F1) / 2;   // the part that broke free first: 0.23 of the span, about 180 m of 800
+// state of the bridge at film time t: bounce, twist, break times, wind, epilogue
+function stateAt(t) {
+  if (t < T.hook) return { av: 1.5, th: 0, wind: 0.6, tb: 1e9, tg: 1e9, t0: 0 };
+  if (t < T.date) return { av: 0.5, th: 0.78, wind: 1, tb: T.hBreak, tg: 1e9, t0: T.hook - 1.6, preview: 1 };
+  if (t < T.twist) return { av: 1.6, th: 0, wind: t < T.wind ? 0.6 : 1, tb: 1e9, tg: 1e9, t0: 0 };
+  if (t < T.today) { const k = smooth(seg(t, T.tw0, T.tw0 + 3.4)); return { av: lerp(1.6, 0.5, k), th: 0.78 * k, wind: 1, tb: T.brk, tg: T.gone, t0: T.tw0 }; }
+  return { av: 0, th: 0, wind: 0.15, tb: 1e9, tg: 1e9, t0: 0, rebuilt: 1 };
+}
+const deckY = (s, t, S) => DY + 3 * Math.sin(Math.PI * s) + S.av * Math.sin(9 * Math.PI * s) * Math.sin(2 * Math.PI * 0.63 * t) + (S.th > 0 ? 1.4 * (S.th / 0.78) * Math.sin(2 * Math.PI * s) * Math.sin(2 * Math.PI * (t - S.t0) / 5 + 0.8) : 0);
+const twistA = (s, t, S) => S.th * Math.sin(2 * Math.PI * s) * Math.sin(2 * Math.PI * (t - S.t0) / 5);
+function fallT(s, S) { if (s >= F0 && s <= F1) return S.tb + Math.abs(s - FM) * 3.2; if (s < 0.05 || s > 0.95) return 1e9; const d = s < F0 ? F0 - s : s - F1; return S.tg + d * 4.4; }
+const spM = new THREE.Matrix4(), spQ = new THREE.Quaternion(), spP = new THREE.Vector3(), spS = new THREE.Vector3();
+function frame(t) {
+  const S = stateAt(t), clear = S.rebuilt ? 1 : 0;
+  const U = sky.material.uniforms, a = SKY.grey, b = SKY.clear; U.top.value.lerpColors(a[0], b[0], clear); U.mid.value.lerpColors(a[1], b[1], clear); U.bot.value.lerpColors(a[2], b[2], clear); st.fog.color.lerpColors(FOGC.grey, FOGC.clear, clear);
+  key.intensity = clear ? 3.1 : 2.3; key.color.set(clear ? 0xfff0d0 : 0xf4f1ea); hemi.intensity = clear ? 1.05 : 1.2; waterMat.color.set(clear ? 0x2f78b0 : 0x4d7f94); cloudMat.color.set(clear ? 0xffffff : 0xc9d0d6); cloudMat.emissiveIntensity = clear ? 0.62 : 0.4;
+  setWater(t, clear ? 0.35 : 0.5 + 0.6 * S.wind); setTrees(t, S.wind);
+  for (const c of clouds) { const u = c.userData; c.position.set(u.x, u.y, ((u.z + t * (clear ? 4 : 30)) % 6400) - 3200); c.visible = !clear || (c.userData.y > 700); }
+  // deck
+  let k = 0; const hw = DW / 2;
+  for (let i = 0; i < NS; i++) { const g = segs[i], u = g.userData, s = u.s, x = u.x, y = deckY(s, t, S), th = twistA(s, t, S), ft = fallT(s, S), tf = t - ft, slope = (deckY(s + 0.004, t, S) - deckY(s - 0.004, t, S)) / (0.008 * L);
+    if (tf > 0) { const yy = y - 4.9 * tf * tf; g.visible = yy > -6; g.position.set(x + u.w2 * tf * 2, yy, tf * tf * 1.2); g.rotation.set(th + u.w1 * tf, 0, Math.atan(slope) + u.w2 * tf);
+      const cy = cableY(x), sway = Math.sin(t * 2.2 + i) * 2.5; for (const sz of [-1, 1]) rod(k++, x, cy, sz * hw, x + sway * 0.3, Math.max(cy - 16 - u.j * 16, DY - 6), sz * hw + sway + 2);
+      const ts = ft + Math.sqrt((y + 2) / 4.9), ta = t - ts; for (let j = 0; j < NSP; j++) { const idx = i * NSP + j; if (ta > 0 && ta < 2.6) { const q = ta / 2.6, hgt = (14 + j * 7) * Math.sin(Math.PI * Math.min(1, q * 1.25)) , sc = (3.2 + j * 0.9 + 2 * hash(idx + 3)) * Math.sin(Math.PI * q) ** 0.6; spP.set(x + (hash(idx) - 0.5) * 12, hgt * (j / NSP + 0.15), (hash(idx + 9) - 0.5) * 16 + 4); spS.set(sc, sc * 1.25, sc); spQ.identity(); spM.compose(spP, spQ, spS); } else spM.makeScale(0, 0, 0); splash.setMatrixAt(idx, spM); }
+    } else { g.visible = true; g.position.set(x, y, 0); g.rotation.set(th, 0, Math.atan(slope)); for (const sz of [-1, 1]) rod(k++, x, cableY(x), sz * hw, x, y + sz * hw * Math.sin(th) + 1.3, sz * hw * Math.cos(th)); for (let j = 0; j < NSP; j++) { spM.makeScale(0, 0, 0); splash.setMatrixAt(i * NSP + j, spM); } } }
+  sus.instanceMatrix.needsUpdate = true; splash.instanceMatrix.needsUpdate = true; truss.visible = !!S.rebuilt;
+  // wind streaks
+  streaks.visible = !S.rebuilt; streaks.material.opacity = 0.2 + 0.36 * S.wind; const cx = cam.position.x * 0.4;
+  for (let i = 0; i < NW; i++) { const w = sw[i], z = ((w.z + t * 18.8 * w.v) % 900) - 450; let wy = w.y + Math.sin(z * 0.02 + i) * 2; spQ.identity(); if (S.th > 0 && Math.abs(cx + w.x) < XT) { const ss = (cx + w.x + XT) / L, th = twistA(ss, t, S), dy0 = w.y - deckY(ss, t, S), kk = th * 30 * Math.exp(-((dy0 / 26) ** 2)), gz = Math.exp(-((z / 48) ** 2)); wy += kk * gz * (z > 0 ? 1 : 0.6); tE.set(Math.atan(kk * gz * z / 1150), 0, 0); spQ.setFromEuler(tE); } spP.set(cx + w.x, wy, z); spS.set(1, 1, S.wind > 0.9 ? 1 : 0.55); if (spP.distanceTo(cam.position) < (cam.fov < 20 ? 420 : 140) || (cam.fov < 20 && Math.abs(z) < 60)) spS.set(0, 0, 0); spM.compose(spP, spQ, spS); streaks.setMatrixAt(i, spM); } streaks.instanceMatrix.needsUpdate = true;
+  // people
+  for (const [i, p] of crowd.entries()) { p.visible = !S.rebuilt; p.userData.pose(t * 1.3 + i); }
+  const wk = t >= T.twist && t < T.flutter; walker.visible = wk; if (wk) { const x = lerp(-130, -300, seg(t, T.twist, T.flutter)), s = (x + XT) / L; walker.position.set(x, deckY(s, t, S) + 0.3, 0); walker.rotation.set(twistA(s, t, S) * 0.35, -Math.PI / 2, 0); walker.userData.pose(t * 9, 'run'); }
+  // camera
+  if (t < T.hook) camPath([[0, V(-XA - 36, DY + 2.5, 1.8), V(-400, DY + 34, 0), 52], [T.hook, V(-XA - 31, DY + 2.7, 1.4), V(-400, DY + 37, 0), 50]], t);
+  else if (t < T.hBreak - 0.6) camPath([[T.hook, V(-650, DY + 15, 0.6), V(-100, DY - 8, 0), 13], [T.hBreak - 0.6, V(-640, DY + 15, 0.6), V(-100, DY - 8, 0), 12]], t);
+  else if (t < T.date) camPath([[T.hBreak - 0.6, V(250, 26, -330), V(120, 36, 0), 52], [T.date, V(230, 24, -350), V(110, 26, 0), 54]], t);
+  else if (t < T.wind) camPath([[T.date, V(-740, 104, -430), V(-170, 40, 0), 31], [T.wind, V(-690, 92, -390), V(-160, 42, 0), 29]], t);
+  else if (t < T.twist) camPath([[T.wind, V(-250, 16, -430), V(-60, 30, 0), 56], [T.twist, V(-200, 18, -400), V(-40, 32, 0), 54]], t);
+  else if (t < T.flutter) camPath([[T.twist, V(-660, DY + 16, 0.6), V(-100, DY - 8, 0), 14], [T.flutter, V(-640, DY + 15, 0.6), V(-100, DY - 8, 0), 12]], t);
+  else if (t < T.fall) camPath([[T.flutter, V(-300, DY - 17, -64), V(-195, DY + 8, 0), 40], [T.fall, V(-312, DY - 15, -76), V(-195, DY + 9, 0), 37]], t);
+  else if (t < T.toll) camPath([[T.fall, V(270, 24, -340), V(120, 36, 0), 52], [T.gone, V(250, 22, -360), V(110, 24, 0), 55], [T.toll, V(180, 30, -470), V(40, 26, 0), 60]], t);
+  else if (t < T.today) camPath([[T.toll, V(-XA + 14, DY + 2.6, -1.5), V(-XA - 14, DY + 2.6, 0), 40], [T.today, V(-XA + 11, DY + 2.6, -1.0), V(-XA - 14, DY + 2.6, 0), 38]], t);
+  else camPath([[T.today, V(-740, 100, -420), V(-170, 40, 0), 31], [T.end, V(-680, 88, -370), V(-160, 42, 0), 29], [DUR, V(-675, 87, -365), V(-160, 42, 0), 29]], t);
+  let sh = 0; if ((t >= T.hook && t < T.hBreak - 0.6) || (t >= T.twist && t < T.flutter)) sh = 0.12; else if ((t >= T.hBreak && t < T.date) || (t >= T.brk && t < T.toll)) sh = 0.9;
+  if (sh > 0) { cam.position.y += (hash(Math.floor(t * 30)) - 0.5) * sh; cam.position.z += (hash(Math.floor(t * 30) + 7) - 0.5) * sh; }
+  key.target.position.set(0, 0, 0); post.render(); return S;
+}
+function overlayFrame(t, S) {
+  const ta = t < 2.35 ? Math.min(seg(t, 0.15, 0.6), 1 - seg(t, 2.0, 2.35)) : 0; O.set(O.title, '<em>Tacoma Narrows Bridge</em>,<br>minute by minute'); O.show(O.title, ta); O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.15, 0.9))) * 26}px)`; O.title.style.top = '430px';
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  let ha = 1, ht = 860; const clk = (a, b, u) => { const m = Math.round(lerp(a, b, u)); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0') + ' am'; };
+  if (t < T.hook + 0.2) ha = 0;
+  else if (t < T.date) { O.hudSet('Washington State, USA', '7 Nov 1940', t < T.hBreak - 0.6 ? 'What really happened\nPreview' : 'The roadway breaks free\nPreview · fall shortened'); ha = seg(t, T.hook + 0.2, T.hook + 0.6); }
+  else if (t < T.gertie) { O.hudSet('7 November 1940', '4 months old', 'Opened 1 July 1940\nThird-largest suspension bridge'); ha = seg(t, T.date + 0.1, T.date + 0.5); }
+  else if (t < T.wind) O.hudSet('Nickname', 'Galloping Gertie', 'It bounced from opening day\nBounce exaggerated · not to scale');
+  else if (t < T.twist) O.hudSet('7 Nov 1940 · 9:30 am', '≈ 68 km/h', 'Wind across the bridge\n(42 miles per hour)');
+  else if (t < T.flutter) O.hudSet('7 Nov 1940', clk(603, 607, seg(t, T.tw0, T.flutter)), t < T.tw0 + 2.6 ? 'The bounce becomes a twist' : 'Tilt: up to 45° each way\nevery 5 seconds · real speed');
+  else if (t < T.fall) O.hudSet(t < T.flutter + 3.6 ? 'Old explanation: resonance' : 'How engineers explain it now', t < T.flutter + 3.6 ? 'Not quite' : 'Flutter', t < T.flutter + 3.6 ? 'Gusts in step with the bridge:\nthe textbook story for decades' : 'Each twist changes the airflow.\nThe airflow adds to the twist.');
+  else if (t < T.gone) O.hudSet('7 Nov 1940', '11:02 am', '≈ 180 m of roadway falls\n(600 feet) · fall shown shortened');
+  else if (t < T.toll) O.hudSet('Minutes later', 'Span gone', 'All over by about 11:10 am\nTime compressed');
+  else if (t < T.today) { O.hudSet('7 November 1940', 'No person died', 'One dog, Tubby, was\nthe only life lost'); ha = seg(t, T.toll + 0.1, T.toll + 0.5); }
+  else if (t < T.close) { O.hudSet('Rebuilt in 1950', 'Open trusses', 'Bridge designs are now\ntested in wind tunnels'); ha = seg(t, T.today + 0.1, T.today + 0.5); }
+  else if (t < T.end) O.hudSet('Tacoma Narrows, 1940', 'The twist fed itself', 'Engineers call it flutter');
+  else ha = 1 - seg(t, T.end, T.end + 0.3);
+  if ((t >= T.hBreak - 0.6 && t < T.date) || (t >= T.fall && t < T.toll)) ht = 440; else if ((t >= T.date && t < T.twist) || t >= T.today) ht = 930;
+  O.hud.style.background = 'rgba(6,10,26,.42)'; O.hud.style.boxShadow = '0 0 0 14px rgba(6,10,26,.42)'; O.hud.style.borderRadius = '4px'; O.show(O.hud, ha); O.hud.style.top = ht + 'px'; O.show(O.chip, 0);
+  let hh = ''; const Lb = (x, y, a, small, big, col) => { if (a > 0.01) hh += `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${a}${col ? ';color:' + col : ''}">${small}${big ? '<b style="font-size:38px">' + big + '</b>' : ''}</div>`; };
+  if (t >= T.wind + 0.5 && t < T.twist) { const a0 = seg(t, T.wind + 0.5, T.wind + 0.9) * (1 - seg(t, T.twist - 0.3, T.twist)); Lb(64, 520, a0, '', 'Wind ➜', '#ffd98a'); }
+  else if (t >= T.flutter + 0.5 && t < T.fall) { const a0 = seg(t, T.flutter + 0.5, T.flutter + 0.9) * (1 - seg(t, T.fall - 0.3, T.fall)); Lb(64, 520, a0, 'Seen from below', 'Wind ➜', '#ffd98a'); }
+  else if (t >= T.today + 0.6 && t < T.end) { const a0 = seg(t, T.today + 0.6, T.today + 1.1) * (1 - seg(t, T.end - 0.3, T.end)); Lb(64, 520, a0, '', 'The 1950 bridge', '#e8eeff'); }
+  if (O.labels._h !== hh) { O.labels._h = hh; O.labels.innerHTML = hh; }
+  let fl = 0; for (const [a, dd, kq] of [[T.hook, 0.3, 0.6], [T.hBreak - 0.6, 0.3, 0.5], [T.date, 0.45, 0.9], [T.wind, 0.3, 0.5], [T.twist, 0.3, 0.6], [T.flutter, 0.3, 0.5], [T.fall, 0.3, 0.6], [T.toll, 0.35, 0.6], [T.today, 0.5, 0.9]]) if (t >= a - 0.06 && t < a + dd) fl = Math.max(fl, t < a ? seg(t, a - 0.06, a) * kq : (1 - seg(t, a, a + dd)) * kq);
+  O.flash.style.background = `rgba(255,255,255,${fl})`; O.tint.style.background = 'none';
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { const S = frame(t); overlayFrame(t, S); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>
