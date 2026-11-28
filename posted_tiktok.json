@@ -264,6 +264,12 @@
    "kind": "spot",
    "due_at": "2026-11-30T12:00:00+11:00",
    "buffer_post_id": "6b0ae8b3b8ec87c6ced1dc3c"
+  },
+  {
+   "file": "sim-28-jupiter",
+   "kind": "sim",
+   "due_at": "2026-11-29T18:00:00+11:00",
+   "buffer_post_id": "6b0af0964ebef2b6d4e538dd"
   }
  ]
 }
