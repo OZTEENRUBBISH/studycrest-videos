@@ -252,6 +252,18 @@
    "kind": "sim",
    "due_at": "2026-11-29T00:00:00+11:00",
    "buffer_post_id": "6b09b4ba015034238d42c454"
+  },
+  {
+   "file": "sim-27-moonclose",
+   "kind": "sim",
+   "due_at": "2026-11-29T06:00:00+11:00",
+   "buffer_post_id": "6b0ae8b18e7dd71de7986c42"
+  },
+  {
+   "file": "studycrest-33-maths-averages",
+   "kind": "spot",
+   "due_at": "2026-11-30T12:00:00+11:00",
+   "buffer_post_id": "6b0ae8b3b8ec87c6ced1dc3c"
   }
  ]
 }
