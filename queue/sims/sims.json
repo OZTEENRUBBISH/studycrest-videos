@@ -368,6 +368,18 @@
     "https://www.asc-csa.gc.ca/eng/multimedia/search/image/7993",
     "https://www.esa.int/kids/en/learn/Life_in_Space/Space_Stations/The_International_Space_Station"
    ]
+  },
+  {
+   "file": "sim-28-jupiter.mp4",
+   "title": "What if you fell into Jupiter?",
+   "made": "2026-11-29",
+   "caption": "What if you fell into Jupiter? You'd never hit the ground, because there isn't one. In 1995 NASA dropped a probe in to find out: it sent data for about an hour, then went silent, still falling. 🪐\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #jupiter #space #studytok",
+   "science": "Weight and clouds: 'the force of gravity he or she would feel would be about 2.4 times the force of gravity on the surface of Earth' at the cloud tops, and 'The temperature in the clouds of Jupiter is about minus 145 degrees Celsius' (NASA, What Is Jupiter?): said as 'nearly two and a half times' and 'colder than minus a hundred and forty degrees'. No ground: 'The probe encountered no solid objects or surfaces during its entire 600-kilometer journey. This was as expected for a gas-giant planet' (JPL, 22 Jan 1996). Galileo probe, 7 December 1995, 337 kg: 'slammed into Jupiter's atmosphere at 106,000 mph (170,590 kilometers per hour)' (NASA Science), said as 170,000 km/h; 170,590 / 3.6 = 47.4 km/s (HUD 'about 47 km every second'). Deceleration: 'a maximum deceleration of 228 Gs' (NASA Science), 'up to 230 times' (JPL); HUD 'about 230 g' (the same NASA page's trivia box says 350; the two detailed accounts agree on about 230). Data: 'returned valuable data for 58 minutes' (NASA Science), '57-minute descent mission' (JPL), transmitter failed 61.4 minutes after entry: said as 'about an hour', HUD counts to 58 min. End: transmitter failed 'about 112 miles (180 kilometers) below its entry ceiling ... (22.7 atmospheres)' (NASA Science): said as 'twenty-three times Earth's air pressure' and 'about a hundred and eighty kilometres down'. Centre: Jupiter is 'approximately 143,000 kilometers wide at its equator' (NASA), radius about 71,500 km, so about 71,000 km remained; said as 'seventy thousand kilometres' (180 / 71,500 = 0.25% of the way). Deep inside: 'Deep under Jupiter's clouds is a huge ocean of liquid metallic hydrogen' (NASA). Sources disagree on wind speeds and none read gives the temperature at loss of signal or what became of the probe, so the film states no wind speed, no temperature at depth and no fate for the probe; 'darker, thicker and hotter' is qualitative (JPL: 'extreme temperatures and pressures' ended transmission). Labelled illustration: the fall itself, the probe's simplified invented shape, the cut-away ('layers not to scale'), the pressure read-out between its start and 22.7. Verified 29 Nov 2026 by reading the pages listed.",
+   "sources": [
+    "https://science.nasa.gov/mission/galileo-jupiter-atmospheric-probe",
+    "https://www.jpl.nasa.gov/news/galileo-probe-suggests-planetary-science-reappraisal/",
+    "https://www.nasa.gov/solar-system/what-is-jupiter-grades-5-8/"
+   ]
   }
  ]
 }

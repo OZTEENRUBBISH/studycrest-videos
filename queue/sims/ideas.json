@@ -251,8 +251,9 @@
    "setting": "Above Jupiter's cloud tops, then down through the layers",
    "hook": "What if you fell into Jupiter?",
    "the surprising true point": "There is no ground to hit: you keep sinking while pressure and heat rise, as the Galileo probe showed before it went silent",
-   "status": "making",
-   "claimed_at": "2026-11-29T01:12:00+11:00"
+   "status": "made",
+   "claimed_at": "2026-11-29T01:12:00+11:00",
+   "file": "sim-28-jupiter"
   },
   {
    "title": "Tacoma Narrows Bridge, minute by minute",

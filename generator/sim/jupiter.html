@@ -1,0 +1,145 @@
+<!doctype html><html><head><meta charset="utf-8"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script></head><body><div id="stage"></div>
+<script type="module">
+// What if you fell into Jupiter?  Three worlds: the planet from space (and a cut-away of its inside, not to scale), the fall through the
+// cloud layers, and NASA's Galileo probe of 7 December 1995 (invented simplified shape): fiery entry, parachute, an hour of data, silence.
+import { THREE, clamp, lerp, seg, smooth, easeOut, easeIn, easeIO, rng, mat, box, shadowAll, person, skyDome, stars, overlay, capAt, proj, makePost } from './common.js';
+const W = 1080, H = 1920, DUR = 50.4;
+const O = overlay(); { const st = document.createElement('style'); st.textContent = '#hud{background:linear-gradient(90deg,rgba(8,12,30,.62),rgba(8,12,30,.35) 60%,rgba(8,12,30,0));padding:14px 90px 16px 22px;border-radius:0 20px 20px 0}#chip span{font-size:28px}'; document.head.appendChild(st); }
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = false; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+O.stage.insertBefore(renderer.domElement, O.stage.firstChild);
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+
+// ---------- Jupiter's bands painted on a canvas
+function bandsTex() { const c = document.createElement('canvas'); c.width = 2048; c.height = 1024; const x = c.getContext('2d'), Rb = rng(1610);
+  const pal = ['#8a6a55', '#b98a66', '#e8d6b8', '#c9905e', '#f1e3c8', '#a8643c', '#ecd9b6', '#d9b98c', '#b0683e', '#f0e2c6', '#c79a6c', '#e6d2ae', '#a97c5c', '#8d7566'];
+  const col = (f) => { const i = Math.floor(f), a = new THREE.Color(pal[clamp(i, 0, pal.length - 1)]), b = new THREE.Color(pal[clamp(i + 1, 0, pal.length - 1)]); return a.lerp(b, smooth(f - i)); };
+  for (let y = 0; y < 1024; y += 2) { const f = y / 1024 * (pal.length - 1) + Math.sin(y * 0.09) * 0.12; x.fillStyle = '#' + col(f).getHexString(); x.fillRect(0, y, 2048, 2); }
+  for (let i = 0; i < 1500; i++) { const y = Rb() * 1024, f = y / 1024 * (pal.length - 1), cc = col(f + (Rb() - 0.5) * 1.6), w = 60 + Rb() * 420; x.fillStyle = `rgba(${cc.r * 255 | 0},${cc.g * 255 | 0},${cc.b * 255 | 0},${0.18 + Rb() * 0.3})`; x.beginPath(); x.ellipse(Rb() * 2048, y, w, 3 + Rb() * 9, (Rb() - 0.5) * 0.06, 0, 6.283); x.fill(); }
+  for (const [gx, gy, rx, ry, cl] of [[1180, 660, 120, 66, '#b9482c'], [1180, 660, 92, 48, '#cf6a45'], [1180, 660, 50, 24, '#dc8a66'], [620, 330, 34, 18, '#f6ecd6'], [1640, 740, 30, 15, '#f6ecd6'], [300, 700, 26, 13, '#f3e6cc']]) { x.fillStyle = cl; x.beginPath(); x.ellipse(gx, gy, rx, ry, 0, 0, 6.283); x.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.wrapS = THREE.RepeatWrapping; return t; }
+const BANDS = bandsTex();
+// ---------- the inside, as a flat picture for the cut faces (layers not to scale)
+function layersTex() { const c = document.createElement('canvas'); c.width = 1024; c.height = 1024; const x = c.getContext('2d'), g = x.createRadialGradient(512, 512, 0, 512, 512, 512);
+  g.addColorStop(0, '#fff3c4'); g.addColorStop(0.1, '#f5b25c'); g.addColorStop(0.2, '#8d5a44'); g.addColorStop(0.24, '#56618c'); g.addColorStop(0.5, '#6f7fae'); g.addColorStop(0.76, '#8e9cc4'); g.addColorStop(0.8, '#a9774c'); g.addColorStop(0.9, '#c9965e'); g.addColorStop(0.965, '#e2c08e'); g.addColorStop(0.975, '#f3e6cc'); g.addColorStop(1, '#f7efdc');
+  x.fillStyle = g; x.fillRect(0, 0, 1024, 1024); const Rl = rng(4); for (let i = 0; i < 900; i++) { const a = Rl() * 6.283, r = (0.25 + Rl() * 0.52) * 512; x.fillStyle = `rgba(220,230,255,${Rl() * 0.12})`; x.beginPath(); x.arc(512 + Math.cos(a) * r, 512 + Math.sin(a) * r, 2 + Rl() * 7, 0, 6.283); x.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; }
+
+// =====================================================  WORLD P: the planet from space (radius 100)
+const sceneP = new THREE.Scene(); const camP = new THREE.PerspectiveCamera(40, W / H, 0.1, 6000);
+sceneP.add(skyDome(0x02030a, 0x05061a, 0x02030a)); sceneP.add(stars(rng(3), 2600, 2500));
+sceneP.add(new THREE.AmbientLight(0xb0a8c8, 0.55)); const sunP = new THREE.DirectionalLight(0xfff2dc, 2.6); sunP.position.set(120, 60, 200); sceneP.add(sunP);
+const jup = new THREE.Group(); sceneP.add(jup);
+const jFull = new THREE.Mesh(new THREE.SphereGeometry(100, 96, 64), new THREE.MeshLambertMaterial({ map: BANDS })); jFull.scale.y = 0.94; jup.add(jFull);
+const cut = new THREE.Group(); cut.rotation.y = Math.PI; jup.add(cut);
+{ const sh = new THREE.Mesh(new THREE.SphereGeometry(100, 96, 64, 0, Math.PI * 1.5), new THREE.MeshLambertMaterial({ map: BANDS })); cut.add(sh);
+  const fm = new THREE.MeshBasicMaterial({ map: layersTex(), side: THREE.DoubleSide }); fm.color.setScalar(0.92); const fB = new THREE.Mesh(new THREE.CircleGeometry(100, 64, Math.PI / 2, Math.PI), fm); cut.add(fB); const fA = new THREE.Mesh(new THREE.CircleGeometry(100, 64, Math.PI / 2, Math.PI), fm); fA.rotation.y = -Math.PI / 2; cut.add(fA); cut.scale.y = 0.94; }
+const glowM = new THREE.Mesh(new THREE.TorusGeometry(50, 26, 8, 64, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x9fb4ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); sceneP.add(glowM);
+const youP = person(rng(2), 'float', { shirt: 0xf2c94c, pants: 0x1e3aa8, shorts: false, skin: 0xe0ac7e, hair: 0x2b1b12, sleeve: 0xf2c94c }); sceneP.add(youP);
+const mark = new THREE.Mesh(new THREE.SphereGeometry(1.0, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffd64a })); mark.material.color.setRGB(3, 2.4, 0.6); sceneP.add(mark);
+const postP = makePost(renderer, sceneP, camP, { bloom: 0.28, bloomRadius: 0.6, bloomThreshold: 0.9, sat: 1.16, warm: 0.02 });
+
+// =====================================================  WORLD F: inside the atmosphere. You (or the probe) stay near the origin; the clouds move.
+const sceneF = new THREE.Scene(); sceneF.fog = new THREE.Fog(0xd9b98c, 60, 620); const camF = new THREE.PerspectiveCamera(50, W / H, 0.1, 3000);
+const skyF = skyDome(0x2a4a86, 0xe6cfa6, 0xb98a66); sceneF.add(skyF); const starsF = stars(rng(6), 1200, 850); sceneF.add(starsF);
+const hemiF = new THREE.HemisphereLight(0xfff0d8, 0x8a5a3a, 1.7); sceneF.add(hemiF); const sunF = new THREE.DirectionalLight(0xfff0d0, 2.2); sunF.position.set(60, 140, 80); sceneF.add(sunF);
+const CMF = [0xf3e6cc, 0xe8cfa2, 0xd9a878, 0xc98a5a, 0xf7efdc, 0xb9744a].map(c => new THREE.MeshLambertMaterial({ color: c, flatShading: true, emissive: c, emissiveIntensity: 0.12 }));
+function puff(Rc, sc) { const g = new THREE.Group(), n = 4 + Math.floor(Rc() * 4), m = CMF[Math.floor(Rc() * CMF.length)]; for (let k = 0; k < n; k++) { const s = (9 + Rc() * 13) * sc, b = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 1), m); b.position.set((k - n / 2) * 12 * sc + Rc() * 7, Rc() * 8 - 4, Rc() * 14 - 7); b.scale.y = 0.5; g.add(b); } return g; }
+const deck = new THREE.Group(); sceneF.add(deck); { const Rc = rng(5); for (let i = 0; i < 150; i++) { const p = puff(Rc, 1.5 + Rc()), a = Rc() * 6.283, r = Math.sqrt(Rc()) * 620; p.position.set(Math.cos(a) * r, (Rc() - 0.5) * 16, Math.sin(a) * r - 120); p.rotation.y = Rc() * 3; deck.add(p); } }
+const col = []; { const Rc = rng(9); for (let i = 0; i < 70; i++) { const p = puff(Rc, 0.8 + Rc() * 1.2), a = Rc() * 6.283, r = 34 + Rc() * 250; p.userData = { x: Math.cos(a) * r, z: Math.sin(a) * r - 40, y0: Rc() * 520, k: 0.8 + Rc() * 0.4 }; p.rotation.y = Rc() * 3; sceneF.add(p); col.push(p); } }
+const SN = 260, stGeo = new THREE.BufferGeometry(), stPos = new Float32Array(SN * 6), SD = []; { const Rs = rng(13); for (let i = 0; i < SN; i++) SD.push([(Rs() - 0.5) * 70, Rs() * 90, (Rs() - 0.5) * 60, 0.7 + Rs() * 0.6]); stGeo.setAttribute('position', new THREE.BufferAttribute(stPos, 3)); }
+const streaks = new THREE.LineSegments(stGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthWrite: false })); streaks.frustumCulled = false; sceneF.add(streaks);
+const you = person(rng(2), 'float', { shirt: 0xf2c94c, pants: 0x1e3aa8, shorts: false, skin: 0xe0ac7e, hair: 0x2b1b12, sleeve: 0xf2c94c }); you.scale.setScalar(2.2); sceneF.add(you);
+// the probe: blunt heat shield + descent module + parachute (simplified, invented detailing)
+const probe = new THREE.Group(); sceneF.add(probe);
+const GOLD = new THREE.MeshStandardMaterial({ color: 0xd8a84a, metalness: 0.6, roughness: 0.4, flatShading: true }), CHAR = new THREE.MeshStandardMaterial({ color: 0x9a7658, roughness: 0.9, flatShading: true, emissive: 0xff5a1a, emissiveIntensity: 0 });
+const shield = new THREE.Group(); { const c = new THREE.Mesh(new THREE.ConeGeometry(3.0, 1.9, 20), CHAR); c.rotation.x = Math.PI; c.position.y = -0.95; shield.add(c); const b = new THREE.Mesh(new THREE.SphereGeometry(2.6, 16, 8, 0, 6.283, 0, 1.2), mat(0xcfc7b8)); b.scale.y = 0.6; b.position.y = -0.3; shield.add(b); probe.add(shield); }
+const modl = new THREE.Group(); { const b = new THREE.Mesh(new THREE.SphereGeometry(1.7, 14, 10), GOLD); b.scale.y = 0.72; modl.add(b); const r = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.75, 0.3, 14), mat(0x8a8f99)); modl.add(r); const an = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.2, 0.7, 8), mat(0xe8e8e8)); an.position.y = 1.4; modl.add(an); probe.add(modl); }
+const chute = new THREE.Group(); { const can = new THREE.Mesh(new THREE.SphereGeometry(5.2, 12, 6, 0, 6.283, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xf2f2ee, flatShading: true, side: THREE.DoubleSide })); can.scale.y = 0.7; can.position.y = 13; chute.add(can); for (let i = 0; i < 12; i += 2) { const a = i / 12 * 6.283, st = new THREE.Mesh(new THREE.SphereGeometry(5.25, 12, 6, a, 6.283 / 12, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xe2574c, flatShading: true, side: THREE.DoubleSide })); st.scale.y = 0.7; st.position.y = 13; chute.add(st); }
+  const lm = new THREE.LineBasicMaterial({ color: 0xeeeeee }), pts = []; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; pts.push(V(0, 1.2, 0), V(Math.cos(a) * 5.2, 13, Math.sin(a) * 5.2)); } chute.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), lm)); probe.add(chute); }
+const fire = new THREE.Group(); { const m1 = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }); m1.color.setRGB(3.4, 2.4, 1.2); const m2 = new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  const head = new THREE.Mesh(new THREE.SphereGeometry(3.6, 16, 10), m1); head.scale.y = 0.55; head.position.y = -1.6; fire.add(head); const tr = new THREE.Mesh(new THREE.ConeGeometry(4.4, 46, 14, 1, true), m2); tr.position.y = 22; fire.add(tr); const tr2 = new THREE.Mesh(new THREE.ConeGeometry(2.4, 30, 12, 1, true), m1.clone()); tr2.material.opacity = 0.5; tr2.position.y = 14; fire.add(tr2); fire.userData = { m1, m2, m3: tr2.material }; probe.add(fire); }
+const rings = []; for (let i = 0; i < 5; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(1, 0.05, 6, 40), new THREE.MeshBasicMaterial({ color: 0x9cc0ff, transparent: true, fog: false })); r.rotation.x = Math.PI / 2; sceneF.add(r); rings.push(r); }
+const postF = makePost(renderer, sceneF, camF, { bloom: 0.3, bloomRadius: 0.7, bloomThreshold: 0.9, sat: 1.12, warm: 0.03 });
+
+// =====================================================  TIMELINE
+const T = { none: 2.4, fall: 4.8, thru: 12.1, probe: 16.8, hit: 20.4, chute: 25.6, lost: 30.4, depth: 31.5, metal: 38.0, fin: 42.0, end: 46.9 };
+const CAPS = /*CAPS*/[[2.5, 3.53, "You'd never<br>hit the ground."], [3.55, 4.32, "There <em>isn't one</em>."], [4.9, 5.65, "You weigh nearly"], [5.67, 6.78, "<em>two and a half times</em>"], [6.8, 7.8, "what you do on Earth."], [7.82, 8.78, "The clouds below"], [8.8, 11.7, "are colder than<br><em>minus 140 degrees</em>."], [12.3, 13.2, "You fall <em>through</em> them."], [13.22, 13.92, "No floor."], [13.94, 14.79, "Just more sky,"], [14.81, 16.43, "getting <em>darker</em>,<br>thicker and hotter."], [17.0, 18.35, "We know,<br>because we <em>tried</em>."], [18.37, 20.02, "In <em>1995</em>,"], [20.04, 21.39, "NASA's Galileo probe"], [21.41, 22.35, "hit this air at"], [22.37, 25.18, "<em>170,000</em><br>kilometres an hour."], [25.8, 27.6, "It sent data for<br>about <em>an hour</em>."], [27.62, 29.9, "At 23 times<br>Earth's air pressure,"], [29.92, 31.07, "the signal <em>stopped</em>."], [31.7, 32.71, "It had gone about"], [32.73, 34.71, "<em>180 kilometres</em> down."], [34.73, 35.82, "The centre was still"], [35.84, 37.84, "<em>70,000 kilometres</em><br>away."], [38.2, 39.03, "Far below that,"], [39.05, 40.57, "the pressure turns hydrogen"], [40.59, 41.63, "into <em>liquid metal</em>."], [42.2, 44.28, "Jupiter has no surface<br>to land on."], [44.3, 45.45, "You don't crash into it."], [45.47, 46.56, "You <em>become part</em> of it."]]/*END*/;
+const inF = (t) => t >= T.fall && t < T.depth;
+function shot(cam, p, l, fov) { cam.position.copy(p); cam.fov = fov; cam.up.set(0, 1, 0); cam.lookAt(l); cam.updateProjectionMatrix(); }
+function path(cam, keys, t) { let i = 0; while (i < keys.length - 2 && t > keys[i + 1][0]) i++; const a = keys[i], b = keys[i + 1], u = easeIO(seg(t, a[0], b[0])); shot(cam, a[1].clone().lerp(b[1], u), a[2].clone().lerp(b[2], u), lerp(a[3], b[3], u)); }
+const C3 = (a, b, k) => new THREE.Color(a).lerp(new THREE.Color(b), clamp(k));
+function setAir(top, mid, bot, fogC, fogFar, hi, si, starO) { skyF.material.uniforms.top.value.copy(top); skyF.material.uniforms.mid.value.copy(mid); skyF.material.uniforms.bot.value.copy(bot); sceneF.fog.color.copy(fogC); sceneF.fog.far = fogFar; hemiF.intensity = hi; sunF.intensity = si; starsF.material.opacity = starO; }
+function tumble(p, t) { p.userData.pose(t * 3.2, 'float'); p.rotation.set(1.25 + Math.sin(t * 0.9) * 0.18, t * 0.35, Math.sin(t * 0.7) * 0.2); }
+function framePlanet(t) {
+  const cutaway = t >= T.none && t < T.fin; jFull.visible = !cutaway; cut.visible = cutaway; jup.rotation.y = cutaway ? -0.62 + t * 0.012 : 2.2 + t * 0.03; jup.rotation.z = 0.05;
+  youP.visible = !cutaway; mark.visible = t >= T.depth + 0.6 && t < T.metal; glowM.material.opacity = 0;
+  if (t < T.none) { tumble(youP, t); youP.scale.setScalar(2.4); youP.position.set(2 + t * 0.4, 121 - t * 1.6, 96); path(camP, [[0, V(10, 150, 150), V(0, 96, 40), 46], [T.none, V(7, 144, 146), V(0, 94, 40), 44]], t); }
+  else if (t < T.fall) path(camP, [[T.none, V(210, 95, 300), V(-6, -8, 0), 40], [T.fall, V(190, 85, 290), V(-6, -8, 0), 39]], t);
+  else if (t < T.metal) { path(camP, [[T.depth, V(200, 90, 300), V(-6, -8, 0), 40], [T.metal, V(184, 80, 286), V(-6, -6, 0), 39]], t); const w = cut.localToWorld(V(-99.4, 0, 0)); mark.position.copy(w); mark.scale.setScalar(2.2 + Math.sin(t * 6) * 0.4); }
+  else if (t < T.fin) { path(camP, [[T.metal, V(184, 80, 286), V(-6, -6, 0), 39], [T.fin, V(150, 60, 240), V(10, -6, 20), 34]], t); }
+  else { tumble(youP, t); const k = seg(t, T.fin, T.end); youP.scale.setScalar(lerp(2.2, 0.2, easeOut(k))); youP.position.set(lerp(30, 12, k), lerp(70, 30, k), lerp(240, 96, easeOut(k))); path(camP, [[T.fin, V(40, 80, 330), V(0, 0, 0), 40], [DUR + 1, V(60, 96, 372), V(0, 0, 0), 40]], t); }
+  postP.render();
+}
+function frameFall(t) {
+  const isProbe = t >= T.probe; you.visible = !isProbe; probe.visible = isProbe; let vy = 60, deckY = -900, dep = 0;
+  if (t < T.thru) { const k = seg(t, T.fall, T.thru); deckY = lerp(-230, -26, k * k * 0.5 + k * 0.5); vy = 60; setAir(C3(0x1c3a7a, 0x3a5a98, k), C3(0xe9d6b0, 0xe6cfa6, k), new THREE.Color(0xc9965e), new THREE.Color(0xdcc098), 900, 1.8, 2.3, 0.35 * (1 - k)); }
+  else if (!isProbe) { const k = seg(t, T.thru, T.probe); dep = k; deckY = -26 + (t - T.thru) * 130; vy = 110; setAir(C3(0x3a5a98, 0x1a0f0a, k), C3(0xe6cfa6, 0x3a2416, k), C3(0xc9965e, 0x120a06, k), C3(0xdcc098, 0x24160e, k), lerp(700, 300, k), lerp(1.8, 0.75, k), lerp(2.3, 0.4, k), 0); }
+  else if (t < T.chute) { const k = seg(t, T.hit, T.chute); deckY = lerp(-420, -150, smooth(seg(t, T.probe, T.chute))); vy = t < T.hit ? 30 : 320; setAir(C3(0x04060f, 0x16264e, k), C3(0x2a3a66, 0xc9b08a, k), new THREE.Color(0xb98a66), C3(0x8a7a78, 0xd0b48c, k), 1500, 2.0, 2.6, 0.9 * (1 - k * 0.8)); }
+  else { const k = seg(t, T.chute, T.depth); dep = k; deckY = -900; vy = 26; setAir(C3(0x2a4a86, 0x0c0705, k), C3(0xe2c9a0, 0x241610, k), C3(0xc9965e, 0x0c0705, k), C3(0xd8bc92, 0x1a100a, k), lerp(800, 260, k), lerp(1.7, 0.6, k), lerp(2.2, 0.3, k), 0); }
+  deck.position.y = deckY; deck.visible = deckY < 400;
+  const cv = t >= T.thru && !(isProbe && t < T.chute); for (const p of col) { const u = p.userData; p.visible = cv; if (cv) { const y = ((u.y0 + (t - (isProbe ? T.chute : T.thru)) * vy * u.k) % 520 + 520) % 520 - 300; p.position.set(u.x, y, u.z); } }
+  streaks.visible = t < T.chute || true; streaks.material.opacity = isProbe && t < T.hit ? 0 : (t >= T.chute ? 0.12 : 0.3); const sv = t >= T.chute ? 30 : 150; for (let i = 0; i < SN; i++) { const D = SD[i], y = ((D[1] + t * sv * D[3]) % 90 + 90) % 90 - 45, L = t >= T.chute ? 1.2 : 5; stPos[i * 6] = D[0]; stPos[i * 6 + 1] = y; stPos[i * 6 + 2] = D[2]; stPos[i * 6 + 3] = D[0]; stPos[i * 6 + 4] = y + L; stPos[i * 6 + 5] = D[2]; } stGeo.attributes.position.needsUpdate = true;
+  if (!isProbe) { tumble(you, t); you.position.set(Math.sin(t * 0.8) * 0.6, Math.sin(t * 1.7) * 0.4, 0); }
+  else if (t < T.chute) { const q = seg(t, T.hit, T.hit + 0.5), h = t < T.hit ? 0 : Math.min(q, 1 - 0.75 * smooth(seg(t, T.chute - 1.6, T.chute))); shield.visible = true; chute.visible = false; fire.visible = h > 0.01; fire.userData.m1.opacity = h; fire.userData.m2.opacity = 0.45 * h; fire.userData.m3.opacity = 0.5 * h; fire.scale.set(1 + Math.sin(t * 50) * 0.05, 0.6 + 0.4 * h + Math.sin(t * 37) * 0.04, 1 + Math.cos(t * 43) * 0.05); CHAR.emissiveIntensity = 2.2 * h;
+    probe.rotation.set(0, t * 0.4, -0.5); probe.position.set(Math.sin(t * 40) * 0.12 * h, Math.cos(t * 33) * 0.12 * h, 0); }
+  else { shield.visible = false; chute.visible = true; fire.visible = false; CHAR.emissiveIntensity = 0; probe.rotation.set(Math.sin(t * 1.1) * 0.07, t * 0.3, Math.sin(t * 0.8) * 0.08); probe.position.set(Math.sin(t * 0.6) * 0.8, 0, 0); }
+  for (let i = 0; i < 5; i++) { const r = rings[i], on = t >= T.chute + 0.5 && t < T.lost, u = ((t * 0.7 + i / 5) % 1); r.visible = on && (t - u / 0.7) < T.lost; r.position.set(probe.position.x, 16 + u * 60, 0); r.scale.setScalar(2 + u * 16); r.material.opacity = 0.75 * (1 - u) * Math.min(1, seg(t, T.chute + 0.5, T.chute + 1)); }
+  if (t < T.thru) path(camF, [[T.fall, V(14, 16, 24), V(0, -2.5, 0), 54], [T.thru, V(10, 22, 20), V(0, -2, 0), 54]], t);
+  else if (!isProbe) path(camF, [[T.thru, V(12, 10, 22), V(0, -1, 0), 52], [T.probe, V(16, -6, 24), V(0, 2, 0), 52]], t);
+  else if (t < T.chute) path(camF, [[T.probe, V(9, 5, 15), V(0, 0.3, 0), 46], [T.hit - 0.5, V(11, 3, 19), V(0, 0.6, 0), 46], [T.hit + 0.5, V(6, -10, 44), V(0, 3, 0), 48], [T.chute, V(10, -8, 40), V(0, 5, 0), 48]], t);
+  else path(camF, [[T.chute, V(16, 0, 46), V(0, 8, 0), 50], [T.depth, V(12, 10, 52), V(0, 7, 0), 50]], t);
+  const shk = t >= T.hit && t < T.chute - 1 ? 0.25 : 0; camF.position.x += Math.sin(t * 71) * shk; camF.position.y += Math.cos(t * 63) * shk;
+  skyF.position.copy(camF.position); starsF.position.copy(camF.position); postF.render();
+}
+function frame(t) { if (inF(t)) frameFall(t); else framePlanet(t); }
+function overlayFrame(t) {
+  const F = inF(t), cam = F ? camF : camP;
+  const ta = t < T.none ? Math.min(seg(t, 0.1, 0.4), 1 - seg(t, T.none - 0.3, T.none)) : 0; O.set(O.title, 'What if you<br>fell into<br><em>Jupiter</em>?'); O.show(O.title, ta); O.title.style.top = '400px'; O.title.style.transform = `translateY(${(1 - easeOut(seg(t, 0.1, 0.8))) * 26}px)`;
+  const [ch, ca] = capAt(CAPS, t); if (ch) O.set(O.cap, ch); O.show(O.cap, ca); O.cap.style.top = '1250px';
+  const fade = (a, b) => Math.min(seg(t, a, a + 0.35), 1 - seg(t, b - 0.3, b));
+  let chip = '', cha = 0; const C = (a, b, s) => { if (t >= a && t < b) { chip = s; cha = fade(a, b); } };
+  C(0.5, T.none, 'Not to scale'); C(T.none + 0.2, T.fall, 'Cut-away · layers not to scale'); C(T.fall + 0.3, T.thru, 'Illustration'); C(T.thru + 0.2, T.probe, 'Illustration'); C(T.probe + 0.3, T.chute, '7 December 1995'); C(T.chute + 0.2, T.depth, 'Galileo probe · re-creation'); C(T.depth + 0.2, T.fin, 'Cut-away · layers not to scale'); C(T.fin + 0.3, T.end, 'Not to scale');
+  O.set(O.chip, chip); O.show(O.chip, cha);
+  let ha = 1;
+  if (t < T.none) ha = 0;
+  else if (t < T.fall) { ha = seg(t, T.none, T.none + 0.4); O.hudSet('Solid ground', 'None', 'A planet of gas and liquid\nMostly hydrogen and helium'); }
+  else if (t < T.thru) { if (t < 8.4) O.hudSet('Your weight', '× ' + lerp(1, 2.4, easeOut(seg(t, T.fall + 0.5, T.fall + 2.4))).toFixed(1), 'At the cloud tops\nCompared with Earth'); else O.hudSet('Cloud temperature', '−145 °C', 'About, in the clouds'); }
+  else if (t < T.probe) O.hudSet('Below you', 'More sky', 'No floor\nDarker, thicker, hotter');
+  else if (t < T.chute) { if (t < T.hit) O.hudSet('NASA Galileo probe', '1995', 'A 337 kg probe\nDropped into Jupiter'); else if (t < T.hit + 3.2) O.hudSet('Entry speed', '170,000 km/h', 'About 47 km every second'); else O.hudSet('Braking force', '230 g', 'About, at its peak'); }
+  else if (t < T.depth) { const k = seg(t, T.chute + 0.4, T.lost), m = Math.round(k * 58); if (t < T.lost) O.hudSet('Sending data', m + ' min', 'Pressure ' + lerp(0.4, 22.7, k * k).toFixed(1) + ' × Earth air\nStill falling'); else O.hudSet('After about an hour', 'Silence', 'At about 23 × Earth air\nNo ground was ever reached'); }
+  else if (t < T.metal) { if (t < 34.6) O.hudSet('The probe went down', '180 km', 'About, below where it entered'); else O.hudSet('Still to the centre', '70,000 km', 'About\nIt barely scratched the top'); }
+  else if (t < T.fin) O.hudSet('Deep inside', 'Liquid metal', 'Hydrogen, crushed by pressure');
+  else if (t < T.end) O.hudSet('Surface to land on', 'None', 'You become part of it');
+  else ha = 0;
+  O.show(O.hud, ha); O.hud.style.top = '1010px';
+  let lab = ''; const L = (x, y, a, html, al) => `<div class="lab" style="left:${Math.round(x)}px;top:${Math.round(y)}px;opacity:${clamp(a).toFixed(3)};${al || ''}">${html}</div>`;
+  if (t >= 0.7 && t < T.none) { const p = proj(youP.position.clone().add(V(0, 3.4, 0)), cam); lab += L(p[0] - 30, p[1] - 44, fade(0.7, T.none), 'You'); }
+  if (F && t >= T.fall + 0.4 && t < T.fall + 3.4) { const p = proj(you.position.clone().add(V(0, 3.2, 0)), cam); lab += L(p[0] - 30, p[1] - 50, fade(T.fall + 0.4, T.fall + 3.4), 'You'); }
+  if (F && t >= T.fall + 3.8 && t < T.thru) lab += L(90, 520, fade(T.fall + 3.8, T.thru), 'The cloud tops<b>coming up fast</b>');
+  if (F && t >= T.thru + 0.6 && t < T.probe) lab += L(90, 520, fade(T.thru + 0.6, T.probe), 'Through the clouds<b>and still falling</b>');
+  if (F && t >= T.hit + 0.5 && t < T.chute) lab += L(90, 520, fade(T.hit + 0.5, T.chute), 'Heat shield<b>glowing</b>');
+  if (F && t >= T.chute + 0.6 && t < T.lost) lab += L(90, 520, fade(T.chute + 0.6, T.lost), 'Data to the<b>orbiter above</b>');
+  if (F && t >= T.lost + 0.1 && t < T.depth) lab += L(90, 520, fade(T.lost + 0.1, T.depth + 0.3), '<span style="color:#ffb39a">Signal<b>lost</b></span>');
+  if (!F && t >= T.none + 0.5 && t < T.fall) { const a = fade(T.none + 0.5, T.fall); lab += L(90, 470, a, 'No surface<b>anywhere inside</b>'); }
+  if (!F && t >= T.depth + 0.8 && t < T.metal) { const a = fade(T.depth + 0.8, T.metal), p = proj(mark.position.clone(), cam); lab += L(clamp(p[0] - 250, 90, 700), p[1] - 110, a, '<span style="color:#ffd64a">The probe<br>got this far</span>'); }
+  if (!F && t >= T.metal + 0.4 && t < T.fin) { const a = fade(T.metal + 0.4, T.fin); lab += L(90, 470, a, '<span style="color:#b9c8ff">Liquid metallic<b>hydrogen</b></span>'); }
+  if (O.labels._h !== lab) { O.labels._h = lab; O.labels.innerHTML = lab; }
+  let fl = 0; for (const [a, d, k] of [[T.none, 0.3, 0.5], [T.fall, 0.3, 0.6], [T.thru, 0.35, 0.7], [T.probe, 0.3, 0.6], [T.hit, 0.3, 0.85], [T.chute, 0.3, 0.6], [T.depth, 0.3, 0.5], [T.fin, 0.35, 0.6]]) if (t >= a - 0.05 && t < a + d) fl = Math.max(fl, t < a ? seg(t, a - 0.05, a) * k : (1 - seg(t, a, a + d)) * k);
+  O.flash.style.background = `rgba(255,244,225,${fl})`;
+  O.show(O.end, seg(t, T.end, T.end + 0.4)); O.show(O.badge, 1 - seg(t, T.end, T.end + 0.3));
+}
+window.DUR = DUR;
+window.renderAt = (t) => { frame(t); overlayFrame(t); return true; };
+await document.fonts.ready; window.renderAt(0); window.READY = true;
+</script></body></html>
