@@ -161,6 +161,15 @@ TIPS = {
      T("🙋", "Tell your teacher", "Say you're behind and ask what to do first.", "Three. Tell your teacher you're behind, and ask what to do first."),
      T("✅", "Catch up by doing questions", "Do them in StudyCrest. It checks every line as you write.", "Four. Catch up by doing questions, in StudyCrest. It checks every line as you write.", SC_TAG),
      T("➕", "One missed topic a day", "Add it to your normal work. Don't try to fix it all in one weekend.", "Five. One missed topic a day. Don't try to fix it all in one weekend.")]),
+ "multiple-choice": dict(title="5 ways to tackle", accent="multiple choice tests", emo="📝", sub="Small habits for the answer sheet.", tag="EXAM TIPS",
+    intro_say="Five ways to tackle multiple choice tests.", hashtags="#multiplechoice #examtips #testtips",
+    hook="5 ways to tackle multiple choice tests. Save this before your next quiz. 📝",
+    tips=[
+     T("🙈", "Cover the options first", "Work out your own answer, then look for it in the list.", "One. Cover the options first. Work out your own answer, then look for it."),
+     T("❌", "Cross out the wrong ones", "With fewer options left, the right one is easier to see.", "Two. Cross out the ones that are clearly wrong."),
+     T("🔁", "Practise the topic beforehand", "StudyCrest's Practice Questions writes a fresh question from one you've already done.", "Three. Practise first. StudyCrest's Practice Questions writes new ones.", SC_TAG),
+     T("🔎", "Circle words like \"not\"", "\"Not\", \"except\" and \"always\" change the whole question.", "Four. Circle words like not, except and always. They change the whole question."),
+     T("✏️", "Answer every question", "If wrong answers don't lose marks, a best guess beats a blank.", "Five. Answer every question. If wrong answers don't lose marks, guess.")]),
  # ── StudyCrest Business (@studycrestbusiness): keys start with "biz-" ──
  "biz-study-accounting": dict(title="5 ways to study", accent="accounting properly", emo="🧮", sub="Reading the textbook isn't one of them.", tag="ACCOUNTING",
     intro_say="Five ways to study accounting properly.", hashtags="#accountingstudent #accounting #businessstudent",
