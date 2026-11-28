@@ -84,7 +84,12 @@ SPOTS = {
  "nursing-dose": dict(tag="NURSING · PAEDIATRIC DOSES", q="An 18 kg child is prescribed paracetamol at 15 mg/kg. The stock is 120 mg in 5 mL. Find the volume to give.",
     lines=["dose = 15 × 18 = 270 mg", "volume = 270 ÷ 120", "= 2.25 mL"], wrong=1,
     hint="Hint: 120 mg is in how many mL of the stock?", fix="volume = 270 ÷ 120 × 5", final="= 11.25 mL",
-    say_flag="It's line two! The stock is per five mils, not per one!")
+    say_flag="It's line two! The stock is per five mils, not per one!"),
+ "maths-averages": dict(tag="MATHS · AVERAGES", q="You scored 72, 85 and 91 in three tests. What do you need in the fourth test to average 85?",
+    lines=["so far: 72 + 85 + 91 = 248", "needed: 85 × 3 = 255", "fourth test = 255 − 248 = 7"], wrong=1,
+    hint="Hint: how many tests are in the average?", fix="needed: 85 × 4 = 340", final="fourth test = 340 − 248 = 92",
+    say_flag="It's line two! The average is over four tests, not three!",
+    intro=Q3("Easy question,", "and the marks", "still slip away?"), intro_say="Easy question, and the marks still slip away?")
 }
 # timeline (seconds)
 T_WRITE = [0.4, 1.4, 2.4]; T_COUNT = (3.4, 5.6); T_CHECK = [5.8, 6.2, 6.6]; T_HINT = 6.9; T_FIX = 8.3; T_FINAL = 9.3
