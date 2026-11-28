@@ -354,6 +354,20 @@
     "https://www.faa.gov/lessons_learned/transport_airplane/accidents/N709PA",
     "https://www.smithsonianmag.com/air-space-magazine/how-things-work-lightning-protection-161993347/"
    ]
+  },
+  {
+   "file": "sim-27-moonclose.mp4",
+   "title": "What if the Moon orbited as close as the space station?",
+   "made": "2026-11-29",
+   "caption": "What if the Moon orbited as close as the space station? It would cover over half the sky, and it couldn't stay a moon: that close, Earth's pull would stretch it apart into a ring. 🌕\n\nFollow for a new simulation every day.\n\n#whatif #simulation #science #physics #moon #space #studytok",
+   "science": "Set-up: the Moon's near surface 400 km up, the space station's height ('Orbits Earth at an altitude of 400 km', Canadian Space Agency; an older ESA page says 320 km, the station has since been raised), so its centre is 6,371 + 400 + 1,737 = 8,508 km from Earth's centre. Arithmetic run in Python with GM(Earth) 3.986e14, GM(Moon) 4.903e12, Moon radius 1,737.4 km: orbital period 130 minutes ('about two hours'; HUD 2 h 10 min), speed 6.84 km/s ('about 6.8 km every second'); apparent width 2*asin(1737.4/2137.4) = 108.8 degrees ('over half the sky', HUD 109 degrees of the 180 from horizon to horizon); directly beneath it the Moon's pull is 1.07 m/s2 upward against 0.07 on the Earth as a whole, a net 10% of g ('you'd weigh a tenth less'); the tidal stretch at the Moon's near surface, 3GMr/d^3 = 3.37 m/s2, against the Moon's own surface gravity 1.62 m/s2, about 2 to 1 ('that stretch beats the Moon's own gravity'). Roche limit: 'about 9,500 kilometers, assuming the Moon is a solid ball' (Universe Today); 'roughly 9,500 km from Earth's center' and about 18,400 km for a fluid body (ScienceABC); the formula gives 9,483 km rigid and 18,365 km fluid, so 8,508 km is inside both. Outcome: 'The Moon would be torn apart, and turned into a ring', with pieces later falling to Earth (Universe Today); large fragments might hit Earth (ScienceABC): said as 'Some of it falls on us'. 'Saturn's bright main rings lie largely inside Saturn's Roche limit' (Science Notes). The real Moon is moving away at about 3.8 cm a year, measured by laser ranging (Science Notes, ScienceABC); the narration says 'about four centimetres', the HUD 3.8 cm. Illustration only, and labelled so: the speed and look of the break-up, the size of the tide (the film says only that the sea heaves up; no height is given), the stretch of the Moon ('stretch exaggerated'), the ring seen from the beach. Not stated anywhere: how long the break-up takes, tide heights, what would happen to Earth's crust. Sizes and the Earth-Moon gap in the space scenes are to scale. Verified 29 Nov 2026 by reading the pages listed.",
+   "sources": [
+    "https://www.universetoday.com/articles/close-can-moons-orbit",
+    "https://sciencenotes.org/roche-limit-definition-formula-physics-and-examples/",
+    "https://www.scienceabc.com/nature/universe/can-earths-gravity-break-the-moon-apart",
+    "https://www.asc-csa.gc.ca/eng/multimedia/search/image/7993",
+    "https://www.esa.int/kids/en/learn/Life_in_Space/Space_Stations/The_International_Space_Station"
+   ]
   }
  ]
 }

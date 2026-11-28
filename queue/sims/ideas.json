@@ -241,8 +241,9 @@
    "setting": "A coastal city at night, with the Moon filling the sky",
    "hook": "What if the Moon orbited as close as the space station?",
    "the surprising true point": "It could not stay a moon: that close, Earth's tides would pull it apart into a ring long before you could enjoy the view",
-   "status": "making",
-   "claimed_at": "2026-11-29T01:12:00+11:00"
+   "status": "made",
+   "claimed_at": "2026-11-29T01:12:00+11:00",
+   "file": "sim-27-moonclose"
   },
   {
    "title": "What if you fell into Jupiter?",
@@ -403,6 +404,22 @@
    "setting": "An astronaut on a spacewalk outside a space station, with the Earth turning below and the phone drifting beside the glove",
    "hook": "What if you dropped your phone from the space station?",
    "the surprising true point": "It would not fall to Earth: it is already circling the planet at about 28,000 km/h, just like you, so it floats beside your hand and stays in orbit until thin air slowly drags it down",
+   "status": "planned"
+  },
+  {
+   "title": "What if you spent one whole day on Mercury?",
+   "kind": "what-if",
+   "hook": "What if you spent one whole day on Mercury?",
+   "setting": "A crater rim on Mercury, with the Sun huge and slow in a black sky",
+   "the surprising true point": "One sunrise-to-sunrise day there lasts about 176 Earth days, longer than Mercury's own year, so you would roast for months and then freeze for months on the same spot",
+   "status": "planned"
+  },
+  {
+   "title": "The Trinity test, second by second",
+   "kind": "second-by-second",
+   "hook": "The first atomic bomb, second by second",
+   "setting": "The New Mexico desert before dawn, 16 July 1945, seen from the observers' trenches kilometres away",
+   "the surprising true point": "The watchers saw the flash and felt the heat in silence: the sound and the blast took many seconds longer to cross the desert, because light outruns sound",
    "status": "planned"
   }
  ]
