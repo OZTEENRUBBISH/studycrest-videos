@@ -270,6 +270,12 @@
    "kind": "sim",
    "due_at": "2026-11-29T18:00:00+11:00",
    "buffer_post_id": "6b0af0964ebef2b6d4e538dd"
+  },
+  {
+   "file": "sim-29-tacoma",
+   "kind": "sim",
+   "due_at": "2026-11-30T00:00:00+11:00",
+   "buffer_post_id": "6b0b079122774eb99f079f9b"
   }
  ]
 }
